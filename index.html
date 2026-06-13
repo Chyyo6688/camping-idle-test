@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cozy Camping Idle V2.4</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="day">
+  <main class="game-app">
+    <div class="game-shell">
+      <div class="game-viewport">
+        <section id="campScene" class="camp-scene game-world" aria-label="Cozy camping scene">
+      <div id="sceneContent" class="scene-content">
+      <img id="sceneBackground" class="scene-asset scene-background" src="assets/backgrounds/campsite_day.png" alt="">
+      <img id="treelineImage" class="scene-asset treeline-image" src="assets/backgrounds/treeline_day.png" alt="">
+      <img id="lakeImage" class="scene-asset lake-image" src="assets/backgrounds/lake_day.png" alt="">
+
+      <img class="scene-asset decor decor-crate" src="assets/furniture/crate.png" alt="">
+      <img class="scene-asset decor decor-woodpile" src="assets/furniture/woodpile.png" alt="">
+      <img class="scene-asset decor decor-stump" src="assets/furniture/stump.png" alt="">
+      <img id="axe" class="scene-asset decor decor-axe hidden" src="assets/furniture/axe.png" alt="Camp axe">
+      <img id="table" class="scene-asset decor decor-table hidden" src="assets/furniture/table.png" alt="Camping table">
+      <img id="kettle" class="scene-asset decor decor-kettle hidden" src="assets/furniture/kettle.png" alt="Kettle">
+      <img id="stove" class="scene-asset decor decor-stove hidden" src="assets/furniture/stove.png" alt="Camping stove">
+
+      <div id="stringLights" class="string-lights asset-object hidden" aria-label="String lights">
+        <img class="object-image string-lights-glow" src="assets/lighting/string_lights_glow.png" alt="">
+        <img class="object-image" src="assets/lighting/string_lights.png" alt="">
+      </div>
+
+      <div id="woodLayer" class="wood-layer" aria-label="Wood on the ground"></div>
+      <div id="sparkLayer" class="spark-layer" aria-hidden="true"></div>
+
+      <div id="tent" class="tent asset-object" aria-label="Tent">
+        <img id="tentImage" class="object-image" src="assets/tents/tent_backpacking.png" alt="">
+        <img id="tentGlowImage" class="object-image tent-glow hidden" src="assets/tents/tent_glow_overlay.png" alt="">
+      </div>
+
+      <img id="chair" class="camp-chair asset-object hidden" src="assets/furniture/chair.png" alt="Camp chair">
+
+      <div id="lantern" class="lantern asset-object hidden" aria-label="Lantern">
+        <img id="lanternGlowImage" class="object-image lantern-glow" src="assets/lighting/lantern_glow.png" alt="">
+        <img id="lanternImage" class="object-image" src="assets/lighting/lantern.png" alt="">
+      </div>
+
+      <div id="campfire" class="campfire asset-object level-1" aria-label="Campfire">
+        <img id="fireGlowImage" class="object-image fire-glow-img" src="assets/campfire/glow_fire.png" alt="">
+        <img id="campfireBaseImage" class="object-image" src="assets/campfire/campfire_lv1_base.png" alt="">
+        <img id="campfireFlameImage" class="object-image campfire-flame-img" src="assets/campfire/campfire_lv1_flame_01.png" alt="">
+      </div>
+
+      <img id="camper" class="camper asset-object" src="assets/characters/camper_idle.png" alt="Camper">
+      </div>
+
+      <header class="top-bar" aria-label="Camp resources">
+        <div id="cozyPointStatus" class="resource-pill cozy-chip">
+          <img class="resource-icon" src="assets/ui/icon_cozy.png" alt="">
+          <span class="resource-copy">
+            <span class="resource-label">Cozy Points</span>
+            <strong id="cozyPointsAmount">0</strong>
+          </span>
+          <span id="cozyGainLayer" class="gain-layer" aria-live="polite"></span>
+        </div>
+
+        <div class="resource-pill comfort-chip">
+          <img class="resource-icon" src="assets/ui/icon_comfort.png" alt="">
+          <span class="resource-copy">
+            <span class="resource-label">Comfort</span>
+            <strong id="comfortAmount">0</strong>
+          </span>
+        </div>
+
+        <div class="resource-pill warmth-chip">
+          <img class="resource-icon" src="assets/ui/icon_warmth.png" alt="">
+          <span class="resource-copy">
+            <span class="resource-label">Warmth</span>
+            <strong><span id="warmthSecondsAmount">0</span>s</strong>
+          </span>
+        </div>
+      </header>
+
+      <nav class="mode-controls" aria-label="Camp mode controls">
+        <button id="gatherWoodToggle" class="mode-button gather-button active" type="button">
+          <img class="button-icon" src="assets/ui/icon_gather_wood.png" alt="">
+          <span>Gather</span>
+          <strong id="gatherModeLabel">On</strong>
+        </button>
+
+        <button id="dayNightToggle" class="mode-button hidden" type="button">
+          <img id="dayNightIcon" class="button-icon" src="assets/ui/icon_night.png" alt="">
+          <span id="dayNightLabel">Night</span>
+        </button>
+      </nav>
+
+      <nav class="utility-controls" aria-label="Save controls">
+        <button id="resetSaveButton" class="utility-button" type="button">
+          <img class="button-icon" src="assets/ui/icon_tools.png" alt="">
+          <span>Reset</span>
+        </button>
+      </nav>
+
+      <div class="toast-layer" aria-live="polite">
+        <p id="welcomeMessage" class="toast-message welcome-message"></p>
+        <p id="statusLine" class="toast-message status-line"></p>
+      </div>
+      <p id="camperStateText" class="camper-state">Wandering around camp</p>
+
+      <nav class="floating-controls" aria-label="Camp controls">
+        <button id="shopToggle" class="floating-button" type="button">
+          <img class="button-icon" src="assets/ui/icon_shop.png" alt="">
+          <span>Shop</span>
+        </button>
+      </nav>
+        </section>
+
+        <button id="shopBackdrop" class="shop-backdrop" type="button" aria-label="Close shop"></button>
+
+        <aside id="shopDrawer" class="shop-drawer" aria-label="Camp shop" aria-hidden="true">
+      <div class="drawer-header">
+        <div>
+          <p class="eyebrow">Camp Gear</p>
+          <h1>Shop</h1>
+        </div>
+        <button id="closeShopButton" class="close-button" type="button" aria-label="Close shop">
+          <img src="assets/ui/icon_close.png" alt="">
+        </button>
+      </div>
+
+      <nav class="shop-tabs" aria-label="Shop categories">
+        <button class="shop-tab active" type="button" data-shop-filter="all">
+          <img src="assets/ui/icon_tools.png" alt="">
+          <span>All</span>
+        </button>
+        <button class="shop-tab" type="button" data-shop-filter="fire">
+          <img src="assets/ui/icon_fire.png" alt="">
+          <span>Fire</span>
+        </button>
+        <button class="shop-tab" type="button" data-shop-filter="tents">
+          <img src="assets/ui/icon_tent.png" alt="">
+          <span>Tents</span>
+        </button>
+        <button class="shop-tab" type="button" data-shop-filter="furniture">
+          <img src="assets/ui/icon_furniture.png" alt="">
+          <span>Furniture</span>
+        </button>
+        <button class="shop-tab" type="button" data-shop-filter="lighting">
+          <img src="assets/ui/icon_lighting.png" alt="">
+          <span>Light</span>
+        </button>
+      </nav>
+
+      <div id="shopContent" class="shop-content">
+      <section class="shop-section" data-shop-category="fire" aria-label="Fire upgrades">
+        <h2><img src="assets/ui/icon_fire.png" alt=""> Fire</h2>
+        <button id="upgradeCampfireButton" class="shop-card" type="button">
+          <img id="campfireShopImage" class="item-art" src="assets/campfire/campfire_lv1_base.png" alt="">
+          <span class="item-copy">
+            <span class="item-name">Upgrade Campfire</span>
+            <span id="campfireUpgradeDescription" class="item-detail">Level 2 fire pit</span>
+          </span>
+          <strong id="campfireUpgradeCost" class="item-action">45 CP</strong>
+        </button>
+      </section>
+
+      <section class="shop-section" data-shop-category="tents" aria-label="Tent shop">
+        <h2><img src="assets/ui/icon_tent.png" alt=""> Tents</h2>
+        <button id="buyBackpackingTentButton" class="shop-card" type="button">
+          <img class="item-art" src="assets/tents/tent_backpacking.png" alt="">
+          <span class="item-copy">
+            <span class="item-name">Backpacking Tent</span>
+            <span class="item-detail">+4 Comfort</span>
+          </span>
+          <strong class="item-action">35 CP</strong>
+        </button>
+
+        <button id="buyLowDomeTentButton" class="shop-card" type="button">
+          <img class="item-art" src="assets/tents/tent_low_dome.png" alt="">
+          <span class="item-copy">
+            <span class="item-name">Low Dome Tent</span>
+            <span class="item-detail">+10 Comfort</span>
+          </span>
+          <strong class="item-action">80 CP</strong>
+        </button>
+
+        <button id="buyVestibuleTentButton" class="shop-card" type="button">
+          <img class="item-art" src="assets/tents/tent_vestibule.png" alt="">
+          <span class="item-copy">
+            <span class="item-name">Larger Vestibule Tent</span>
+            <span class="item-detail">+18 Comfort</span>
+          </span>
+          <strong class="item-action">150 CP</strong>
+        </button>
+      </section>
+
+      <section class="shop-section" data-shop-category="furniture" aria-label="Furniture shop">
+        <h2><img src="assets/ui/icon_furniture.png" alt=""> Furniture</h2>
+        <button id="buyChairButton" class="shop-card" type="button">
+          <img class="item-art" src="assets/furniture/chair.png" alt="">
+          <span class="item-copy">
+            <span class="item-name">Camp Chair</span>
+            <span class="item-detail">+5 Comfort</span>
+          </span>
+          <strong class="item-action">55 CP</strong>
+        </button>
+
+        <button id="buyTableButton" class="shop-card" type="button">
+          <img class="item-art" src="assets/furniture/table.png" alt="">
+          <span class="item-copy">
+            <span class="item-name">Camping Table</span>
+            <span class="item-detail">+6 Comfort</span>
+          </span>
+          <strong class="item-action">60 CP</strong>
+        </button>
+
+        <button id="buyKettleButton" class="shop-card" type="button">
+          <img class="item-art" src="assets/furniture/kettle.png" alt="">
+          <span class="item-copy">
+            <span class="item-name">Kettle</span>
+            <span class="item-detail">Requires Table</span>
+          </span>
+          <strong class="item-action">Locked</strong>
+        </button>
+
+        <button id="buyAxeButton" class="shop-card" type="button">
+          <img class="item-art" src="assets/furniture/axe.png" alt="">
+          <span class="item-copy">
+            <span class="item-name">Camp Axe</span>
+            <span class="item-detail">+2 Comfort</span>
+          </span>
+          <strong class="item-action">40 CP</strong>
+        </button>
+
+        <button id="buyStoveButton" class="shop-card" type="button">
+          <img class="item-art" src="assets/furniture/stove.png" alt="">
+          <span class="item-copy">
+            <span class="item-name">Camp Stove</span>
+            <span class="item-detail">Requires Table</span>
+          </span>
+          <strong class="item-action">Locked</strong>
+        </button>
+      </section>
+
+      <section class="shop-section" data-shop-category="lighting" aria-label="Lighting shop">
+        <h2><img src="assets/ui/icon_lighting.png" alt=""> Lighting</h2>
+        <button id="buyLanternButton" class="shop-card" type="button">
+          <img class="item-art" src="assets/lighting/lantern.png" alt="">
+          <span class="item-copy">
+            <span class="item-name">Lantern</span>
+            <span class="item-detail">Unlock Night</span>
+          </span>
+          <strong class="item-action">90 CP</strong>
+        </button>
+
+        <button id="buyStringLightsButton" class="shop-card" type="button">
+          <img class="item-art" src="assets/lighting/string_lights.png" alt="">
+          <span class="item-copy">
+            <span class="item-name">String Lights</span>
+            <span class="item-detail">+8 Comfort</span>
+          </span>
+          <strong class="item-action">140 CP</strong>
+        </button>
+      </section>
+      </div>
+
+      <section class="drawer-summary" aria-label="Camp summary">
+        <p>Fire Lv <strong id="campfireLevelAmount">1</strong></p>
+        <p><strong id="cozyRateAmount">0</strong> CP/s</p>
+        <p>Offline <strong id="offlineCapAmount">30 min</strong></p>
+      </section>
+        </aside>
+      </div>
+    </div>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
