@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="132" height="80" viewBox="0 0 132 80">
+  <rect width="132" height="80" rx="10" fill="#4a2f2a" opacity="0.92"/>
+  <rect x="8" y="10" width="116" height="36" rx="8" fill="#b46e5b" opacity="0.92"/>
+  <path d="M24 60h84" stroke="#f5e4bd" stroke-width="4" stroke-linecap="round" opacity="0.75"/>
+  <text x="66" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-size="9" font-weight="700" fill="#fff0c8">三人沙发椅</text>
+</svg>

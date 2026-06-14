@@ -23,32 +23,10 @@
       <img id="lakeImage" class="scene-asset lake-image" src="assets/backgrounds/lake_day.png?v=2.5" alt="">
 
       <img class="scene-asset decor decor-crate" src="assets/furniture/crate.png?v=2.5" alt="">
-      <img class="scene-asset decor decor-woodpile" src="assets/furniture/woodpile.png?v=2.5" alt="">
       <img class="scene-asset decor decor-stump" src="assets/furniture/stump.png?v=2.5" alt="">
-      <img id="axe" class="scene-asset decor decor-axe hidden" src="assets/furniture/axe.png?v=2.5" alt="Camp axe">
-      <img id="table" class="scene-asset decor decor-table hidden" src="assets/furniture/table.png?v=2.5" alt="Camping table">
-      <img id="kettle" class="scene-asset decor decor-kettle hidden" src="assets/furniture/kettle.png?v=2.5" alt="Kettle">
-      <img id="stove" class="scene-asset decor decor-stove hidden" src="assets/furniture/stove.png?v=2.5" alt="Camping stove">
-
-      <div id="stringLights" class="string-lights asset-object hidden" aria-label="String lights">
-        <img class="object-image string-lights-glow" src="assets/lighting/string_lights_glow.png?v=2.5" alt="">
-        <img class="object-image" src="assets/lighting/string_lights.png?v=2.5" alt="">
-      </div>
-
       <div id="woodLayer" class="wood-layer" aria-label="Wood on the ground"></div>
       <div id="sparkLayer" class="spark-layer" aria-hidden="true"></div>
-
-      <div id="tent" class="tent asset-object" aria-label="Tent">
-        <img id="tentImage" class="object-image" src="assets/tents/tent_backpacking.png?v=2.5" alt="">
-        <img id="tentGlowImage" class="object-image tent-glow hidden" src="assets/tents/tent_glow_overlay.png?v=2.5" alt="">
-      </div>
-
-      <img id="chair" class="camp-chair asset-object hidden" src="assets/furniture/chair.png?v=2.5" alt="Camp chair">
-
-      <div id="lantern" class="lantern asset-object hidden" aria-label="Lantern">
-        <img id="lanternGlowImage" class="object-image lantern-glow" src="assets/lighting/lantern_glow.png?v=2.5" alt="">
-        <img id="lanternImage" class="object-image" src="assets/lighting/lantern.png?v=2.5" alt="">
-      </div>
+      <div id="gearLayer" class="gear-layer-root" aria-label="Camp gear"></div>
 
       <div id="campfire" class="campfire asset-object level-1" aria-label="Campfire">
         <img id="fireGlowImage" class="object-image fire-glow-img" src="assets/campfire/glow_fire.png?v=2.5" alt="">
@@ -134,150 +112,9 @@
         </button>
       </div>
 
-      <nav class="shop-tabs" aria-label="Shop categories">
-        <button class="shop-tab active" type="button" data-shop-filter="all">
-          <img src="assets/ui/icon_tools.png?v=2.5" alt="">
-          <span>All</span>
-        </button>
-        <button class="shop-tab" type="button" data-shop-filter="fire">
-          <img src="assets/ui/icon_fire.png?v=2.5" alt="">
-          <span>Fire</span>
-        </button>
-        <button class="shop-tab" type="button" data-shop-filter="tents">
-          <img src="assets/ui/icon_tent.png?v=2.5" alt="">
-          <span>Tents</span>
-        </button>
-        <button class="shop-tab" type="button" data-shop-filter="furniture">
-          <img src="assets/ui/icon_furniture.png?v=2.5" alt="">
-          <span>Furniture</span>
-        </button>
-        <button class="shop-tab" type="button" data-shop-filter="lighting">
-          <img src="assets/ui/icon_lighting.png?v=2.5" alt="">
-          <span>Light</span>
-        </button>
-      </nav>
+      <nav id="shopTabs" class="shop-tabs" aria-label="Shop categories"></nav>
 
-      <div id="shopContent" class="shop-content">
-      <section class="shop-section" data-shop-category="fire" aria-label="Fire upgrades">
-        <h2><img src="assets/ui/icon_fire.png?v=2.5" alt=""> Fire</h2>
-        <button id="upgradeCampfireButton" class="shop-card" type="button" data-price="45CP">
-          <img id="campfireShopImage" class="item-art" src="assets/campfire/campfire_lv1_base.png?v=2.5" alt="">
-          <span class="item-copy">
-            <span class="item-name">Campfire</span>
-            <span id="campfireUpgradeDescription" class="item-detail">Level 2 fire pit</span>
-          </span>
-          <strong id="campfireUpgradeCost" class="item-action">Upgrade</strong>
-        </button>
-      </section>
-
-      <section class="shop-section" data-shop-category="tents" aria-label="Tent shop">
-        <h2><img src="assets/ui/icon_tent.png?v=2.5" alt=""> Tents</h2>
-        <button id="buyBackpackingTentButton" class="shop-card" type="button" data-price="0CP">
-          <img class="item-art" src="assets/tents/tent_backpacking.png?v=2.5" alt="">
-          <span class="item-copy">
-            <span class="item-name">Backpack Tent</span>
-            <span class="item-detail">+4 Comfort</span>
-          </span>
-          <strong class="item-action">Equipped</strong>
-        </button>
-
-        <button id="buyLowDomeTentButton" class="shop-card" type="button" data-price="80CP">
-          <img class="item-art" src="assets/tents/tent_low_dome.png?v=2.5" alt="">
-          <span class="item-copy">
-            <span class="item-name">Dome Tent</span>
-            <span class="item-detail">+10 Comfort</span>
-          </span>
-          <strong class="item-action">Buy</strong>
-        </button>
-
-        <button id="buyVestibuleTentButton" class="shop-card" type="button" data-price="150CP">
-          <img class="item-art" src="assets/tents/tent_vestibule.png?v=2.5" alt="">
-          <span class="item-copy">
-            <span class="item-name">Vestibule Tent</span>
-            <span class="item-detail">+18 Comfort</span>
-          </span>
-          <strong class="item-action">Buy</strong>
-        </button>
-
-        <button class="shop-card placeholder" type="button" data-price="--" disabled>
-          <img class="item-art" src="assets/ui/icon_lock.png?v=2.5" alt="">
-          <span class="item-copy">
-            <span class="item-name">More Tents</span>
-            <span class="item-detail">Coming soon</span>
-          </span>
-          <strong class="item-action">Soon</strong>
-        </button>
-      </section>
-
-      <section class="shop-section" data-shop-category="furniture" aria-label="Furniture shop">
-        <h2><img src="assets/ui/icon_furniture.png?v=2.5" alt=""> Furniture</h2>
-        <button id="buyChairButton" class="shop-card" type="button" data-price="55CP">
-          <img class="item-art" src="assets/furniture/chair.png?v=2.5" alt="">
-          <span class="item-copy">
-            <span class="item-name">Chair</span>
-            <span class="item-detail">+5 Comfort</span>
-          </span>
-          <strong class="item-action">Buy</strong>
-        </button>
-
-        <button id="buyTableButton" class="shop-card" type="button" data-price="60CP">
-          <img class="item-art" src="assets/furniture/table.png?v=2.5" alt="">
-          <span class="item-copy">
-            <span class="item-name">Table</span>
-            <span class="item-detail">+6 Comfort</span>
-          </span>
-          <strong class="item-action">Buy</strong>
-        </button>
-
-        <button id="buyKettleButton" class="shop-card" type="button" data-price="?CP">
-          <img class="item-art" src="assets/furniture/kettle.png?v=2.5" alt="">
-          <span class="item-copy">
-            <span class="item-name">Kettle</span>
-            <span class="item-detail">Requires Table</span>
-          </span>
-          <strong class="item-action">Locked</strong>
-        </button>
-
-        <button id="buyAxeButton" class="shop-card" type="button" data-price="40CP">
-          <img class="item-art" src="assets/furniture/axe.png?v=2.5" alt="">
-          <span class="item-copy">
-            <span class="item-name">Axe</span>
-            <span class="item-detail">+2 Comfort</span>
-          </span>
-          <strong class="item-action">Buy</strong>
-        </button>
-
-        <button id="buyStoveButton" class="shop-card" type="button" data-price="?CP">
-          <img class="item-art" src="assets/furniture/stove.png?v=2.5" alt="">
-          <span class="item-copy">
-            <span class="item-name">Stove</span>
-            <span class="item-detail">Requires Table</span>
-          </span>
-          <strong class="item-action">Locked</strong>
-        </button>
-      </section>
-
-      <section class="shop-section" data-shop-category="lighting" aria-label="Lighting shop">
-        <h2><img src="assets/ui/icon_lighting.png?v=2.5" alt=""> Lighting</h2>
-        <button id="buyLanternButton" class="shop-card" type="button" data-price="90CP">
-          <img class="item-art" src="assets/lighting/lantern.png?v=2.5" alt="">
-          <span class="item-copy">
-            <span class="item-name">Lantern</span>
-            <span class="item-detail">Unlock Night</span>
-          </span>
-          <strong class="item-action">Buy</strong>
-        </button>
-
-        <button id="buyStringLightsButton" class="shop-card" type="button" data-price="140CP">
-          <img class="item-art" src="assets/lighting/string_lights.png?v=2.5" alt="">
-          <span class="item-copy">
-            <span class="item-name">Lights</span>
-            <span class="item-detail">+8 Comfort</span>
-          </span>
-          <strong class="item-action">Buy</strong>
-        </button>
-      </section>
-      </div>
+      <div id="shopContent" class="shop-content"></div>
 
       <section class="drawer-summary" aria-label="Camp summary">
         <p>Fire Lv <strong id="campfireLevelAmount">1</strong></p>
@@ -298,9 +135,17 @@
         image.src = cleanPath + "?v=" + window.APP_VERSION;
       });
 
-      const gameScript = document.createElement("script");
-      gameScript.src = "game.js?v=" + window.APP_VERSION;
-      document.body.appendChild(gameScript);
+      function loadGameScript() {
+        const gameScript = document.createElement("script");
+        gameScript.src = "game.js?v=" + window.APP_VERSION;
+        document.body.appendChild(gameScript);
+      }
+
+      const gearCatalogScript = document.createElement("script");
+      gearCatalogScript.src = "gearCatalog.js?v=" + window.APP_VERSION;
+      gearCatalogScript.onload = loadGameScript;
+      gearCatalogScript.onerror = loadGameScript;
+      document.body.appendChild(gearCatalogScript);
     })();
   </script>
 </body>

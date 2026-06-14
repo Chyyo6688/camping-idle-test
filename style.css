@@ -129,44 +129,10 @@ body.shop-open .scene-content {
   top: 70%;
 }
 
-.decor-woodpile {
-  width: 22%;
-  left: 18%;
-  top: 82.5%;
-}
-
 .decor-stump {
   width: 11%;
   left: 28%;
   top: 82.5%;
-}
-
-.decor-axe {
-  width: 11%;
-  left: 22%;
-  top: 77%;
-  transform: rotate(-12deg);
-}
-
-.decor-kettle {
-  width: 9%;
-  left: 51%;
-  top: 77.7%;
-  z-index: 20;
-}
-
-.decor-table {
-  width: 17%;
-  left: 48%;
-  top: 80.5%;
-  z-index: 17;
-}
-
-.decor-stove {
-  width: 9.5%;
-  left: 57.5%;
-  top: 77.5%;
-  z-index: 20;
 }
 
 .string-lights {
@@ -282,6 +248,13 @@ body.night .string-lights-glow {
   pointer-events: none;
 }
 
+.gear-layer-root {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
 .wood-item {
   width: 8%;
   height: auto;
@@ -293,7 +266,10 @@ body.night .string-lights-glow {
 }
 
 .asset-object {
-  transform: translate(-50%, -100%);
+  --object-scale-x: 1;
+  --object-anchor-x: -50%;
+  --object-anchor-y: -100%;
+  transform: translate(var(--object-anchor-x), var(--object-anchor-y)) scaleX(var(--object-scale-x));
   filter: drop-shadow(0 0.75vw 0.45vw rgba(10, 14, 9, 0.26));
 }
 
@@ -325,12 +301,21 @@ body.night.camper-in-tent .tent-glow {
   opacity: 0.9;
 }
 
-.camp-chair {
-  width: 13.3%;
-  height: auto;
-  left: 57%;
-  top: 79%;
-  z-index: 22;
+.gear-object.category-chair {
+  overflow: visible;
+}
+
+.gear-object,
+.gear-front-layer {
+  pointer-events: none;
+}
+
+.gear-layer {
+  inset: 0;
+}
+
+.gear-front-layer {
+  filter: none;
 }
 
 .lantern {
@@ -399,13 +384,14 @@ body.night .campfire.lit .fire-glow-img {
   top: 75%;
   z-index: 30;
   object-fit: contain;
+  transform-origin: 50% 100%;
   transition: left 1.8s linear, top 1.8s linear, opacity 0.35s ease;
   filter: drop-shadow(0 0.7vw 0.35vw rgba(8, 12, 8, 0.32));
 }
 
 .camper.walking,
-.camper.carrying {
-  animation: camperBob 0.48s steps(2) infinite;
+.camper.carryingWood {
+  animation: camperBob 0.4s steps(2) infinite;
 }
 
 .camper.tentRest {
@@ -884,16 +870,6 @@ h2 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.shop-section[data-shop-category="fire"] {
-  grid-template-columns: 1fr;
-}
-
-.shop-section[data-shop-category="tents"] {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  column-gap: clamp(12px, 2.8vw, 16px);
-  row-gap: clamp(12px, 2.8vw, 16px);
-}
-
 .shop-section.filtered-hidden {
   display: none;
 }
@@ -976,7 +952,7 @@ h2 {
   opacity: 0.48;
 }
 
-#upgradeCampfireButton {
+.shop-card.featured {
   grid-column: 1 / -1;
   aspect-ratio: auto;
   grid-template-columns: clamp(4.1rem, 16vw, 6.2rem) minmax(0, 1fr);
@@ -993,7 +969,7 @@ h2 {
     inset 0 0 0 1px rgba(255, 220, 150, 0.08);
 }
 
-#upgradeCampfireButton .item-art {
+.shop-card.featured .item-art {
   grid-row: 1 / span 2;
   align-self: center;
   justify-self: center;
@@ -1001,13 +977,13 @@ h2 {
   height: clamp(3.25rem, 12vw, 4.8rem);
 }
 
-#upgradeCampfireButton .item-copy {
+.shop-card.featured .item-copy {
   align-self: end;
   justify-items: center;
   text-align: center;
 }
 
-#upgradeCampfireButton .item-action {
+.shop-card.featured .item-action {
   grid-column: 2;
   align-self: start;
   width: 100%;

@@ -28,15 +28,52 @@ function versionAssetPaths(value) {
   return value;
 }
 
+const gearCatalog = typeof window !== "undefined" && window.GEAR_CATALOG ? window.GEAR_CATALOG : {};
+const shopGroupData = typeof window !== "undefined" && window.SHOP_GROUPS ? window.SHOP_GROUPS : {};
+const legacyGearIdMap = typeof window !== "undefined" && window.LEGACY_GEAR_ID_MAP ? window.LEGACY_GEAR_ID_MAP : {};
+
+function getGearItems() {
+  return Object.keys(gearCatalog).map(function(id) {
+    return gearCatalog[id];
+  });
+}
+
+function getGearItem(id) {
+  return id && gearCatalog[id] ? gearCatalog[id] : null;
+}
+
+function normalizeGearId(id) {
+  return legacyGearIdMap[id] || id;
+}
+
+function getDefaultOwnedGearIds() {
+  return getGearItems().filter(function(item) {
+    return item.defaultOwned;
+  }).map(function(item) {
+    return item.id;
+  });
+}
+
+function getDefaultEquippedGear() {
+  const equipped = {};
+
+  getGearItems().forEach(function(item) {
+    if (item.defaultEquipped) {
+      equipped[item.category] = item.id;
+    }
+  });
+
+  return equipped;
+}
+
 // This object is the starting save file for a new player.
 const defaultGameState = {
   cozyPoints: 0,
   comfort: 0,
   warmthSeconds: 0,
   campfireLevel: 1,
-  ownedTentTypes: ["backpacking"],
-  currentTentType: "backpacking",
-  ownedEquipment: [],
+  ownedGear: getDefaultOwnedGearIds(),
+  equippedGear: getDefaultEquippedGear(),
   nightUnlocked: false,
   isNight: false,
   gatherWoodMode: true,
@@ -46,39 +83,11 @@ const defaultGameState = {
 function createDefaultGameState() {
   return {
     ...defaultGameState,
-    ownedTentTypes: defaultGameState.ownedTentTypes.slice(),
-    ownedEquipment: defaultGameState.ownedEquipment.slice(),
+    ownedGear: defaultGameState.ownedGear.slice(),
+    equippedGear: { ...defaultGameState.equippedGear },
     lastSaveTime: Date.now()
   };
 }
-
-// Equipment data lives in one place so prices and bonuses are easy to change.
-const tentData = {
-  basic: {
-    cost: 0,
-    comfort: 0,
-    offlineBonusSeconds: 0,
-    image: withVersion("assets/tents/tent_backpacking.png")
-  },
-  backpacking: {
-    cost: 35,
-    comfort: 4,
-    offlineBonusSeconds: 1800,
-    image: withVersion("assets/tents/tent_backpacking.png")
-  },
-  lowDome: {
-    cost: 80,
-    comfort: 10,
-    offlineBonusSeconds: 7200,
-    image: withVersion("assets/tents/tent_low_dome.png")
-  },
-  vestibule: {
-    cost: 150,
-    comfort: 18,
-    offlineBonusSeconds: 14400,
-    image: withVersion("assets/tents/tent_vestibule.png")
-  }
-};
 
 const campfireUpgradeCosts = {
   1: 45,
@@ -99,6 +108,8 @@ const campfireBurnRates = {
 
 const baseOfflineSeconds = 1800;
 const maxWoodItems = 5;
+const camperFrameDurationMs = 200;
+const camperSpriteRefreshMs = 100;
 
 // All visual assets are listed here so art can be replaced without hunting
 // through the game logic.
@@ -115,6 +126,8 @@ const assetPaths = versionAssetPaths({
     idle: "assets/characters/camper_idle.png",
     walk1: "assets/characters/camper_walk_01.png",
     walk2: "assets/characters/camper_walk_02.png",
+    carry1: "assets/characters/camper_carry_wood _01.png",
+    carry2: "assets/characters/camper_carry_wood _02.png",
     carry: "assets/characters/camper_carry_wood.png",
     sitGround: "assets/characters/camper_sit_ground.png",
     sitChair: "assets/characters/camper_sit_chair.png",
@@ -181,7 +194,9 @@ let camper = {
   currentAction: null,
   actionTimer: 0,
   targetWoodId: null,
-  carryingWood: false
+  carryingWood: false,
+  facing: "right",
+  animationStartedAt: Date.now()
 };
 
 let woodItems = [];
@@ -199,18 +214,8 @@ const sceneBackground = document.getElementById("sceneBackground");
 const treelineImage = document.getElementById("treelineImage");
 const lakeImage = document.getElementById("lakeImage");
 const woodLayer = document.getElementById("woodLayer");
-const tent = document.getElementById("tent");
-const tentImage = document.getElementById("tentImage");
-const tentGlowImage = document.getElementById("tentGlowImage");
-const axe = document.getElementById("axe");
-const chair = document.getElementById("chair");
-const kettle = document.getElementById("kettle");
-const lantern = document.getElementById("lantern");
-const lanternImage = document.getElementById("lanternImage");
-const lanternGlowImage = document.getElementById("lanternGlowImage");
-const stove = document.getElementById("stove");
-const stringLights = document.getElementById("stringLights");
-const table = document.getElementById("table");
+const sceneContent = document.getElementById("sceneContent");
+const gearLayer = document.getElementById("gearLayer");
 const campfire = document.getElementById("campfire");
 const fireGlowImage = document.getElementById("fireGlowImage");
 const campfireBaseImage = document.getElementById("campfireBaseImage");
@@ -223,113 +228,25 @@ const shopDrawer = document.getElementById("shopDrawer");
 const shopBackdrop = document.getElementById("shopBackdrop");
 const closeShopButton = document.getElementById("closeShopButton");
 const shopContent = document.getElementById("shopContent");
-const shopTabs = Array.prototype.slice.call(document.querySelectorAll(".shop-tab"));
-const shopSections = Array.prototype.slice.call(document.querySelectorAll(".shop-section"));
+const shopTabsContainer = document.getElementById("shopTabs");
+let shopTabs = [];
+let shopSections = [];
+let shopCards = {};
 const gatherWoodToggle = document.getElementById("gatherWoodToggle");
 const gatherModeLabel = document.getElementById("gatherModeLabel");
 const dayNightToggle = document.getElementById("dayNightToggle");
 const dayNightIcon = document.getElementById("dayNightIcon");
 const dayNightLabel = document.getElementById("dayNightLabel");
 const resetSaveButton = document.getElementById("resetSaveButton");
-const upgradeCampfireButton = document.getElementById("upgradeCampfireButton");
-const campfireUpgradeDescription = document.getElementById("campfireUpgradeDescription");
-const campfireUpgradeCost = document.getElementById("campfireUpgradeCost");
-const campfireShopImage = document.getElementById("campfireShopImage");
-const buyBackpackingTentButton = document.getElementById("buyBackpackingTentButton");
-const buyLowDomeTentButton = document.getElementById("buyLowDomeTentButton");
-const buyVestibuleTentButton = document.getElementById("buyVestibuleTentButton");
-const buyAxeButton = document.getElementById("buyAxeButton");
-const buyChairButton = document.getElementById("buyChairButton");
-const buyKettleButton = document.getElementById("buyKettleButton");
-const buyLanternButton = document.getElementById("buyLanternButton");
-const buyStoveButton = document.getElementById("buyStoveButton");
-const buyStringLightsButton = document.getElementById("buyStringLightsButton");
-const buyTableButton = document.getElementById("buyTableButton");
 const campfireLevelAmount = document.getElementById("campfireLevelAmount");
 const cozyRateAmount = document.getElementById("cozyRateAmount");
 const offlineCapAmount = document.getElementById("offlineCapAmount");
 const statusLine = document.getElementById("statusLine");
 
-const tentButtons = {
-  backpacking: buyBackpackingTentButton,
-  lowDome: buyLowDomeTentButton,
-  vestibule: buyVestibuleTentButton
-};
-
-const equipmentData = {
-  chair: {
-    name: "Camp Chair",
-    cost: 55,
-    comfort: 5,
-    detail: "+5 Comfort",
-    button: buyChairButton,
-    sceneElement: chair,
-    status: "The camper now has a proper chair by the fire."
-  },
-  table: {
-    name: "Camping Table",
-    cost: 60,
-    comfort: 6,
-    detail: "+6 Comfort",
-    button: buyTableButton,
-    sceneElement: table,
-    status: "A sturdy table gives small camp gear a home."
-  },
-  kettle: {
-    name: "Kettle",
-    cost: 45,
-    comfort: 3,
-    detail: "+3 Comfort",
-    button: buyKettleButton,
-    sceneElement: kettle,
-    requires: ["table"],
-    status: "The kettle settles neatly on the camp table."
-  },
-  axe: {
-    name: "Camp Axe",
-    cost: 40,
-    comfort: 2,
-    detail: "+2 Comfort",
-    button: buyAxeButton,
-    sceneElement: axe,
-    status: "The axe is tucked near the woodpile."
-  },
-  stove: {
-    name: "Camp Stove",
-    cost: 110,
-    comfort: 5,
-    detail: "+5 Comfort",
-    button: buyStoveButton,
-    sceneElement: stove,
-    requires: ["table"],
-    status: "The stove is ready on the camping table."
-  },
-  lantern: {
-    name: "Lantern",
-    cost: 90,
-    comfort: 6,
-    detail: "Unlock Night",
-    button: buyLanternButton,
-    sceneElement: lantern,
-    unlocksNight: true,
-    status: "Lantern light unlocks Night Mode."
-  },
-  stringLights: {
-    name: "String Lights",
-    cost: 140,
-    comfort: 8,
-    detail: "+8 Comfort",
-    button: buyStringLightsButton,
-    sceneElement: stringLights,
-    status: "Warm string lights make the trees feel close."
-  }
-};
-
 // These are points in the scene. The camper walks between them.
 const campSpots = {
   fire: { x: 39, y: 79 },
   fireSeat: { x: 33, y: 80 },
-  chair: { x: 57, y: 79 },
   lake: { x: 25, y: 64 },
   tent: { x: 54, y: 69.5 },
   rest: { x: 24, y: 81 }
@@ -350,6 +267,7 @@ const camperActionLabels = {
   resting: "Resting in the quiet grass",
   lookingAtLake: "Looking across the lake",
   sittingByFire: "Sitting by the campfire",
+  sittingOnFurniture: "Settling into camp seating",
   sittingOnChair: "Settling into the camp chair",
   tentRest: "Resting inside the tent"
 };
@@ -358,6 +276,7 @@ const camperThoughtLines = {
   wandering: "\u968f\u4fbf\u8d70\u8d70--",
   lookingAtLake: "\u770b\u770b\u6e56\u5427",
   sittingByFire: "\u70e4\u4f1a\u513f\u706b\u5427",
+  sittingOnFurniture: "\u5750\u4e00\u4f1a\u513f",
   sittingOnChair: "\u5750\u4e00\u4f1a\u513f",
   resting: "\u5c0f\u772f\u4e00\u4f1a\u513f",
   tentRest: "\u94bb\u8fdb\u5e10\u7bf7--"
@@ -438,60 +357,115 @@ function resetSaveIfRequestedByUrl() {
   }
 }
 
-function normalizeTentType(type) {
-  if (type === "basic") {
-    return "backpacking";
-  }
+function addUniqueGear(ownedGear, id) {
+  const normalizedId = normalizeGearId(id);
 
-  if (type === "dome") {
-    return "lowDome";
+  if (getGearItem(normalizedId) && ownedGear.indexOf(normalizedId) === -1) {
+    ownedGear.push(normalizedId);
   }
-
-  if (tentData[type]) {
-    return type;
-  }
-
-  return "backpacking";
 }
 
-function ownsTent(type, state) {
+function ownsGear(id, state) {
   const campState = state || gameState;
-  return campState.ownedTentTypes.indexOf(type) !== -1;
+  const normalizedId = normalizeGearId(id);
+
+  return Array.isArray(campState.ownedGear) && campState.ownedGear.indexOf(normalizedId) !== -1;
 }
 
-function ownsEquipment(type, state) {
+function getOwnedGearItems(state) {
   const campState = state || gameState;
-  return Array.isArray(campState.ownedEquipment) && campState.ownedEquipment.indexOf(type) !== -1;
+
+  return (campState.ownedGear || []).map(function(id) {
+    return getGearItem(id);
+  }).filter(Boolean);
 }
 
-function getMissingEquipmentRequirements(type, state) {
-  const equipment = equipmentData[type];
-  const requirements = equipment.requires || [];
-
-  return requirements.filter(function(requiredType) {
-    return !ownsEquipment(requiredType, state);
+function ownsAnyGearInCategory(category, state) {
+  return getOwnedGearItems(state).some(function(item) {
+    return item.category === category;
   });
 }
 
-function canBuyEquipment(type) {
-  const equipment = equipmentData[type];
+function getEquippedGearId(category, state) {
+  const campState = state || gameState;
+  return campState.equippedGear && campState.equippedGear[category] ? campState.equippedGear[category] : null;
+}
 
-  return Boolean(
-    equipment &&
-    !ownsEquipment(type) &&
-    getMissingEquipmentRequirements(type).length === 0 &&
-    gameState.cozyPoints >= equipment.cost
-  );
+function getEquippedGearItem(category, state) {
+  return getGearItem(getEquippedGearId(category, state));
+}
+
+function getRequirementLabel(requirement) {
+  if (getGearItem(requirement)) {
+    return getGearItem(requirement).displayName;
+  }
+
+  return String(requirement);
+}
+
+function getMissingGearRequirements(item, state) {
+  const campState = state || gameState;
+  const missing = [];
+  const requires = item && item.requires ? item.requires : {};
+
+  if (Array.isArray(requires)) {
+    requires.forEach(function(requiredId) {
+      if (!ownsGear(requiredId, campState)) {
+        missing.push(getRequirementLabel(requiredId));
+      }
+    });
+  }
+
+  (requires.all || []).forEach(function(requiredId) {
+    if (!ownsGear(requiredId, campState)) {
+      missing.push(getRequirementLabel(requiredId));
+    }
+  });
+
+  (requires.anyOwnedCategory || []).forEach(function(category) {
+    if (!ownsAnyGearInCategory(category, campState)) {
+      missing.push("Requires " + category);
+    }
+  });
+
+  if (Array.isArray(requires.any) && requires.any.length > 0) {
+    const hasAny = requires.any.some(function(requiredId) {
+      return ownsGear(requiredId, campState);
+    });
+
+    if (!hasAny) {
+      missing.push("Requires " + requires.any.map(getRequirementLabel).join(" or "));
+    }
+  }
+
+  return missing;
+}
+
+function hasNightUnlock(state) {
+  return getOwnedGearItems(state).some(function(item) {
+    return item.unlocks && item.unlocks.nightMode;
+  });
+}
+
+function isEquippableGear(item) {
+  return Boolean(item && item.category === "tent");
+}
+
+function isGearVisibleInShop(item) {
+  const group = item && shopGroupData[item.shopGroup];
+
+  return Boolean(item && group && group.visible !== false);
 }
 
 function calculateComfort(state) {
-  const campState = state || gameState;
-  let comfort = tentData[campState.currentTentType].comfort;
+  let comfort = 0;
 
-  Object.keys(equipmentData).forEach(function(type) {
-    if (ownsEquipment(type, campState)) {
-      comfort += equipmentData[type].comfort;
+  getOwnedGearItems(state).forEach(function(item) {
+    if (item.category === "tent" && getEquippedGearId("tent", state) !== item.id) {
+      return;
     }
+
+    comfort += Number(item.comfort) || 0;
   });
 
   return comfort;
@@ -526,7 +500,8 @@ function getWoodWarmthValue() {
 }
 
 function getOfflineCapSeconds() {
-  return baseOfflineSeconds + tentData[gameState.currentTentType].offlineBonusSeconds;
+  const tentItem = getEquippedGearItem("tent");
+  return baseOfflineSeconds + (tentItem && Number(tentItem.offlineBonusSeconds) || 0);
 }
 
 function getCampfireUpgradeCost() {
@@ -554,7 +529,9 @@ function resetCamperForNewGame() {
     currentAction: null,
     actionTimer: 0,
     targetWoodId: null,
-    carryingWood: false
+    carryingWood: false,
+    facing: "right",
+    animationStartedAt: Date.now()
   };
 }
 
@@ -587,7 +564,7 @@ function confirmResetSave() {
 }
 
 function sanitizeSave(savedGame) {
-  const cleanState = { ...createDefaultGameState(), ...savedGame };
+  const cleanState = createDefaultGameState();
 
   // This gently migrates the Version 1 save shape if it exists.
   if (savedGame && savedGame.warmth !== undefined && savedGame.warmthSeconds === undefined) {
@@ -598,47 +575,45 @@ function sanitizeSave(savedGame) {
     cleanState.lastSaveTime = savedGame.lastSavedTime;
   }
 
-  let currentTentType = normalizeTentType(cleanState.currentTentType);
-
-  if (savedGame && savedGame.tentType !== undefined && currentTentType === defaultGameState.currentTentType) {
-    currentTentType = normalizeTentType(savedGame.tentType);
+  if (savedGame) {
+    cleanState.cozyPoints = savedGame.cozyPoints;
+    if (savedGame.warmthSeconds !== undefined) {
+      cleanState.warmthSeconds = savedGame.warmthSeconds;
+    }
+    cleanState.campfireLevel = savedGame.campfireLevel;
+    cleanState.nightUnlocked = savedGame.nightUnlocked;
+    cleanState.isNight = savedGame.isNight;
+    cleanState.gatherWoodMode = savedGame.gatherWoodMode;
+    if (savedGame.lastSaveTime !== undefined) {
+      cleanState.lastSaveTime = savedGame.lastSaveTime;
+    }
   }
 
-  let ownedTentTypes = ["backpacking"];
+  const ownedGear = getDefaultOwnedGearIds();
 
-  if (Array.isArray(savedGame.ownedTentTypes)) {
+  if (savedGame && Array.isArray(savedGame.ownedGear)) {
+    savedGame.ownedGear.forEach(function(id) {
+      addUniqueGear(ownedGear, id);
+    });
+  }
+
+  if (savedGame && Array.isArray(savedGame.ownedTentTypes)) {
     savedGame.ownedTentTypes.forEach(function(type) {
-      const normalizedType = normalizeTentType(type);
-
-      if (ownedTentTypes.indexOf(normalizedType) === -1) {
-        ownedTentTypes.push(normalizedType);
-      }
+      addUniqueGear(ownedGear, type);
     });
   }
 
   if (savedGame && savedGame.tentType !== undefined) {
-    const oldTentType = normalizeTentType(savedGame.tentType);
-
-    if (ownedTentTypes.indexOf(oldTentType) === -1) {
-      ownedTentTypes.push(oldTentType);
-    }
+    addUniqueGear(ownedGear, savedGame.tentType);
   }
 
-  if (ownedTentTypes.indexOf(currentTentType) === -1) {
-    ownedTentTypes.push(currentTentType);
+  if (savedGame && savedGame.currentTentType !== undefined) {
+    addUniqueGear(ownedGear, savedGame.currentTentType);
   }
-
-  cleanState.ownedTentTypes = ownedTentTypes;
-  cleanState.currentTentType = currentTentType;
-  delete cleanState.tentType;
-
-  let ownedEquipment = [];
 
   if (savedGame && Array.isArray(savedGame.ownedEquipment)) {
     savedGame.ownedEquipment.forEach(function(type) {
-      if (equipmentData[type] && ownedEquipment.indexOf(type) === -1) {
-        ownedEquipment.push(type);
-      }
+      addUniqueGear(ownedGear, type);
     });
   }
 
@@ -653,22 +628,42 @@ function sanitizeSave(savedGame) {
   };
 
   Object.keys(oldEquipmentFields).forEach(function(fieldName) {
-    const equipmentType = oldEquipmentFields[fieldName];
-
-    if (savedGame && savedGame[fieldName] && ownedEquipment.indexOf(equipmentType) === -1) {
-      ownedEquipment.push(equipmentType);
+    if (savedGame && savedGame[fieldName]) {
+      addUniqueGear(ownedGear, oldEquipmentFields[fieldName]);
     }
   });
 
-  cleanState.ownedEquipment = ownedEquipment;
-  Object.keys(oldEquipmentFields).forEach(function(fieldName) {
-    delete cleanState[fieldName];
-  });
+  cleanState.ownedGear = ownedGear;
+  cleanState.equippedGear = { ...getDefaultEquippedGear() };
+
+  if (savedGame && savedGame.equippedGear) {
+    Object.keys(savedGame.equippedGear).forEach(function(category) {
+      const normalizedId = normalizeGearId(savedGame.equippedGear[category]);
+
+      if (ownedGear.indexOf(normalizedId) !== -1 && getGearItem(normalizedId)) {
+        cleanState.equippedGear[category] = normalizedId;
+      }
+    });
+  }
+
+  const savedTentId = savedGame && (savedGame.currentTentType || savedGame.tentType);
+
+  if (savedTentId) {
+    const normalizedTentId = normalizeGearId(savedTentId);
+
+    if (ownedGear.indexOf(normalizedTentId) !== -1 && getGearItem(normalizedTentId)) {
+      cleanState.equippedGear.tent = normalizedTentId;
+    }
+  }
+
+  if (!getGearItem(cleanState.equippedGear.tent) || ownedGear.indexOf(cleanState.equippedGear.tent) === -1) {
+    cleanState.equippedGear.tent = defaultGameState.equippedGear.tent;
+  }
 
   cleanState.cozyPoints = Math.max(0, Number(cleanState.cozyPoints) || 0);
   cleanState.warmthSeconds = Math.max(0, Number(cleanState.warmthSeconds) || 0);
   cleanState.campfireLevel = clamp(Number(cleanState.campfireLevel) || 1, 1, 3);
-  cleanState.nightUnlocked = Boolean(cleanState.nightUnlocked || ownsEquipment("lantern", cleanState));
+  cleanState.nightUnlocked = Boolean(cleanState.nightUnlocked || hasNightUnlock(cleanState));
   cleanState.isNight = Boolean(cleanState.isNight && cleanState.nightUnlocked);
   cleanState.gatherWoodMode = cleanState.gatherWoodMode !== false;
   cleanState.lastSaveTime = Number(cleanState.lastSaveTime) || Date.now();
@@ -740,99 +735,374 @@ function updateScreen() {
   dayNightToggle.classList.toggle("hidden", !gameState.nightUnlocked);
   dayNightLabel.textContent = gameState.isNight ? "Day" : "Night";
 
-  updateCampfireButton();
-  updateTentButtons();
-  updateEquipmentButtons();
+  updateShopCards();
   updateSceneEquipment();
 }
 
-function updateCampfireButton() {
+function getShopGroupsInOrder() {
+  return Object.keys(shopGroupData).filter(function(groupId) {
+    const group = shopGroupData[groupId];
+    return group && group.visible !== false;
+  });
+}
+
+function getShopItemsForGroup(groupId) {
+  return getGearItems().filter(function(item) {
+    return isGearVisibleInShop(item) && item.shopGroup === groupId;
+  });
+}
+
+function createShopIcon(src) {
+  const image = document.createElement("img");
+  image.src = withVersion(src);
+  image.alt = "";
+  return image;
+}
+
+function createShopTab(groupId, group) {
+  const button = document.createElement("button");
+  button.className = "shop-tab";
+  button.type = "button";
+  button.setAttribute("data-shop-filter", groupId);
+  button.appendChild(createShopIcon(group.icon || "assets/ui/icon_tools.png"));
+
+  const label = document.createElement("span");
+  label.textContent = group.label;
+  button.appendChild(label);
+
+  button.addEventListener("click", function() {
+    setShopFilter(groupId);
+  });
+
+  return button;
+}
+
+function createGearShopCard(item) {
+  const button = document.createElement("button");
+  button.className = item.interactions && item.interactions.upgradeCampfire ? "shop-card featured" : "shop-card";
+  button.type = "button";
+  button.setAttribute("data-gear-id", item.id);
+
+  const image = document.createElement("img");
+  image.className = "item-art";
+  image.src = withVersion(item.image);
+  image.alt = "";
+  button.appendChild(image);
+
+  const copy = document.createElement("span");
+  copy.className = "item-copy";
+
+  const name = document.createElement("span");
+  name.className = "item-name";
+  name.textContent = item.displayName;
+  copy.appendChild(name);
+
+  const detail = document.createElement("span");
+  detail.className = "item-detail";
+  detail.textContent = item.detail;
+  copy.appendChild(detail);
+
+  button.appendChild(copy);
+
+  const action = document.createElement("strong");
+  action.className = "item-action";
+  action.textContent = "Buy";
+  button.appendChild(action);
+
+  button.addEventListener("click", function() {
+    handleGearAction(item.id);
+  });
+
+  shopCards[item.id] = {
+    button: button,
+    actionLabel: action,
+    detailLabel: detail,
+    image: image
+  };
+
+  return button;
+}
+
+function createShopSection(groupId, group) {
+  const section = document.createElement("section");
+  section.className = "shop-section";
+  section.setAttribute("data-shop-group", groupId);
+  section.setAttribute("aria-label", group.label + " shop");
+
+  const heading = document.createElement("h2");
+  heading.appendChild(createShopIcon(group.icon || "assets/ui/icon_tools.png"));
+  heading.appendChild(document.createTextNode(" " + group.label));
+  section.appendChild(heading);
+
+  getShopItemsForGroup(groupId).forEach(function(item) {
+    section.appendChild(createGearShopCard(item));
+  });
+
+  return section;
+}
+
+function renderShopFromCatalog() {
+  shopCards = {};
+  shopTabsContainer.innerHTML = "";
+  shopContent.innerHTML = "";
+
+  const allTab = createShopTab("all", {
+    label: "All",
+    icon: "assets/ui/icon_tools.png"
+  });
+  allTab.classList.add("active");
+  shopTabsContainer.appendChild(allTab);
+
+  getShopGroupsInOrder().forEach(function(groupId) {
+    const group = shopGroupData[groupId];
+    shopTabsContainer.appendChild(createShopTab(groupId, group));
+    shopContent.appendChild(createShopSection(groupId, group));
+  });
+
+  shopTabs = Array.prototype.slice.call(shopTabsContainer.querySelectorAll(".shop-tab"));
+  shopSections = Array.prototype.slice.call(shopContent.querySelectorAll(".shop-section"));
+}
+
+function updateCampfireShopCard(item, card) {
   if (gameState.campfireLevel >= 3) {
-    upgradeCampfireButton.disabled = true;
-    upgradeCampfireButton.classList.add("owned");
-    campfireUpgradeDescription.textContent = "Lv 3 complete";
-    campfireUpgradeCost.textContent = "MAX";
-    upgradeCampfireButton.setAttribute("data-price", "MAX");
+    card.button.disabled = true;
+    card.button.classList.add("owned");
+    card.button.classList.remove("locked", "equipped");
+    card.detailLabel.textContent = "Lv 3 complete";
+    card.actionLabel.textContent = "MAX";
+    card.button.setAttribute("data-price", "MAX");
     return;
   }
 
   const cost = getCampfireUpgradeCost();
-  upgradeCampfireButton.disabled = gameState.cozyPoints < cost;
-  upgradeCampfireButton.classList.remove("owned");
-  campfireUpgradeDescription.textContent = gameState.campfireLevel === 1 ? "Lv 2 fire pit" : "Lv 3 ember stove";
-  campfireUpgradeCost.textContent = "UPGRADE";
-  upgradeCampfireButton.setAttribute("data-price", cost + "CP");
+  card.button.disabled = gameState.cozyPoints < cost;
+  card.button.classList.remove("owned", "locked", "equipped");
+  card.detailLabel.textContent = gameState.campfireLevel === 1 ? "Lv 2 fire pit" : "Lv 3 ember stove";
+  card.actionLabel.textContent = "UPGRADE";
+  card.button.setAttribute("data-price", cost + "CP");
 }
 
-function updateTentButtons() {
-  Object.keys(tentButtons).forEach(function(type) {
-    const button = tentButtons[type];
-    const actionLabel = button.querySelector("strong");
-    const isOwned = ownsTent(type);
-    const isCurrent = gameState.currentTentType === type;
+function updateGearShopCard(item) {
+  const card = shopCards[item.id];
 
-    button.classList.toggle("owned", isOwned);
-    button.classList.toggle("equipped", isCurrent);
+  if (!card) {
+    return;
+  }
 
-    if (isCurrent) {
-      button.disabled = true;
-      actionLabel.textContent = "EQUIPPED";
-      button.setAttribute("data-price", "0CP");
-    } else if (isOwned) {
-      button.disabled = false;
-      actionLabel.textContent = "EQUIP";
-      button.setAttribute("data-price", "0CP");
-    } else {
-      button.disabled = gameState.cozyPoints < tentData[type].cost;
-      actionLabel.textContent = "BUY";
-      button.setAttribute("data-price", tentData[type].cost + "CP");
-    }
-  });
+  card.image.src = withVersion(item.image);
+
+  if (item.interactions && item.interactions.upgradeCampfire) {
+    updateCampfireShopCard(item, card);
+    return;
+  }
+
+  const isOwned = ownsGear(item.id);
+  const isEquipped = isEquippableGear(item) && getEquippedGearId(item.category) === item.id;
+  const missingRequirements = getMissingGearRequirements(item);
+  const isLocked = missingRequirements.length > 0;
+
+  card.button.classList.toggle("owned", isOwned);
+  card.button.classList.toggle("equipped", isEquipped);
+  card.button.classList.toggle("locked", isLocked && !isOwned);
+  card.detailLabel.textContent = isLocked && !isOwned ? missingRequirements.join(", ") : item.detail;
+
+  if (isEquipped) {
+    card.button.disabled = true;
+    card.actionLabel.textContent = "EQUIPPED";
+    card.button.setAttribute("data-price", "0CP");
+  } else if (isOwned && isEquippableGear(item)) {
+    card.button.disabled = false;
+    card.actionLabel.textContent = "EQUIP";
+    card.button.setAttribute("data-price", "0CP");
+  } else if (isOwned) {
+    card.button.disabled = true;
+    card.actionLabel.textContent = "OWNED";
+    card.button.setAttribute("data-price", "0CP");
+  } else if (isLocked) {
+    card.button.disabled = true;
+    card.actionLabel.textContent = "LOCKED";
+    card.button.setAttribute("data-price", "?CP");
+  } else {
+    card.button.disabled = gameState.cozyPoints < item.cost;
+    card.actionLabel.textContent = "BUY";
+    card.button.setAttribute("data-price", item.cost + "CP");
+  }
 }
 
-function updateEquipmentButtons() {
-  Object.keys(equipmentData).forEach(function(type) {
-    const equipment = equipmentData[type];
-    const button = equipment.button;
-    const actionLabel = button.querySelector("strong");
-    const detailLabel = button.querySelector(".item-detail");
-    const isOwned = ownsEquipment(type);
-    const missingRequirements = getMissingEquipmentRequirements(type);
-    const isLocked = missingRequirements.length > 0;
-
-    button.classList.toggle("owned", isOwned);
-    button.classList.toggle("locked", isLocked && !isOwned);
-    button.disabled = isOwned || isLocked || gameState.cozyPoints < equipment.cost;
-
-    if (isOwned) {
-      actionLabel.textContent = "OWNED";
-      button.setAttribute("data-price", "0CP");
-    } else if (isLocked) {
-      actionLabel.textContent = "LOCKED";
-      button.setAttribute("data-price", "?CP");
-    } else {
-      actionLabel.textContent = "BUY";
-      button.setAttribute("data-price", equipment.cost + "CP");
-    }
-
-    if (isLocked && detailLabel) {
-      detailLabel.textContent = "Requires " + missingRequirements.map(function(requiredType) {
-        return equipmentData[requiredType].name || requiredType;
-      }).join(", ");
-    } else if (detailLabel) {
-      detailLabel.textContent = equipment.detail;
-    }
-  });
+function updateShopCards() {
+  getGearItems().forEach(updateGearShopCard);
 }
 
-function updateSceneEquipmentVisibility() {
-  Object.keys(equipmentData).forEach(function(type) {
-    const equipment = equipmentData[type];
+function setVersionedLayerSource(image, path) {
+  if (image && path) {
+    image.src = withVersion(path);
+  }
+}
 
-    if (equipment.sceneElement) {
-      equipment.sceneElement.classList.toggle("hidden", !ownsEquipment(type));
+function ensureLayerImage(element, className) {
+  let image = element.querySelector("." + className);
+
+  if (!image) {
+    image = document.createElement("img");
+    image.className = "object-image gear-layer " + className;
+    image.alt = "";
+    element.appendChild(image);
+  }
+
+  return image;
+}
+
+function getGearSceneElementId(item) {
+  return "gear-" + item.id;
+}
+
+function getGearFrontElementId(item) {
+  return "gear-" + item.id + "-front";
+}
+
+function getGearSceneElement(item) {
+  if (!item || !item.scene) {
+    return null;
+  }
+
+  if (item.scene.renderMode === "campfire") {
+    return campfire;
+  }
+
+  return document.getElementById(getGearSceneElementId(item));
+}
+
+function getOrCreateGearSceneElement(item) {
+  let element = getGearSceneElement(item);
+
+  if (!element && item.scene && gearLayer) {
+    element = document.createElement("div");
+    element.id = getGearSceneElementId(item);
+    element.className = "gear-object asset-object hidden";
+    element.setAttribute("aria-label", item.displayName);
+    gearLayer.appendChild(element);
+  }
+
+  return element;
+}
+
+function getOrCreateGearFrontElement(item) {
+  const frontElementId = getGearFrontElementId(item);
+  let frontElement = document.getElementById(frontElementId);
+
+  if (!frontElement && gearLayer) {
+    frontElement = document.createElement("div");
+    frontElement.id = frontElementId;
+    frontElement.className = "gear-front-layer asset-object hidden";
+    frontElement.setAttribute("aria-hidden", "true");
+    gearLayer.appendChild(frontElement);
+  }
+
+  return frontElement;
+}
+
+function getSceneSpriteSize(item) {
+  const scene = item && item.scene ? item.scene : {};
+
+  return scene.spriteSize || { width: 80, height: 80 };
+}
+
+function getSceneGroundAnchor(item) {
+  const spriteSize = getSceneSpriteSize(item);
+  const anchors = item && item.anchors ? item.anchors : {};
+
+  return anchors.ground || { x: spriteSize.width / 2, y: spriteSize.height };
+}
+
+function applyGearSceneLayout(element, item, zIndex) {
+  const spriteSize = getSceneSpriteSize(item);
+  const groundAnchor = getSceneGroundAnchor(item);
+  const scene = item.scene || {};
+  const position = scene.position || { x: 0, y: 0 };
+
+  element.style.left = position.x + "%";
+  element.style.top = position.y + "%";
+  element.style.width = (scene.widthPercent || 0) + "%";
+  element.style.aspectRatio = scene.aspectRatio || spriteSize.width + " / " + spriteSize.height;
+  element.style.zIndex = zIndex;
+  element.style.setProperty("--object-anchor-x", -groundAnchor.x / spriteSize.width * 100 + "%");
+  element.style.setProperty("--object-anchor-y", -groundAnchor.y / spriteSize.height * 100 + "%");
+  element.style.setProperty("--object-scale-x", scene.mirrored ? "-1" : "1");
+}
+
+function updateGearSceneElement(item) {
+  if (!item.scene || item.scene.renderMode === "campfire") {
+    return;
+  }
+
+  const element = getOrCreateGearSceneElement(item);
+  const scene = item.scene || {};
+  const layers = scene.layers || { base: item.image };
+
+  if (!element) {
+    return;
+  }
+
+  element.className = "gear-object asset-object category-" + item.category + " hidden";
+  applyGearSceneLayout(element, item, scene.zIndex || 20);
+
+  Object.keys(layers).forEach(function(layerName) {
+    if (layerName === "front" || !layers[layerName]) {
+      return;
     }
+
+    const layerClassName = "gear-layer-" + layerName;
+    const image = ensureLayerImage(element, layerClassName);
+    image.classList.toggle("tent-glow", layerName === "glow");
+    image.classList.toggle("lantern-glow", layerName === "glow" && item.category === "light");
+    image.classList.toggle("string-lights-glow", layerName === "glow" && item.id === "warmStringLights");
+    setVersionedLayerSource(image, layers[layerName]);
   });
+
+  if (!layers.base && item.image) {
+    setVersionedLayerSource(ensureLayerImage(element, "gear-layer-base"), item.image);
+  }
+
+  const frontElement = layers.front ? getOrCreateGearFrontElement(item) : document.getElementById(getGearFrontElementId(item));
+
+  if (frontElement) {
+    applyGearSceneLayout(frontElement, item, scene.frontZIndex || 31);
+
+    if (layers.front) {
+      setVersionedLayerSource(ensureLayerImage(frontElement, "gear-layer-front"), layers.front);
+    }
+  }
+}
+
+function isGearVisibleInScene(item) {
+  if (!item.scene) {
+    return false;
+  }
+
+  if (item.scene.renderMode === "campfire") {
+    return true;
+  }
+
+  if (item.category === "tent") {
+    return getEquippedGearId("tent") === item.id;
+  }
+
+  return ownsGear(item.id);
+}
+
+function updateSceneGearVisibility(item) {
+  const element = getGearSceneElement(item);
+  const frontElement = document.getElementById(getGearFrontElementId(item));
+  const isVisible = isGearVisibleInScene(item);
+  const layers = item.scene && item.scene.layers ? item.scene.layers : {};
+
+  if (element && item.scene.renderMode !== "campfire") {
+    element.classList.toggle("hidden", !isVisible);
+  }
+
+  if (frontElement) {
+    frontElement.classList.toggle("hidden", !isVisible || !layers.front);
+  }
 }
 
 function updateSceneEquipment() {
@@ -840,24 +1110,16 @@ function updateSceneEquipment() {
   treelineImage.src = gameState.isNight ? assetPaths.backgrounds.treelineNight : assetPaths.backgrounds.treelineDay;
   lakeImage.src = gameState.isNight ? assetPaths.backgrounds.lakeNight : assetPaths.backgrounds.lakeDay;
 
-  tentImage.src = tentData[gameState.currentTentType].image;
-  tentGlowImage.src = assetPaths.tents.glow;
-
-  axe.src = assetPaths.furniture.axe;
-  chair.src = assetPaths.furniture.chair;
-  kettle.src = assetPaths.furniture.kettle;
-  lanternImage.src = assetPaths.lighting.lantern;
-  lanternGlowImage.src = assetPaths.lighting.lanternGlow;
-  stove.src = assetPaths.furniture.stove;
-  table.src = assetPaths.furniture.table;
-  updateSceneEquipmentVisibility();
+  getGearItems().forEach(function(item) {
+    updateGearSceneElement(item);
+    updateSceneGearVisibility(item);
+  });
 
   campfire.className = "campfire asset-object level-" + gameState.campfireLevel;
   campfire.classList.toggle("lit", gameState.warmthSeconds > 0);
   fireGlowImage.src = assetPaths.campfire.glow;
   campfireBaseImage.src = assetPaths.campfire.base[gameState.campfireLevel];
   campfireFlameImage.src = getCurrentFlameImage();
-  campfireShopImage.src = assetPaths.campfire.base[gameState.campfireLevel];
 
   dayNightIcon.src = gameState.isNight ? assetPaths.ui.day : assetPaths.ui.night;
 }
@@ -882,43 +1144,63 @@ function upgradeCampfire() {
   }
 }
 
-function buyTent(type) {
-  if (gameState.currentTentType === type) {
-    return;
+function equipGear(item) {
+  if (!isEquippableGear(item) || !ownsGear(item.id)) {
+    return false;
   }
 
-  if (ownsTent(type)) {
-    gameState.currentTentType = type;
-    setStatus("The camper switches to a different tent.");
-    updateScreen();
-    saveGame();
-    return;
-  }
+  gameState.equippedGear[item.category] = item.id;
+  return true;
+}
 
-  if (spendCozyPoints(tentData[type].cost)) {
-    gameState.ownedTentTypes.push(type);
-    gameState.currentTentType = type;
-    setStatus("A new tent changes the whole mood of camp.");
-    updateScreen();
-    saveGame();
+function unlockGearRewards(item) {
+  if (item.unlocks && item.unlocks.nightMode) {
+    gameState.nightUnlocked = true;
   }
 }
 
-function buyEquipment(type) {
-  const equipment = equipmentData[type];
+function buyGear(item) {
+  if (!item || ownsGear(item.id) || getMissingGearRequirements(item).length > 0) {
+    return false;
+  }
 
-  if (!equipment || ownsEquipment(type) || getMissingEquipmentRequirements(type).length > 0) {
+  if (!spendCozyPoints(item.cost)) {
+    return false;
+  }
+
+  addUniqueGear(gameState.ownedGear, item.id);
+  unlockGearRewards(item);
+
+  if (isEquippableGear(item)) {
+    equipGear(item);
+  }
+
+  return true;
+}
+
+function handleGearAction(id) {
+  const item = getGearItem(id);
+
+  if (!item) {
     return;
   }
 
-  if (spendCozyPoints(equipment.cost)) {
-    gameState.ownedEquipment.push(type);
+  if (item.interactions && item.interactions.upgradeCampfire) {
+    upgradeCampfire();
+    return;
+  }
 
-    if (equipment.unlocksNight) {
-      gameState.nightUnlocked = true;
+  if (ownsGear(item.id) && isEquippableGear(item)) {
+    if (equipGear(item)) {
+      setStatus("The camper switches to " + item.displayName + ".");
+      updateScreen();
+      saveGame();
     }
+    return;
+  }
 
-    setStatus(equipment.status);
+  if (buyGear(item)) {
+    setStatus(item.displayName + " joins the campsite.");
     updateScreen();
     saveGame();
   }
@@ -951,8 +1233,8 @@ function setShopFilter(filter) {
   });
 
   shopSections.forEach(function(section) {
-    const category = section.getAttribute("data-shop-category");
-    const shouldShow = activeShopFilter === "all" || category === activeShopFilter;
+    const group = section.getAttribute("data-shop-group");
+    const shouldShow = activeShopFilter === "all" || group === activeShopFilter;
     section.classList.toggle("filtered-hidden", !shouldShow);
   });
 
@@ -1042,16 +1324,260 @@ function getTravelTime(targetX, targetY) {
   return clamp(0.8 + distance / 24, 1.1, 3.4);
 }
 
+function normalizeFacing(facing) {
+  return facing === "left" || facing === "right" ? facing : "right";
+}
+
+function getOppositeFacing(facing) {
+  return normalizeFacing(facing) === "left" ? "right" : "left";
+}
+
+function getMovementFacing(fromX, toX) {
+  if (toX < fromX) {
+    return "left";
+  }
+
+  if (toX > fromX) {
+    return "right";
+  }
+
+  return "right";
+}
+
+function getSeatableFurnitureEntries() {
+  return getGearItems().filter(function(item) {
+    return item.category === "chair" && item.interactions && item.interactions.seatable;
+  }).map(function(item) {
+    return {
+      id: item.id,
+      def: item
+    };
+  }).filter(function(entry) {
+    return Boolean(entry.def);
+  });
+}
+
+function getSeatableFurnitureDef(id) {
+  const item = getGearItem(id);
+
+  if (item && item.interactions && item.interactions.seatable) {
+    return item;
+  }
+
+  return null;
+}
+
+function getSeatableElement(def) {
+  return getGearSceneElement(def);
+}
+
+function getSeatableSpriteSize(def) {
+  return getSceneSpriteSize(def);
+}
+
+function getSeatableGroundAnchor(def) {
+  return getSceneGroundAnchor(def);
+}
+
+function getSeatableFacing(def) {
+  return normalizeFacing(def && def.scene && def.scene.facing);
+}
+
+function isSeatableMirrored(def) {
+  return Boolean(def && def.scene && def.scene.mirrored);
+}
+
+function mirrorSeatOffset(spriteSize, offset) {
+  return {
+    x: spriteSize.width - offset.x,
+    y: offset.y
+  };
+}
+
+function getSeatableSeatOffset(def, facing) {
+  const spriteSize = getSeatableSpriteSize(def);
+  const seatable = def && def.interactions ? def.interactions.seatable : null;
+  const seatOffsets = seatable && seatable.seatOffsets ? seatable.seatOffsets : {};
+  const normalizedFacing = normalizeFacing(facing);
+  const explicitOffset = seatOffsets[normalizedFacing];
+
+  if (explicitOffset) {
+    return explicitOffset;
+  }
+
+  const oppositeOffset = seatOffsets[getOppositeFacing(normalizedFacing)];
+
+  if (oppositeOffset) {
+    return mirrorSeatOffset(spriteSize, oppositeOffset);
+  }
+
+  const fallbackOffset = seatOffsets.default || getSeatableGroundAnchor(def);
+  return isSeatableMirrored(def) ? mirrorSeatOffset(spriteSize, fallbackOffset) : fallbackOffset;
+}
+
+function getSceneWidthToHeightRatio() {
+  const sceneRect = campScene.getBoundingClientRect();
+
+  if (sceneRect.width > 0 && sceneRect.height > 0) {
+    return sceneRect.width / sceneRect.height;
+  }
+
+  return 9 / 16;
+}
+
+function getSeatableSceneFallbackTarget(id, def, facing) {
+  const spriteSize = getSeatableSpriteSize(def);
+  const groundAnchor = getSeatableGroundAnchor(def);
+  const seatOffset = getSeatableSeatOffset(def, facing);
+  const scene = def.scene || {};
+  const position = scene.position || { x: 0, y: 0 };
+  const widthPercent = scene.widthPercent || 0;
+  const sceneWidthToHeightRatio = getSceneWidthToHeightRatio();
+
+  return {
+    x: position.x + ((seatOffset.x - groundAnchor.x) / spriteSize.width) * widthPercent,
+    y: position.y + ((seatOffset.y - groundAnchor.y) / spriteSize.width) * widthPercent * sceneWidthToHeightRatio,
+    seatableId: id,
+    furnitureFacing: facing
+  };
+}
+
+function getSeatableSeatTarget(id, def) {
+  const element = getSeatableElement(def);
+  const spriteSize = getSeatableSpriteSize(def);
+  const facing = getSeatableFacing(def);
+
+  if (!element || element.classList.contains("hidden")) {
+    return getSeatableSceneFallbackTarget(id, def, facing);
+  }
+
+  const sceneRect = campScene.getBoundingClientRect();
+  const furnitureRect = element.getBoundingClientRect();
+
+  if (sceneRect.width <= 0 || sceneRect.height <= 0 || furnitureRect.width <= 0 || furnitureRect.height <= 0) {
+    return getSeatableSceneFallbackTarget(id, def, facing);
+  }
+
+  const seatOffset = getSeatableSeatOffset(def, facing);
+  const seatX = furnitureRect.left - sceneRect.left + seatOffset.x * (furnitureRect.width / spriteSize.width);
+  const seatY = furnitureRect.top - sceneRect.top + seatOffset.y * (furnitureRect.height / spriteSize.height);
+
+  return {
+    x: seatX / sceneRect.width * 100,
+    y: seatY / sceneRect.height * 100,
+    seatableId: id,
+    furnitureFacing: facing
+  };
+}
+
+function isSeatableFurnitureAvailable(def) {
+  return Boolean(def && ownsGear(def.id));
+}
+
+function getAvailableSeatableFurnitureEntries() {
+  return getSeatableFurnitureEntries().filter(function(entry) {
+    return isSeatableFurnitureAvailable(entry.def);
+  });
+}
+
+function getRandomSeatableSeatTarget() {
+  const entries = getAvailableSeatableFurnitureEntries();
+
+  if (entries.length === 0) {
+    return null;
+  }
+
+  const entry = entries[Math.floor(Math.random() * entries.length)];
+  return getSeatableSeatTarget(entry.id, entry.def);
+}
+
+function getCamperFacingForSeatable(target) {
+  const def = getSeatableFurnitureDef(target && target.seatableId);
+
+  if (!def) {
+    return "right";
+  }
+
+  const furnitureFacing = normalizeFacing(target.furnitureFacing || getSeatableFacing(def));
+
+  const seatable = def.interactions && def.interactions.seatable ? def.interactions.seatable : {};
+
+  if (seatable.camperFacingMode === "oppositeFurniture") {
+    return getOppositeFacing(furnitureFacing);
+  }
+
+  if (seatable.camperFacingMode === "sameAsFurniture") {
+    return furnitureFacing;
+  }
+
+  return "right";
+}
+
+function getFacingTowardPoint(point) {
+  if (!point || typeof point.x !== "number") {
+    return "right";
+  }
+
+  if (camper.x < point.x) {
+    return "right";
+  }
+
+  if (camper.x > point.x) {
+    return "left";
+  }
+
+  return "right";
+}
+
+function getRandomFacing() {
+  return Math.random() < 0.5 ? "left" : "right";
+}
+
+function getFacingForAction(action, target) {
+  if (action === "sittingOnFurniture" || action === "sittingOnChair") {
+    return getCamperFacingForSeatable(target);
+  }
+
+  if (action === "sittingByFire") {
+    return getFacingTowardPoint(campSpots.fire);
+  }
+
+  if (action === "lookingAtLake" || action === "resting") {
+    return getRandomFacing();
+  }
+
+  return "right";
+}
+
+function getCamperAnimationFrameIndex() {
+  const animationStartedAt = camper.animationStartedAt || Date.now();
+
+  return Math.floor((Date.now() - animationStartedAt) / camperFrameDurationMs) % 2;
+}
+
+function getAlternatingCamperImage(firstFrame, secondFrame, fallbackFrame) {
+  if (!firstFrame || !secondFrame) {
+    return fallbackFrame || firstFrame || secondFrame;
+  }
+
+  return getCamperAnimationFrameIndex() === 0 ? firstFrame : secondFrame;
+}
+
 function startMovingTo(target, actionAfterArrival, options) {
   const moveOptions = options || {};
   const actionName = moveOptions.labelAction || actionAfterArrival;
+  const now = Date.now();
+  const startX = camper.x;
+  const travelTime = getTravelTime(target.x, target.y);
 
   camper.target = target;
   camper.actionAfterArrival = actionAfterArrival;
   camper.currentAction = actionName;
   camper.state = "moving";
   camper.pose = moveOptions.carryingWood ? "carryingWood" : "walking";
-  camper.actionTimer = Date.now() + getTravelTime(target.x, target.y) * 1000;
+  camper.facing = getMovementFacing(startX, target.x);
+  camper.animationStartedAt = now;
+  camper.actionTimer = now + travelTime * 1000;
   camper.x = target.x;
   camper.y = target.y;
 
@@ -1059,12 +1585,17 @@ function startMovingTo(target, actionAfterArrival, options) {
 }
 
 function startActing(action, durationSeconds) {
+  const now = Date.now();
+  const actionTarget = camper.target;
+
   camper.state = "acting";
   camper.currentAction = action;
   camper.actionAfterArrival = null;
   camper.target = null;
   camper.pose = getPoseForAction(action);
-  camper.actionTimer = Date.now() + durationSeconds * 1000;
+  camper.facing = getFacingForAction(action, actionTarget);
+  camper.animationStartedAt = now;
+  camper.actionTimer = now + durationSeconds * 1000;
 
   if (action === "addingWoodToFire") {
     gameState.warmthSeconds += getWoodWarmthValue();
@@ -1082,7 +1613,7 @@ function getPoseForAction(action) {
     return "sittingGround";
   }
 
-  if (action === "sittingOnChair") {
+  if (action === "sittingOnFurniture" || action === "sittingOnChair") {
     return "sittingChair";
   }
 
@@ -1112,7 +1643,7 @@ function updateCamperView() {
   updateCamperThought();
   camperStateText.textContent = camperActionLabels[camper.currentAction] || camperActionLabels.idle;
 
-  document.body.classList.toggle("camper-in-tent", camper.pose === "tentRest" && ownsEquipment("lantern"));
+  document.body.classList.toggle("camper-in-tent", camper.pose === "tentRest" && hasNightUnlock());
 }
 
 function updateCamperThought() {
@@ -1127,11 +1658,11 @@ function updateCamperThought() {
 
 function getCamperImageForPose() {
   if (camper.pose === "walking") {
-    return Math.floor(Date.now() / 350) % 2 === 0 ? assetPaths.characters.walk1 : assetPaths.characters.walk2;
+    return getAlternatingCamperImage(assetPaths.characters.walk1, assetPaths.characters.walk2, assetPaths.characters.walk1);
   }
 
   if (camper.pose === "carryingWood" || camper.pose === "addingWoodToFire") {
-    return assetPaths.characters.carry;
+    return getAlternatingCamperImage(assetPaths.characters.carry1, assetPaths.characters.carry2, assetPaths.characters.carry);
   }
 
   if (camper.pose === "sittingGround") {
@@ -1154,10 +1685,17 @@ function getCamperImageForPose() {
 }
 
 function updateCamperSprite() {
-  const isMovingPose = camper.pose === "walking" || camper.pose === "carryingWood";
-  camperElement.src = getCamperImageForPose();
-  const movementClass = isMovingPose && camper.pose !== "walking" ? " walking" : "";
-  camperElement.className = "camper asset-object " + camper.state + " " + camper.pose + movementClass;
+  const image = getCamperImageForPose();
+  const className = "camper asset-object " + camper.state + " " + camper.pose;
+  camperElement.style.setProperty("--object-scale-x", normalizeFacing(camper.facing) === "left" ? "-1" : "1");
+
+  if (camperElement.getAttribute("src") !== image) {
+    camperElement.src = image;
+  }
+
+  if (camperElement.className !== className) {
+    camperElement.className = className;
+  }
 }
 
 function chooseNextCamperAction() {
@@ -1186,8 +1724,8 @@ function chooseNextCamperAction() {
 function chooseRelaxingAction() {
   const actions = ["wandering", "lookingAtLake", "sittingByFire", "resting", "tentRest"];
 
-  if (ownsEquipment("chair")) {
-    actions.push("sittingOnChair");
+  if (getAvailableSeatableFurnitureEntries().length > 0) {
+    actions.push("sittingOnFurniture");
   }
 
   const action = actions[Math.floor(Math.random() * actions.length)];
@@ -1196,10 +1734,16 @@ function chooseRelaxingAction() {
     startMovingTo(campSpots.lake, "lookingAtLake");
   } else if (action === "sittingByFire") {
     startMovingTo(campSpots.fireSeat, "sittingByFire");
-  } else if (action === "sittingOnChair") {
-    startMovingTo(campSpots.chair, "sittingOnChair");
+  } else if (action === "sittingOnFurniture") {
+    const seatTarget = getRandomSeatableSeatTarget();
+
+    if (seatTarget) {
+      startMovingTo(seatTarget, "sittingOnFurniture");
+    } else {
+      startMovingTo(getRandomWanderPoint(), "wandering", { labelAction: "wandering" });
+    }
   } else if (action === "tentRest") {
-    startMovingTo(campSpots.tent, "tentRest");
+    startMovingTo(getTentRestSpot(), "tentRest");
   } else if (action === "resting") {
     startMovingTo(campSpots.rest, "resting");
   } else {
@@ -1215,6 +1759,21 @@ function getRandomWanderPoint() {
     x: randomBetween(18, 64),
     y: randomBetween(68, 80)
   };
+}
+
+function getTentRestSpot() {
+  const tentItem = getEquippedGearItem("tent");
+  const tentRest = tentItem && tentItem.interactions ? tentItem.interactions.tentRest : null;
+
+  if (tentRest && tentRest.position) {
+    return tentRest.position;
+  }
+
+  if (tentItem && tentItem.scene && tentItem.scene.position) {
+    return tentItem.scene.position;
+  }
+
+  return campSpots.tent;
 }
 
 function updateCamperAI() {
@@ -1266,8 +1825,8 @@ function arriveAtTarget() {
     return;
   }
 
-  if (action === "sittingOnChair") {
-    startActing("sittingOnChair", 5);
+  if (action === "sittingOnFurniture" || action === "sittingOnChair") {
+    startActing(action, 5);
     return;
   }
 
@@ -1374,34 +1933,15 @@ function createCozySpark() {
 shopToggle.addEventListener("click", toggleShop);
 closeShopButton.addEventListener("click", closeShop);
 shopBackdrop.addEventListener("click", closeShop);
-shopTabs.forEach(function(tab) {
-  tab.addEventListener("click", function() {
-    setShopFilter(tab.getAttribute("data-shop-filter"));
-  });
-});
 gatherWoodToggle.addEventListener("click", toggleGatherWoodMode);
 dayNightToggle.addEventListener("click", toggleDayNight);
 resetSaveButton.addEventListener("click", confirmResetSave);
-upgradeCampfireButton.addEventListener("click", upgradeCampfire);
-buyBackpackingTentButton.addEventListener("click", function() {
-  buyTent("backpacking");
-});
-buyLowDomeTentButton.addEventListener("click", function() {
-  buyTent("lowDome");
-});
-buyVestibuleTentButton.addEventListener("click", function() {
-  buyTent("vestibule");
-});
-Object.keys(equipmentData).forEach(function(type) {
-  equipmentData[type].button.addEventListener("click", function() {
-    buyEquipment(type);
-  });
-});
 
 if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", saveGame);
 }
 
+renderShopFromCatalog();
 resetSaveIfRequestedByUrl();
 loadGame();
 spawnWood();
@@ -1413,6 +1953,7 @@ chooseNextCamperAction();
 
 setInterval(gameTick, 1000);
 setInterval(updateCamperAI, 400);
+setInterval(updateCamperSprite, camperSpriteRefreshMs);
 setInterval(function() {
   if (Math.random() < 0.7) {
     spawnWood();
