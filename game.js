@@ -1,4 +1,32 @@
 const SAVE_KEY = "cozyCampfireSave";
+const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "2.5";
+
+function withVersion(path) {
+  const separator = path.includes("?") ? "&" : "?";
+  return path + separator + "v=" + APP_VERSION;
+}
+
+function versionAssetPaths(value) {
+  if (typeof value === "string") {
+    return value.startsWith("assets/") ? withVersion(value) : value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(versionAssetPaths);
+  }
+
+  if (value && typeof value === "object") {
+    const versionedObject = {};
+
+    Object.keys(value).forEach(function(key) {
+      versionedObject[key] = versionAssetPaths(value[key]);
+    });
+
+    return versionedObject;
+  }
+
+  return value;
+}
 
 // This object is the starting save file for a new player.
 const defaultGameState = {
@@ -30,25 +58,25 @@ const tentData = {
     cost: 0,
     comfort: 0,
     offlineBonusSeconds: 0,
-    image: "assets/tents/tent_backpacking.png"
+    image: withVersion("assets/tents/tent_backpacking.png")
   },
   backpacking: {
     cost: 35,
     comfort: 4,
     offlineBonusSeconds: 1800,
-    image: "assets/tents/tent_backpacking.png"
+    image: withVersion("assets/tents/tent_backpacking.png")
   },
   lowDome: {
     cost: 80,
     comfort: 10,
     offlineBonusSeconds: 7200,
-    image: "assets/tents/tent_low_dome.png"
+    image: withVersion("assets/tents/tent_low_dome.png")
   },
   vestibule: {
     cost: 150,
     comfort: 18,
     offlineBonusSeconds: 14400,
-    image: "assets/tents/tent_vestibule.png"
+    image: withVersion("assets/tents/tent_vestibule.png")
   }
 };
 
@@ -74,7 +102,7 @@ const maxWoodItems = 5;
 
 // All visual assets are listed here so art can be replaced without hunting
 // through the game logic.
-const assetPaths = {
+const assetPaths = versionAssetPaths({
   backgrounds: {
     campsiteDay: "assets/backgrounds/campsite_day.png",
     campsiteNight: "assets/backgrounds/campsite_night.png",
@@ -138,7 +166,7 @@ const assetPaths = {
     day: "assets/ui/icon_day.png",
     night: "assets/ui/icon_night.png"
   }
-};
+});
 
 let gameState = createDefaultGameState();
 
