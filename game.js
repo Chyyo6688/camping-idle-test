@@ -188,6 +188,7 @@ const fireGlowImage = document.getElementById("fireGlowImage");
 const campfireBaseImage = document.getElementById("campfireBaseImage");
 const campfireFlameImage = document.getElementById("campfireFlameImage");
 const camperElement = document.getElementById("camper");
+const camperThoughtBubble = document.getElementById("camperThoughtBubble");
 const camperStateText = document.getElementById("camperStateText");
 const shopToggle = document.getElementById("shopToggle");
 const shopDrawer = document.getElementById("shopDrawer");
@@ -323,6 +324,15 @@ const camperActionLabels = {
   sittingByFire: "Sitting by the campfire",
   sittingOnChair: "Settling into the camp chair",
   tentRest: "Resting inside the tent"
+};
+
+const camperThoughtLines = {
+  wandering: "\u968f\u4fbf\u8d70\u8d70--",
+  lookingAtLake: "\u770b\u770b\u6e56\u5427",
+  sittingByFire: "\u70e4\u4f1a\u513f\u706b\u5427",
+  sittingOnChair: "\u5750\u4e00\u4f1a\u513f",
+  resting: "\u5c0f\u772f\u4e00\u4f1a\u513f",
+  tentRest: "\u94bb\u8fdb\u5e10\u7bf7--"
 };
 
 function clamp(number, min, max) {
@@ -712,16 +722,18 @@ function updateCampfireButton() {
   if (gameState.campfireLevel >= 3) {
     upgradeCampfireButton.disabled = true;
     upgradeCampfireButton.classList.add("owned");
-    campfireUpgradeDescription.textContent = "Level 3 ember stove is complete";
-    campfireUpgradeCost.textContent = "Max";
+    campfireUpgradeDescription.textContent = "Lv 3 complete";
+    campfireUpgradeCost.textContent = "MAX";
+    upgradeCampfireButton.setAttribute("data-price", "MAX");
     return;
   }
 
   const cost = getCampfireUpgradeCost();
   upgradeCampfireButton.disabled = gameState.cozyPoints < cost;
   upgradeCampfireButton.classList.remove("owned");
-  campfireUpgradeDescription.textContent = gameState.campfireLevel === 1 ? "Level 2 stone fire pit" : "Level 3 efficient ember stove";
-  campfireUpgradeCost.textContent = "Upgrade " + cost + " CP";
+  campfireUpgradeDescription.textContent = gameState.campfireLevel === 1 ? "Lv 2 fire pit" : "Lv 3 ember stove";
+  campfireUpgradeCost.textContent = "UPGRADE";
+  upgradeCampfireButton.setAttribute("data-price", cost + "CP");
 }
 
 function updateTentButtons() {
@@ -736,13 +748,16 @@ function updateTentButtons() {
 
     if (isCurrent) {
       button.disabled = true;
-      actionLabel.textContent = "Equipped";
+      actionLabel.textContent = "EQUIPPED";
+      button.setAttribute("data-price", "0CP");
     } else if (isOwned) {
       button.disabled = false;
-      actionLabel.textContent = "Equip";
+      actionLabel.textContent = "EQUIP";
+      button.setAttribute("data-price", "0CP");
     } else {
       button.disabled = gameState.cozyPoints < tentData[type].cost;
-      actionLabel.textContent = "Buy " + tentData[type].cost + " CP";
+      actionLabel.textContent = "BUY";
+      button.setAttribute("data-price", tentData[type].cost + "CP");
     }
   });
 }
@@ -762,11 +777,14 @@ function updateEquipmentButtons() {
     button.disabled = isOwned || isLocked || gameState.cozyPoints < equipment.cost;
 
     if (isOwned) {
-      actionLabel.textContent = "Owned";
+      actionLabel.textContent = "OWNED";
+      button.setAttribute("data-price", "0CP");
     } else if (isLocked) {
-      actionLabel.textContent = "Locked";
+      actionLabel.textContent = "LOCKED";
+      button.setAttribute("data-price", "?CP");
     } else {
-      actionLabel.textContent = "Buy " + equipment.cost + " CP";
+      actionLabel.textContent = "BUY";
+      button.setAttribute("data-price", equipment.cost + "CP");
     }
 
     if (isLocked && detailLabel) {
@@ -912,6 +930,7 @@ function setShopFilter(filter) {
 
   shopContent.classList.toggle("single-category", activeShopFilter !== "all");
   shopContent.scrollLeft = 0;
+  shopContent.scrollTop = 0;
 }
 
 function toggleGatherWoodMode() {
@@ -1062,9 +1081,20 @@ function updateCamperView() {
   camperElement.style.left = camper.x + "%";
   camperElement.style.top = camper.y + "%";
   updateCamperSprite();
+  updateCamperThought();
   camperStateText.textContent = camperActionLabels[camper.currentAction] || camperActionLabels.idle;
 
   document.body.classList.toggle("camper-in-tent", camper.pose === "tentRest" && ownsEquipment("lantern"));
+}
+
+function updateCamperThought() {
+  const thought = camperThoughtLines[camper.currentAction] || "";
+  const shouldShowThought = !gameState.gatherWoodMode && thought;
+
+  camperThoughtBubble.textContent = shouldShowThought ? thought : "";
+  camperThoughtBubble.style.left = camper.x + "%";
+  camperThoughtBubble.style.top = Math.max(8, camper.y - 10.5) + "%";
+  camperThoughtBubble.classList.toggle("show", Boolean(shouldShowThought));
 }
 
 function getCamperImageForPose() {
@@ -1149,7 +1179,7 @@ function chooseRelaxingAction() {
     startMovingTo(wanderPoint, "wandering", { labelAction: "wandering" });
   }
 
-  setStatus("Gather Wood is off, so camp life slows down.");
+  updateCamperThought();
 }
 
 function getRandomWanderPoint() {

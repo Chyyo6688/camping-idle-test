@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cozy Camping Idle V2.4</title>
+  <title>Cozy Camping Idle V2.5</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="day">
@@ -51,6 +51,7 @@
       </div>
 
       <img id="camper" class="camper asset-object" src="assets/characters/camper_idle.png" alt="Camper">
+      <div id="camperThoughtBubble" class="camper-thought" aria-live="polite"></div>
       </div>
 
       <header class="top-bar" aria-label="Camp resources">
@@ -153,67 +154,76 @@
       <div id="shopContent" class="shop-content">
       <section class="shop-section" data-shop-category="fire" aria-label="Fire upgrades">
         <h2><img src="assets/ui/icon_fire.png" alt=""> Fire</h2>
-        <button id="upgradeCampfireButton" class="shop-card" type="button">
+        <button id="upgradeCampfireButton" class="shop-card" type="button" data-price="45CP">
           <img id="campfireShopImage" class="item-art" src="assets/campfire/campfire_lv1_base.png" alt="">
           <span class="item-copy">
-            <span class="item-name">Upgrade Campfire</span>
+            <span class="item-name">Campfire</span>
             <span id="campfireUpgradeDescription" class="item-detail">Level 2 fire pit</span>
           </span>
-          <strong id="campfireUpgradeCost" class="item-action">45 CP</strong>
+          <strong id="campfireUpgradeCost" class="item-action">Upgrade</strong>
         </button>
       </section>
 
       <section class="shop-section" data-shop-category="tents" aria-label="Tent shop">
         <h2><img src="assets/ui/icon_tent.png" alt=""> Tents</h2>
-        <button id="buyBackpackingTentButton" class="shop-card" type="button">
+        <button id="buyBackpackingTentButton" class="shop-card" type="button" data-price="0CP">
           <img class="item-art" src="assets/tents/tent_backpacking.png" alt="">
           <span class="item-copy">
-            <span class="item-name">Backpacking Tent</span>
+            <span class="item-name">Backpack Tent</span>
             <span class="item-detail">+4 Comfort</span>
           </span>
-          <strong class="item-action">35 CP</strong>
+          <strong class="item-action">Equipped</strong>
         </button>
 
-        <button id="buyLowDomeTentButton" class="shop-card" type="button">
+        <button id="buyLowDomeTentButton" class="shop-card" type="button" data-price="80CP">
           <img class="item-art" src="assets/tents/tent_low_dome.png" alt="">
           <span class="item-copy">
-            <span class="item-name">Low Dome Tent</span>
+            <span class="item-name">Dome Tent</span>
             <span class="item-detail">+10 Comfort</span>
           </span>
-          <strong class="item-action">80 CP</strong>
+          <strong class="item-action">Buy</strong>
         </button>
 
-        <button id="buyVestibuleTentButton" class="shop-card" type="button">
+        <button id="buyVestibuleTentButton" class="shop-card" type="button" data-price="150CP">
           <img class="item-art" src="assets/tents/tent_vestibule.png" alt="">
           <span class="item-copy">
-            <span class="item-name">Larger Vestibule Tent</span>
+            <span class="item-name">Vestibule Tent</span>
             <span class="item-detail">+18 Comfort</span>
           </span>
-          <strong class="item-action">150 CP</strong>
+          <strong class="item-action">Buy</strong>
+        </button>
+
+        <button class="shop-card placeholder" type="button" data-price="--" disabled>
+          <img class="item-art" src="assets/ui/icon_lock.png" alt="">
+          <span class="item-copy">
+            <span class="item-name">More Tents</span>
+            <span class="item-detail">Coming soon</span>
+          </span>
+          <strong class="item-action">Soon</strong>
         </button>
       </section>
 
       <section class="shop-section" data-shop-category="furniture" aria-label="Furniture shop">
         <h2><img src="assets/ui/icon_furniture.png" alt=""> Furniture</h2>
-        <button id="buyChairButton" class="shop-card" type="button">
+        <button id="buyChairButton" class="shop-card" type="button" data-price="55CP">
           <img class="item-art" src="assets/furniture/chair.png" alt="">
           <span class="item-copy">
-            <span class="item-name">Camp Chair</span>
+            <span class="item-name">Chair</span>
             <span class="item-detail">+5 Comfort</span>
           </span>
-          <strong class="item-action">55 CP</strong>
+          <strong class="item-action">Buy</strong>
         </button>
 
-        <button id="buyTableButton" class="shop-card" type="button">
+        <button id="buyTableButton" class="shop-card" type="button" data-price="60CP">
           <img class="item-art" src="assets/furniture/table.png" alt="">
           <span class="item-copy">
-            <span class="item-name">Camping Table</span>
+            <span class="item-name">Table</span>
             <span class="item-detail">+6 Comfort</span>
           </span>
-          <strong class="item-action">60 CP</strong>
+          <strong class="item-action">Buy</strong>
         </button>
 
-        <button id="buyKettleButton" class="shop-card" type="button">
+        <button id="buyKettleButton" class="shop-card" type="button" data-price="?CP">
           <img class="item-art" src="assets/furniture/kettle.png" alt="">
           <span class="item-copy">
             <span class="item-name">Kettle</span>
@@ -222,19 +232,19 @@
           <strong class="item-action">Locked</strong>
         </button>
 
-        <button id="buyAxeButton" class="shop-card" type="button">
+        <button id="buyAxeButton" class="shop-card" type="button" data-price="40CP">
           <img class="item-art" src="assets/furniture/axe.png" alt="">
           <span class="item-copy">
-            <span class="item-name">Camp Axe</span>
+            <span class="item-name">Axe</span>
             <span class="item-detail">+2 Comfort</span>
           </span>
-          <strong class="item-action">40 CP</strong>
+          <strong class="item-action">Buy</strong>
         </button>
 
-        <button id="buyStoveButton" class="shop-card" type="button">
+        <button id="buyStoveButton" class="shop-card" type="button" data-price="?CP">
           <img class="item-art" src="assets/furniture/stove.png" alt="">
           <span class="item-copy">
-            <span class="item-name">Camp Stove</span>
+            <span class="item-name">Stove</span>
             <span class="item-detail">Requires Table</span>
           </span>
           <strong class="item-action">Locked</strong>
@@ -243,22 +253,22 @@
 
       <section class="shop-section" data-shop-category="lighting" aria-label="Lighting shop">
         <h2><img src="assets/ui/icon_lighting.png" alt=""> Lighting</h2>
-        <button id="buyLanternButton" class="shop-card" type="button">
+        <button id="buyLanternButton" class="shop-card" type="button" data-price="90CP">
           <img class="item-art" src="assets/lighting/lantern.png" alt="">
           <span class="item-copy">
             <span class="item-name">Lantern</span>
             <span class="item-detail">Unlock Night</span>
           </span>
-          <strong class="item-action">90 CP</strong>
+          <strong class="item-action">Buy</strong>
         </button>
 
-        <button id="buyStringLightsButton" class="shop-card" type="button">
+        <button id="buyStringLightsButton" class="shop-card" type="button" data-price="140CP">
           <img class="item-art" src="assets/lighting/string_lights.png" alt="">
           <span class="item-copy">
-            <span class="item-name">String Lights</span>
+            <span class="item-name">Lights</span>
             <span class="item-detail">+8 Comfort</span>
           </span>
-          <strong class="item-action">140 CP</strong>
+          <strong class="item-action">Buy</strong>
         </button>
       </section>
       </div>
