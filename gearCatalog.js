@@ -114,6 +114,7 @@
       cost: 220,
       comfort: 6,
       detail: "+6 Comfort",
+      image: imagePath("vehicle", "compactCampSuv", "png"),
       scene: scene({ x: 73, y: 78.5 }, 25, 14)
     }),
     gear({
@@ -165,7 +166,7 @@
       cost: 170,
       comfort: 18,
       detail: "+18 Comfort",
-      image: imagePath("tent", "nokaVillageCabinTent"),
+      image: imagePath("tent", "nokaVillageCabinTent", "png"),
       offlineBonusSeconds: 14400,
       scene: scene({ x: 54, y: 69.5 }, 33, 18),
       interactions: { tentRest: { position: { x: 54, y: 69.5 } } }
@@ -219,12 +220,7 @@
       defaultOwned: true,
       defaultEquipped: true,
       offlineBonusSeconds: 1800,
-      scene: scene({ x: 54, y: 69.5 }, 31, 18, {
-        layers: {
-          base: imagePath("tent", "starterInstantTent", "png"),
-          glow: "assets/tents/tent_glow_overlay.png"
-        }
-      }),
+      scene: scene({ x: 54, y: 69.5 }, 31, 18),
       interactions: { tentRest: { position: { x: 54, y: 69.5 } } }
     }),
     gear({
@@ -309,7 +305,7 @@
     gear({ id: "campCoolerBox", category: "cooler", shopGroup: "kitchen", displayName: "中型冷藏箱", cost: 95, comfort: 5, detail: "+5 Comfort", scene: scene({ x: 42, y: 81.5 }, 13, 18) }),
     gear({ id: "systemCoolerBag", category: "cooler", shopGroup: "kitchen", displayName: "系统冷藏包", cost: 115, comfort: 6, detail: "+6 Comfort", scene: scene({ x: 42, y: 81.5 }, 12, 18) }),
 
-    gear({ id: "basicCampLantern", category: "light", shopGroup: "light", displayName: "简单营地灯", cost: 90, comfort: 6, detail: "Unlock Night", image: imagePath("light", "basicCampLantern", "png"), unlocks: { nightMode: true }, scene: scene({ x: 17, y: 69.5 }, 13.3, 23, { layers: { base: imagePath("light", "basicCampLantern", "png"), glow: "assets/lighting/lantern_glow.png" } }) }),
+    gear({ id: "basicCampLantern", category: "light", shopGroup: "light", displayName: "简单营地灯", cost: 90, comfort: 6, detail: "Unlock Night", image: imagePath("light", "basicCampLantern", "png"), unlocks: { nightMode: true }, scene: scene({ x: 17, y: 69.5 }, 13.3, 23, { layers: { base: imagePath("light", "basicCampLantern", "png"), glow: layerPath("light", "basicCampLantern", "glow", "png") } }) }),
     gear({ id: "starterHeadlamp", category: "light", shopGroup: "light", displayName: "新手头灯", cost: 45, comfort: 2, detail: "Unlock Night", unlocks: { nightMode: true }, scene: scene({ x: 18, y: 71 }, 7, 23) }),
     gear({ id: "warmStringLights", category: "light", shopGroup: "light", displayName: "暖光串灯", cost: 140, comfort: 8, detail: "+8 Comfort", image: imagePath("light", "warmStringLights", "png"), unlocks: { nightMode: true }, scene: scene({ x: 54, y: 62.8 }, 24, 21, { aspectRatio: "160 / 60", layers: { glow: layerPath("light", "warmStringLights", "glow", "png"), base: imagePath("light", "warmStringLights", "png") } }) }),
     gear({ id: "hozukiLantern", category: "light", shopGroup: "light", displayName: "Hozuki 灯笼", cost: 130, comfort: 7, detail: "Unlock Night", unlocks: { nightMode: true }, scene: scene({ x: 18, y: 69.5 }, 12, 23) }),
@@ -331,13 +327,11 @@
       cost: 45,
       comfort: 0,
       detail: "Upgrade fire",
-      image: imagePath("fire", "campfire", "png"),
+      image: "assets/campfire/campfire_lv1_base.png",
       defaultOwned: true,
       scene: scene({ x: 39, y: 79 }, 23.7, 26, { renderMode: "campfire" }),
       interactions: { upgradeCampfire: true }
     }),
-    gear({ id: "portableFirePit", category: "fire", shopGroup: "fire", displayName: "Portable Fire Pit", cost: 130, comfort: 5, detail: "+5 Comfort", scene: scene({ x: 37, y: 79.5 }, 17, 25) }),
-    gear({ id: "takibiFirePit", category: "fire", shopGroup: "fire", displayName: "Takibi Fire Pit", cost: 180, comfort: 8, detail: "+8 Comfort", scene: scene({ x: 37, y: 79.5 }, 18, 25) }),
 
     gear({ id: "fishingRod", category: "activity", shopGroup: "activity", displayName: "Fishing Rod", cost: 75, comfort: 3, detail: "+3 Comfort", scene: scene({ x: 30, y: 67 }, 13, 16) }),
     gear({ id: "campBoardGame", category: "activity", shopGroup: "activity", displayName: "Camp Board Game", cost: 70, comfort: 4, detail: "+4 Comfort", scene: scene({ x: 52, y: 78 }, 9, 21) }),

@@ -153,25 +153,6 @@ const assetPaths = versionAssetPaths({
       3: "assets/campfire/campfire_lv3_flame_02.png"
     }
   },
-  tents: {
-    backpacking: "assets/tents/tent_backpacking.png",
-    lowDome: "assets/tents/tent_low_dome.png",
-    vestibule: "assets/tents/tent_vestibule.png",
-    glow: "assets/tents/tent_glow_overlay.png"
-  },
-  furniture: {
-    axe: "assets/furniture/axe.png",
-    chair: "assets/furniture/chair.png",
-    kettle: "assets/furniture/kettle.png",
-    stove: "assets/furniture/stove.png",
-    table: "assets/furniture/table.png"
-  },
-  lighting: {
-    lantern: "assets/lighting/lantern.png",
-    lanternGlow: "assets/lighting/lantern_glow.png",
-    stringLights: "assets/lighting/string_lights.png",
-    stringLightsGlow: "assets/lighting/string_lights_glow.png"
-  },
   resources: {
     wood: "assets/resources/wood_item.png"
   },

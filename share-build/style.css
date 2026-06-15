@@ -118,23 +118,6 @@ body.shop-open .scene-content {
   z-index: 3;
 }
 
-.decor {
-  z-index: 10;
-  filter: drop-shadow(0 0.7vw 0.45vw rgba(10, 14, 9, 0.28));
-}
-
-.decor-crate {
-  width: 13%;
-  left: 9%;
-  top: 70%;
-}
-
-.decor-stump {
-  width: 11%;
-  left: 28%;
-  top: 82.5%;
-}
-
 .string-lights {
   width: 24%;
   aspect-ratio: 160 / 60;
@@ -1189,7 +1172,4 @@ h2 {
     width: min(82%, 330px);
   }
 
-  .decor-stump {
-    display: none;
-  }
 }

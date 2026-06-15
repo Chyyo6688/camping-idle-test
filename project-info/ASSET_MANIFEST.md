@@ -23,7 +23,7 @@ assets/
   characters/
   campfire/
   tents/
-  furniture/
+  gear/
   lighting/
   resources/
   ui/
@@ -88,44 +88,46 @@ assets/
 
 V2.5 注意：Campfire asset 已手动恢复为稳定旧版本。后续不要用自动生成流程覆盖 `assets/campfire/*`，除非用户先确认新的 review sheet。
 
-## tents
+## tent gear
 
-- `tent_backpacking.png`
-- `tent_low_dome.png`
-- `tent_vestibule.png`
-- `tent_glow_overlay.png`
+Tent assets use the gear category structure:
 
-新玩家默认拥有并装备 `backpacking`。低顶帐篷和 vestibule tent 只通过 shop 购买/装备。
+- `assets/gear/tent/<gearId>/icon.*`
 
-## furniture
+新玩家默认拥有并装备 `starterInstantTent`。旧 `backpacking` / `lowDome` / `vestibule` generic ids 只通过 `LEGACY_GEAR_ID_MAP` 迁移到正式 tent id。
 
-- `chair.png`
-- `table.png`
-- `kettle.png`
-- `axe.png`
-- `stove.png`
-- `crate.png`
-- `woodpile.png`
-- `stump.png`
+## gear
 
-显示规则：
+装备素材使用 category / id 结构：
 
-- `crate`、`woodpile`、`stump` 是基础环境装饰，可以开局显示。
-- `chair`、`table`、`kettle`、`axe`、`stove` 必须购买后才显示。
-- `kettle` 和 `stove` 依赖 `table`，购买后视觉上摆在 table 上。
-
-## lighting
-
-- `lantern.png`
-- `lantern_glow.png`
-- `string_lights.png`
-- `string_lights_glow.png`
+```text
+assets/gear/
+  chair/<gearId>/icon.*
+  table/<gearId>/icon.*
+  storage/<gearId>/icon.*
+```
 
 显示规则：
 
-- `lantern` 购买后显示，并解锁 Night Mode。
-- `string_lights` 购买后才显示。
-- V2.4 中 `string_lights` 被放到当前 tent 上方，并缩小处理。后续可改为挂在 tarp 或树间。
+- `chair`、`table` 等是 category，不再作为正式装备 id。
+- 正式装备 id 应使用具体名称，例如 `sealChair`、`checkerboardTable`、`firewoodPile`。
+- 旧存档中的 generic id 只通过 `LEGACY_GEAR_ID_MAP` 迁移到正式 id。
+- `kettle` 和 `stove` 这类旧 generic id 不再作为新 asset 路径；后续应按新的 category / id 结构重新生成。
+
+## light gear
+
+Light assets use the gear category structure:
+
+- `assets/gear/light/basicCampLantern/icon.png`
+- `assets/gear/light/basicCampLantern/glow.png`
+- `assets/gear/light/warmStringLights/icon.png`
+- `assets/gear/light/warmStringLights/glow.png`
+
+显示规则：
+
+- light category gear 购买后显示，并解锁 Night Mode。
+- `warmStringLights` 购买后才显示。
+- V2.4 中 `warmStringLights` 被放到当前 tent 上方，并缩小处理。后续可改为挂在 tarp 或树间。
 
 ## resources
 
