@@ -322,11 +322,24 @@ body.night .lantern-glow {
 }
 
 .campfire {
-  width: 23.7%;
+  width: 19%;
   aspect-ratio: 128 / 110;
   left: 39%;
   top: 79%;
   z-index: 26;
+}
+
+.campfire.level-1,
+.campfire.level-2,
+.campfire.level-3 {
+  width: 19%;
+}
+
+.campfire.level-3 #campfireBaseImage {
+  left: 1%;
+  top: 4%;
+  width: 98%;
+  height: 94%;
 }
 
 .fire-glow-img {
@@ -360,6 +373,13 @@ body.night .campfire.lit .fire-glow-img {
   opacity: 1;
 }
 
+.campfire.level-3 .campfire-flame-img {
+  left: 14%;
+  top: -1%;
+  width: 72%;
+  height: 82%;
+}
+
 .camper {
   width: 11.85%;
   height: auto;
@@ -382,6 +402,40 @@ body.night .campfire.lit .fire-glow-img {
 }
 
 body.camper-in-tent .camper {
+  opacity: 0.08;
+}
+
+.camper-attachment {
+  --attachment-scale-x: 1;
+  --attachment-rotate: 0deg;
+  position: absolute;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scaleX(var(--attachment-scale-x)) rotate(var(--attachment-rotate));
+  transform-origin: 50% 50%;
+  transition: left 1.8s linear, top 1.8s linear, opacity 0.35s ease;
+  filter: drop-shadow(0 0.18vw 0.14vw rgba(8, 12, 8, 0.28));
+}
+
+.camper-attachment-starterHeadlamp {
+  opacity: 0.96;
+}
+
+.camper-attachment-front,
+.camper-attachment-back {
+  filter: drop-shadow(0 0.18vw 0.14vw rgba(8, 12, 8, 0.28));
+}
+
+.camper-attachment-cone {
+  opacity: 0.22;
+  mix-blend-mode: screen;
+  filter: blur(0.1px);
+}
+
+body.night .camper-attachment-cone {
+  opacity: 0.54;
+}
+
+body.camper-in-tent .camper-attachment {
   opacity: 0.08;
 }
 
@@ -1046,6 +1100,33 @@ h2 {
   text-transform: uppercase;
 }
 
+.shop-card.action-buy .item-action {
+  color: #fff0c8;
+  background:
+    linear-gradient(180deg, rgba(98, 130, 66, 0.98), rgba(66, 94, 50, 0.98));
+}
+
+.shop-card.action-place .item-action {
+  color: #e8fbff;
+  border-color: rgba(127, 190, 207, 0.62);
+  background:
+    linear-gradient(180deg, rgba(68, 129, 147, 0.98), rgba(45, 91, 116, 0.98));
+}
+
+.shop-card.action-pack .item-action {
+  color: #fff2d2;
+  border-color: rgba(235, 165, 98, 0.66);
+  background:
+    linear-gradient(180deg, rgba(177, 109, 62, 0.98), rgba(132, 76, 49, 0.98));
+}
+
+.shop-card.action-equip .item-action {
+  color: #352918;
+  border-color: rgba(255, 214, 130, 0.72);
+  background:
+    linear-gradient(180deg, rgba(234, 190, 108, 0.96), rgba(178, 137, 75, 0.96));
+}
+
 .shop-card.equipped .item-action {
   color: #2d351f;
   background:
@@ -1055,6 +1136,27 @@ h2 {
 .shop-card.owned:not(.equipped) .item-action {
   background:
     linear-gradient(180deg, rgba(91, 116, 64, 0.96), rgba(65, 84, 48, 0.96));
+}
+
+.shop-card.owned.action-place:not(.equipped) .item-action {
+  color: #e8fbff;
+  background:
+    linear-gradient(180deg, rgba(68, 129, 147, 0.98), rgba(45, 91, 116, 0.98));
+}
+
+.shop-card.owned.action-pack:not(.equipped) .item-action {
+  color: #fff2d2;
+  background:
+    linear-gradient(180deg, rgba(177, 109, 62, 0.98), rgba(132, 76, 49, 0.98));
+}
+
+.shop-card.placed {
+  border-color: rgba(232, 151, 83, 0.76);
+}
+
+.shop-card.placed:not(.equipped) .item-action {
+  background:
+    linear-gradient(180deg, rgba(177, 109, 62, 0.98), rgba(132, 76, 49, 0.98));
 }
 
 .shop-card.locked .item-action {

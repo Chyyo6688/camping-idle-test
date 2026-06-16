@@ -42,31 +42,49 @@ Wood 不显示在顶部资源栏，也不是货币。它只是自动行为链路
 
 ## 装备数据结构
 
-普通购买型装备使用通用数组保存：
+装备定义集中在 `gearCatalog.js`。普通购买型装备使用通用数组保存 owned 状态，普通可放置装备另用轻量数组保存 scene 放置状态：
 
 ```js
-ownedEquipment = ["table", "chair", "lantern"];
+ownedGear = ["campfire", "starterInstantTent", "checkerboardTable"];
+placedGear = ["checkerboardTable"];
+equippedGear = {
+  tent: "starterInstantTent",
+  tarp: "hexaCampTarp",
+  vehicle: "compactCampSuv"
+};
 ```
 
 不要继续给每个新装备添加 `hasX` 主字段。旧字段只在 `sanitizeSave()` 中迁移兼容。
 
-装备配置集中在 `equipmentData` registry，包含：
+`gearCatalog.js` 中每件装备包含：
 
-- `name`
+- `id`
+- `category`
+- `shopGroup`
+- `displayName`
 - `cost`
 - `comfort`
 - `detail`
-- `button`
-- `sceneElement`
+- `image`
+- `scene` 或 `attachment`
 - `requires`
-- `unlocksNight`
-- `status`
+- `unlocks`
+- `interactions`
 
 当前依赖规则：
 
-- `kettle` requires `table`
-- `stove` requires `table`
-- `lantern` unlocks Night Mode
+- stove 类装备 requires any owned `table`
+- `vehicleAwning` / `rooftopTent` requires any owned `vehicle`
+- light 类装备可 unlock Night Mode
+
+当前显示规则：
+
+- Campfire 是特殊 upgrade 项，不参与 place/pack。
+- Tent 保持 `equippedGear.tent` 选择逻辑。
+- Tarp 使用 `equippedGear.tarp` replacement，同一时间只显示当前 equipped tarp。
+- Vehicle 使用 `equippedGear.vehicle` replacement，并支持当前车 `STOW` / `PLACE`；rooftop tent 装备中时当前车不能 stow，只能通过切换 tent 或 replace vehicle 改变。
+- Rooftop tent 根据当前 vehicle 的 `scene.roofMount` 动态定位，不再使用通用固定坐标。
+- 其他可显示普通 gear 使用 `placedGear`：未购买 `BUY`，已购买未放置 `PLACE`，已放置 `PACK`。购买成功后默认自动 `PLACE`。
 
 ## Camper 自动行为
 
@@ -93,7 +111,7 @@ camper 使用简单 state machine：
 
 ## Day / Night
 
-游戏从白天开始。Night Mode 默认锁定。购买 Lantern 后：
+游戏从白天开始。Night Mode 默认锁定。购买 lantern / headlamp 等带 night unlock 的 light gear 后：
 
 - `nightUnlocked = true`
 - 显示 Day / Night 按钮

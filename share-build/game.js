@@ -73,7 +73,9 @@ const defaultGameState = {
   warmthSeconds: 0,
   campfireLevel: 1,
   ownedGear: getDefaultOwnedGearIds(),
+  placedGear: [],
   equippedGear: getDefaultEquippedGear(),
+  vehiclePlacementMigrated: true,
   nightUnlocked: false,
   isNight: false,
   gatherWoodMode: true,
@@ -84,7 +86,9 @@ function createDefaultGameState() {
   return {
     ...defaultGameState,
     ownedGear: defaultGameState.ownedGear.slice(),
+    placedGear: defaultGameState.placedGear.slice(),
     equippedGear: { ...defaultGameState.equippedGear },
+    vehiclePlacementMigrated: defaultGameState.vehiclePlacementMigrated,
     lastSaveTime: Date.now()
   };
 }
@@ -346,11 +350,35 @@ function addUniqueGear(ownedGear, id) {
   }
 }
 
+function addUniquePlacedGear(placedGear, id) {
+  const normalizedId = normalizeGearId(id);
+  const item = getGearItem(normalizedId);
+
+  if (item && isGearPlaceable(item) && placedGear.indexOf(normalizedId) === -1) {
+    placedGear.push(normalizedId);
+  }
+}
+
 function ownsGear(id, state) {
   const campState = state || gameState;
   const normalizedId = normalizeGearId(id);
 
   return Array.isArray(campState.ownedGear) && campState.ownedGear.indexOf(normalizedId) !== -1;
+}
+
+function isGearPlaced(id, state) {
+  const campState = state || gameState;
+  const normalizedId = normalizeGearId(id);
+
+  return Array.isArray(campState.placedGear) && campState.placedGear.indexOf(normalizedId) !== -1;
+}
+
+function removePlacedGear(id) {
+  const normalizedId = normalizeGearId(id);
+
+  gameState.placedGear = (gameState.placedGear || []).filter(function(placedId) {
+    return placedId !== normalizedId;
+  });
 }
 
 function getOwnedGearItems(state) {
@@ -428,8 +456,44 @@ function hasNightUnlock(state) {
   });
 }
 
-function isEquippableGear(item) {
+function isTentItem(item) {
   return Boolean(item && item.category === "tent");
+}
+
+function isTarpItem(item) {
+  return Boolean(item && item.category === "tarp");
+}
+
+function isVehicleItem(item) {
+  return Boolean(item && item.category === "vehicle");
+}
+
+function isRooftopTentItem(item) {
+  return Boolean(item && item.id === "rooftopTent");
+}
+
+function isEquippableGear(item) {
+  return Boolean(item && (isTentItem(item) || isTarpItem(item) || isVehicleItem(item)));
+}
+
+function isGearPlaceable(item) {
+  if (!item || item.interactions && item.interactions.upgradeCampfire) {
+    return false;
+  }
+
+  if (isVehicleItem(item)) {
+    return Boolean(item.scene);
+  }
+
+  if (isTentItem(item) || isTarpItem(item)) {
+    return false;
+  }
+
+  return Boolean(item.scene || item.attachment);
+}
+
+function isCurrentRooftopTentEquipped(state) {
+  return getEquippedGearId("tent", state || gameState) === "rooftopTent";
 }
 
 function isGearVisibleInShop(item) {
@@ -442,7 +506,7 @@ function calculateComfort(state) {
   let comfort = 0;
 
   getOwnedGearItems(state).forEach(function(item) {
-    if (item.category === "tent" && getEquippedGearId("tent", state) !== item.id) {
+    if (isEquippableGear(item) && getEquippedGearId(item.category, state) !== item.id) {
       return;
     }
 
@@ -487,6 +551,11 @@ function getOfflineCapSeconds() {
 
 function getCampfireUpgradeCost() {
   return campfireUpgradeCosts[gameState.campfireLevel] || 0;
+}
+
+function getCampfireShopImage() {
+  const displayLevel = Math.min(gameState.campfireLevel + 1, 3);
+  return assetPaths.campfire.base[displayLevel] || assetPaths.campfire.base[gameState.campfireLevel];
 }
 
 function getCurrentFlameImage() {
@@ -565,6 +634,7 @@ function sanitizeSave(savedGame) {
     cleanState.nightUnlocked = savedGame.nightUnlocked;
     cleanState.isNight = savedGame.isNight;
     cleanState.gatherWoodMode = savedGame.gatherWoodMode;
+    cleanState.vehiclePlacementMigrated = Boolean(savedGame.vehiclePlacementMigrated);
     if (savedGame.lastSaveTime !== undefined) {
       cleanState.lastSaveTime = savedGame.lastSaveTime;
     }
@@ -614,7 +684,27 @@ function sanitizeSave(savedGame) {
     }
   });
 
+  const savedPlacedGear = savedGame && Array.isArray(savedGame.placedGear) ? savedGame.placedGear.map(normalizeGearId) : [];
+
   cleanState.ownedGear = ownedGear;
+  cleanState.placedGear = [];
+
+  if (savedPlacedGear.length > 0) {
+    savedPlacedGear.forEach(function(normalizedId) {
+      if (ownedGear.indexOf(normalizedId) !== -1) {
+        addUniquePlacedGear(cleanState.placedGear, normalizedId);
+      }
+    });
+  } else if (savedGame) {
+    ownedGear.forEach(function(id) {
+      const item = getGearItem(id);
+
+      if (item && isGearPlaceable(item)) {
+        addUniquePlacedGear(cleanState.placedGear, id);
+      }
+    });
+  }
+
   cleanState.equippedGear = { ...getDefaultEquippedGear() };
 
   if (savedGame && savedGame.equippedGear) {
@@ -639,6 +729,54 @@ function sanitizeSave(savedGame) {
 
   if (!getGearItem(cleanState.equippedGear.tent) || ownedGear.indexOf(cleanState.equippedGear.tent) === -1) {
     cleanState.equippedGear.tent = defaultGameState.equippedGear.tent;
+  }
+
+  if (cleanState.equippedGear.tarp) {
+    const equippedTarp = getGearItem(cleanState.equippedGear.tarp);
+
+    if (!equippedTarp || !isTarpItem(equippedTarp) || ownedGear.indexOf(equippedTarp.id) === -1) {
+      delete cleanState.equippedGear.tarp;
+    }
+  }
+
+  if (!cleanState.equippedGear.tarp) {
+    const placedTarpId = savedPlacedGear.find(function(id) {
+      const item = getGearItem(id);
+      return item && isTarpItem(item) && ownedGear.indexOf(id) !== -1;
+    });
+
+    if (placedTarpId) {
+      cleanState.equippedGear.tarp = placedTarpId;
+    }
+  }
+
+  if (cleanState.equippedGear.vehicle) {
+    const equippedVehicle = getGearItem(cleanState.equippedGear.vehicle);
+
+    if (!equippedVehicle || !isVehicleItem(equippedVehicle) || ownedGear.indexOf(equippedVehicle.id) === -1) {
+      delete cleanState.equippedGear.vehicle;
+    }
+  }
+
+  if (!cleanState.vehiclePlacementMigrated && cleanState.equippedGear.vehicle) {
+    addUniquePlacedGear(cleanState.placedGear, cleanState.equippedGear.vehicle);
+    cleanState.vehiclePlacementMigrated = true;
+  }
+
+  if (cleanState.equippedGear.tent === "rooftopTent") {
+    if (!cleanState.equippedGear.vehicle) {
+      const ownedVehicle = ownedGear.find(function(id) {
+        return isVehicleItem(getGearItem(id));
+      });
+
+      if (ownedVehicle) {
+        cleanState.equippedGear.vehicle = ownedVehicle;
+      }
+    }
+
+    if (cleanState.equippedGear.vehicle) {
+      addUniquePlacedGear(cleanState.placedGear, cleanState.equippedGear.vehicle);
+    }
   }
 
   cleanState.cozyPoints = Math.max(0, Number(cleanState.cozyPoints) || 0);
@@ -845,10 +983,12 @@ function renderShopFromCatalog() {
 }
 
 function updateCampfireShopCard(item, card) {
+  card.image.src = getCampfireShopImage();
+
   if (gameState.campfireLevel >= 3) {
     card.button.disabled = true;
-    card.button.classList.add("owned");
-    card.button.classList.remove("locked", "equipped");
+    card.button.classList.add("owned", "action-equipped");
+    card.button.classList.remove("locked", "equipped", "placed", "action-buy", "action-place", "action-pack", "action-equip", "action-locked");
     card.detailLabel.textContent = "Lv 3 complete";
     card.actionLabel.textContent = "MAX";
     card.button.setAttribute("data-price", "MAX");
@@ -857,10 +997,62 @@ function updateCampfireShopCard(item, card) {
 
   const cost = getCampfireUpgradeCost();
   card.button.disabled = gameState.cozyPoints < cost;
-  card.button.classList.remove("owned", "locked", "equipped");
+  card.button.classList.add("action-buy");
+  card.button.classList.remove("owned", "locked", "equipped", "placed", "action-place", "action-pack", "action-equip", "action-equipped", "action-locked");
   card.detailLabel.textContent = gameState.campfireLevel === 1 ? "Lv 2 fire pit" : "Lv 3 ember stove";
   card.actionLabel.textContent = "UPGRADE";
   card.button.setAttribute("data-price", cost + "CP");
+}
+
+function updateVehicleShopCard(item, card, isOwned, isEquipped, isPlaced, isLocked) {
+  const rooftopMounted = isCurrentRooftopTentEquipped() && isEquipped && isPlaced;
+
+  if (isEquipped && isPlaced) {
+    if (rooftopMounted) {
+      card.button.disabled = true;
+      card.button.classList.add("action-equipped");
+      card.actionLabel.textContent = "MOUNTED";
+      card.button.setAttribute("data-price", "ROOF");
+      card.detailLabel.textContent = "Rooftop tent mounted";
+      return true;
+    }
+
+    card.button.disabled = false;
+    card.button.classList.add("action-pack");
+    card.actionLabel.textContent = "STOW";
+    card.button.setAttribute("data-price", "PLACED");
+    return true;
+  }
+
+  if (isEquipped && isOwned) {
+    card.button.disabled = false;
+    card.button.classList.add("action-place");
+    card.actionLabel.textContent = "PLACE";
+    card.button.setAttribute("data-price", "OWNED");
+    return true;
+  }
+
+  if (isOwned) {
+    card.button.disabled = false;
+    card.button.classList.add("action-equip");
+    card.actionLabel.textContent = "EQUIP";
+    card.button.setAttribute("data-price", "0CP");
+    return true;
+  }
+
+  if (isLocked) {
+    card.button.disabled = true;
+    card.button.classList.add("action-locked");
+    card.actionLabel.textContent = "LOCKED";
+    card.button.setAttribute("data-price", "?CP");
+    return true;
+  }
+
+  card.button.disabled = gameState.cozyPoints < item.cost;
+  card.button.classList.add("action-buy");
+  card.actionLabel.textContent = "BUY";
+  card.button.setAttribute("data-price", item.cost + "CP");
+  return true;
 }
 
 function updateGearShopCard(item) {
@@ -879,32 +1071,55 @@ function updateGearShopCard(item) {
 
   const isOwned = ownsGear(item.id);
   const isEquipped = isEquippableGear(item) && getEquippedGearId(item.category) === item.id;
+  const isPlaceable = isGearPlaceable(item);
+  const isPlaced = isPlaceable && isGearPlaced(item.id);
   const missingRequirements = getMissingGearRequirements(item);
   const isLocked = missingRequirements.length > 0;
 
   card.button.classList.toggle("owned", isOwned);
   card.button.classList.toggle("equipped", isEquipped);
+  card.button.classList.toggle("placed", isPlaced);
   card.button.classList.toggle("locked", isLocked && !isOwned);
+  card.button.classList.remove("action-buy", "action-place", "action-pack", "action-equip", "action-equipped", "action-locked");
   card.detailLabel.textContent = isLocked && !isOwned ? missingRequirements.join(", ") : item.detail;
+
+  if (isVehicleItem(item) && updateVehicleShopCard(item, card, isOwned, isEquipped, isPlaced, isLocked)) {
+    return;
+  }
 
   if (isEquipped) {
     card.button.disabled = true;
+    card.button.classList.add("action-equipped");
     card.actionLabel.textContent = "EQUIPPED";
     card.button.setAttribute("data-price", "0CP");
   } else if (isOwned && isEquippableGear(item)) {
     card.button.disabled = false;
+    card.button.classList.add("action-equip");
     card.actionLabel.textContent = "EQUIP";
     card.button.setAttribute("data-price", "0CP");
+  } else if (isOwned && isPlaceable && isPlaced) {
+    card.button.disabled = false;
+    card.button.classList.add("action-pack");
+    card.actionLabel.textContent = "PACK";
+    card.button.setAttribute("data-price", "PLACED");
+  } else if (isOwned && isPlaceable) {
+    card.button.disabled = false;
+    card.button.classList.add("action-place");
+    card.actionLabel.textContent = "PLACE";
+    card.button.setAttribute("data-price", "OWNED");
   } else if (isOwned) {
     card.button.disabled = true;
+    card.button.classList.add("action-equipped");
     card.actionLabel.textContent = "OWNED";
     card.button.setAttribute("data-price", "0CP");
   } else if (isLocked) {
     card.button.disabled = true;
+    card.button.classList.add("action-locked");
     card.actionLabel.textContent = "LOCKED";
     card.button.setAttribute("data-price", "?CP");
   } else {
     card.button.disabled = gameState.cozyPoints < item.cost;
+    card.button.classList.add("action-buy");
     card.actionLabel.textContent = "BUY";
     card.button.setAttribute("data-price", item.cost + "CP");
   }
@@ -985,27 +1200,93 @@ function getOrCreateGearFrontElement(item) {
 function getSceneSpriteSize(item) {
   const scene = item && item.scene ? item.scene : {};
 
-  return scene.spriteSize || { width: 80, height: 80 };
+  return scene.spriteSize || item && item.spriteSize || { width: 80, height: 80 };
 }
 
 function getSceneGroundAnchor(item) {
   const spriteSize = getSceneSpriteSize(item);
   const anchors = item && item.anchors ? item.anchors : {};
+  const scene = item && item.scene ? item.scene : {};
 
-  return anchors.ground || { x: spriteSize.width / 2, y: spriteSize.height };
+  return scene.anchor || anchors.ground || { x: spriteSize.width / 2, y: spriteSize.height };
+}
+
+function getCurrentVehicleItem(state) {
+  return getEquippedGearItem("vehicle", state || gameState);
+}
+
+function isVehiclePlaced(item, state) {
+  return Boolean(item && isVehicleItem(item) && getEquippedGearId("vehicle", state || gameState) === item.id && isGearPlaced(item.id, state));
+}
+
+function getScenePointFromSpritePoint(item, point) {
+  const spriteSize = getSceneSpriteSize(item);
+  const groundAnchor = getSceneGroundAnchor(item);
+  const scene = item.scene || {};
+  const position = scene.position || { x: 0, y: 0 };
+  const widthPercent = scene.widthPercent || 0;
+  const sceneWidthToHeightRatio = getSceneWidthToHeightRatio();
+
+  return {
+    x: position.x + ((point.x - groundAnchor.x) / spriteSize.width) * widthPercent,
+    y: position.y + ((point.y - groundAnchor.y) / spriteSize.width) * widthPercent * sceneWidthToHeightRatio
+  };
+}
+
+function getVehicleRoofMount(vehicleItem) {
+  const spriteSize = getSceneSpriteSize(vehicleItem);
+  const scene = vehicleItem && vehicleItem.scene ? vehicleItem.scene : {};
+
+  return scene.roofMount || {
+    x: spriteSize.width / 2,
+    y: spriteSize.height * 0.34,
+    widthPercent: (scene.widthPercent || 0) * 0.74,
+    zIndex: (scene.zIndex || 14) + 2
+  };
+}
+
+function getRooftopTentLayout(item) {
+  if (!isRooftopTentItem(item)) {
+    return null;
+  }
+
+  const vehicleItem = getCurrentVehicleItem();
+
+  if (!isVehiclePlaced(vehicleItem)) {
+    return null;
+  }
+
+  const mount = getVehicleRoofMount(vehicleItem);
+  const position = getScenePointFromSpritePoint(vehicleItem, mount);
+
+  return {
+    position: position,
+    widthPercent: mount.widthPercent || item.scene.widthPercent,
+    zIndex: mount.zIndex || item.scene.zIndex || 16
+  };
+}
+
+function getSceneLayoutOverride(item) {
+  if (item && item.scene && item.scene.mountTo === "vehicleRoof") {
+    return getRooftopTentLayout(item);
+  }
+
+  return null;
 }
 
 function applyGearSceneLayout(element, item, zIndex) {
   const spriteSize = getSceneSpriteSize(item);
   const groundAnchor = getSceneGroundAnchor(item);
   const scene = item.scene || {};
-  const position = scene.position || { x: 0, y: 0 };
+  const layoutOverride = getSceneLayoutOverride(item);
+  const position = layoutOverride && layoutOverride.position || scene.position || { x: 0, y: 0 };
+  const widthPercent = layoutOverride && layoutOverride.widthPercent || scene.widthPercent || 0;
 
   element.style.left = position.x + "%";
   element.style.top = position.y + "%";
-  element.style.width = (scene.widthPercent || 0) + "%";
+  element.style.width = widthPercent + "%";
   element.style.aspectRatio = scene.aspectRatio || spriteSize.width + " / " + spriteSize.height;
-  element.style.zIndex = zIndex;
+  element.style.zIndex = layoutOverride && layoutOverride.zIndex || zIndex;
   element.style.setProperty("--object-anchor-x", -groundAnchor.x / spriteSize.width * 100 + "%");
   element.style.setProperty("--object-anchor-y", -groundAnchor.y / spriteSize.height * 100 + "%");
   element.style.setProperty("--object-scale-x", scene.mirrored ? "-1" : "1");
@@ -1055,6 +1336,114 @@ function updateGearSceneElement(item) {
   }
 }
 
+function isCamperAttachmentItem(item) {
+  return Boolean(item && item.attachment && item.attachment.target === "camperHead");
+}
+
+function getOrCreateCamperAttachmentElement(item, layerName) {
+  const normalizedLayerName = layerName || "base";
+  let element = document.getElementById("gear-attachment-" + item.id + "-" + normalizedLayerName);
+
+  if (!element && gearLayer) {
+    element = document.createElement("img");
+    element.id = "gear-attachment-" + item.id + "-" + normalizedLayerName;
+    element.className = "camper-attachment camper-attachment-" + normalizedLayerName + " hidden";
+    element.alt = "";
+    gearLayer.appendChild(element);
+  }
+
+  return element;
+}
+
+function isCamperBackPose() {
+  return camper.pose === "lookingLakeBack";
+}
+
+function getCamperAttachmentFacingKey() {
+  return isCamperBackPose() ? "back" : normalizeFacing(camper.facing);
+}
+
+function getCamperAttachmentOffset(attachment, offsetGroupName, facingKey) {
+  const group = attachment[offsetGroupName] || {};
+
+  return group[facingKey] || group.right || { x: 0, y: 0, rotate: 0 };
+}
+
+function applyCamperAttachmentLayout(element, item, layerName, options) {
+  const layerOptions = options || {};
+  const attachment = item.attachment || {};
+  const spriteSize = layerOptions.spriteSize || getSceneSpriteSize(item);
+  const facingKey = getCamperAttachmentFacingKey();
+  const offset = layerOptions.offset || getCamperAttachmentOffset(attachment, "offsets", facingKey);
+  const facing = normalizeFacing(camper.facing);
+
+  element.style.left = camper.x + offset.x + "%";
+  element.style.top = camper.y + offset.y + "%";
+  element.style.width = (layerOptions.widthPercent || attachment.widthPercent || 3) + "%";
+  element.style.aspectRatio = spriteSize.width + " / " + spriteSize.height;
+  element.style.zIndex = layerOptions.zIndex || attachment.zIndex || 32;
+  element.style.setProperty("--attachment-scale-x", layerOptions.mirrorWithFacing === false ? "1" : facing === "left" ? "-1" : "1");
+  element.style.setProperty("--attachment-rotate", (offset.rotate || 0) + "deg");
+  element.classList.toggle("camper-attachment-back-pose", facingKey === "back");
+  element.classList.toggle("camper-attachment-" + item.id, true);
+  element.classList.toggle("camper-attachment-layer-" + layerName, true);
+}
+
+function updateCamperAttachmentElement(item) {
+  if (!isCamperAttachmentItem(item)) {
+    return;
+  }
+
+  const attachment = item.attachment || {};
+  const layers = attachment.layers || { front: item.image };
+  const facingKey = getCamperAttachmentFacingKey();
+  const shouldShow = ownsGear(item.id) && isGearPlaced(item.id);
+  const frontElement = getOrCreateCamperAttachmentElement(item, "front");
+  const backElement = getOrCreateCamperAttachmentElement(item, "back");
+  const coneElement = getOrCreateCamperAttachmentElement(item, "cone");
+
+  if (frontElement && layers.front) {
+    frontElement.src = withVersion(layers.front);
+    frontElement.className = "camper-attachment camper-attachment-front camper-attachment-" + item.id + (shouldShow && facingKey !== "back" ? "" : " hidden");
+    applyCamperAttachmentLayout(frontElement, item, "front", {
+      spriteSize: { width: 64, height: 44 },
+      widthPercent: attachment.widthPercent,
+      zIndex: attachment.zIndex
+    });
+  }
+
+  if (backElement && layers.back) {
+    backElement.src = withVersion(layers.back);
+    backElement.className = "camper-attachment camper-attachment-back camper-attachment-" + item.id + (shouldShow && facingKey === "back" ? "" : " hidden");
+    applyCamperAttachmentLayout(backElement, item, "back", {
+      spriteSize: { width: 64, height: 44 },
+      widthPercent: attachment.backWidthPercent || attachment.widthPercent,
+      zIndex: attachment.backZIndex || attachment.zIndex
+    });
+  }
+
+  if (coneElement && layers.cone) {
+    const coneOffset = getCamperAttachmentOffset(attachment, "coneOffsets", facingKey);
+
+    coneElement.src = withVersion(layers.cone);
+    coneElement.className = "camper-attachment camper-attachment-cone camper-attachment-" + item.id + (shouldShow ? "" : " hidden");
+    applyCamperAttachmentLayout(coneElement, item, "cone", {
+      spriteSize: { width: 220, height: 92 },
+      offset: coneOffset,
+      widthPercent: attachment.coneWidthPercent,
+      zIndex: facingKey === "back" ? attachment.backZIndex || 29 : attachment.coneZIndex || 31
+    });
+  }
+}
+
+function updateCamperAttachments() {
+  getGearItems().forEach(function(item) {
+    if (isCamperAttachmentItem(item)) {
+      updateCamperAttachmentElement(item);
+    }
+  });
+}
+
 function isGearVisibleInScene(item) {
   if (!item.scene) {
     return false;
@@ -1064,11 +1453,19 @@ function isGearVisibleInScene(item) {
     return true;
   }
 
-  if (item.category === "tent") {
-    return getEquippedGearId("tent") === item.id;
+  if (isRooftopTentItem(item)) {
+    return getEquippedGearId("tent") === item.id && isVehiclePlaced(getCurrentVehicleItem());
   }
 
-  return ownsGear(item.id);
+  if (isVehicleItem(item)) {
+    return isVehiclePlaced(item);
+  }
+
+  if (isTentItem(item) || isTarpItem(item)) {
+    return getEquippedGearId(item.category) === item.id;
+  }
+
+  return ownsGear(item.id) && isGearPlaced(item.id);
 }
 
 function updateSceneGearVisibility(item) {
@@ -1095,6 +1492,7 @@ function updateSceneEquipment() {
     updateGearSceneElement(item);
     updateSceneGearVisibility(item);
   });
+  updateCamperAttachments();
 
   campfire.className = "campfire asset-object level-" + gameState.campfireLevel;
   campfire.classList.toggle("lit", gameState.warmthSeconds > 0);
@@ -1131,6 +1529,45 @@ function equipGear(item) {
   }
 
   gameState.equippedGear[item.category] = item.id;
+
+  if (isRooftopTentItem(item)) {
+    ensureVehicleForRooftopTent();
+  }
+
+  return true;
+}
+
+function ensureVehicleForRooftopTent() {
+  let vehicleItem = getCurrentVehicleItem();
+
+  if (!vehicleItem || !ownsGear(vehicleItem.id)) {
+    vehicleItem = getOwnedGearItems().find(isVehicleItem);
+
+    if (vehicleItem) {
+      gameState.equippedGear.vehicle = vehicleItem.id;
+    }
+  }
+
+  if (vehicleItem) {
+    placeGear(vehicleItem);
+  }
+}
+
+function placeGear(item) {
+  if (!isGearPlaceable(item) || !ownsGear(item.id)) {
+    return false;
+  }
+
+  addUniquePlacedGear(gameState.placedGear, item.id);
+  return true;
+}
+
+function packGear(item) {
+  if (!isGearPlaceable(item) || !ownsGear(item.id) || !isGearPlaced(item.id)) {
+    return false;
+  }
+
+  removePlacedGear(item.id);
   return true;
 }
 
@@ -1156,6 +1593,37 @@ function buyGear(item) {
     equipGear(item);
   }
 
+  if (isGearPlaceable(item)) {
+    placeGear(item);
+  }
+
+  return true;
+}
+
+function handleVehicleAction(item) {
+  const isEquipped = getEquippedGearId("vehicle") === item.id;
+  const isPlaced = isGearPlaced(item.id);
+
+  if (!ownsGear(item.id)) {
+    return false;
+  }
+
+  if (!isEquipped) {
+    equipGear(item);
+    placeGear(item);
+    setStatus("The camper parks " + item.displayName + " at camp.");
+  } else if (!isPlaced) {
+    placeGear(item);
+    setStatus(item.displayName + " returns to the campsite.");
+  } else if (isCurrentRooftopTentEquipped()) {
+    setStatus("The rooftop tent is mounted. Switch tents before stowing the vehicle.");
+  } else {
+    packGear(item);
+    setStatus(item.displayName + " is stowed away.");
+  }
+
+  updateScreen();
+  saveGame();
   return true;
 }
 
@@ -1171,6 +1639,10 @@ function handleGearAction(id) {
     return;
   }
 
+  if (isVehicleItem(item) && handleVehicleAction(item)) {
+    return;
+  }
+
   if (ownsGear(item.id) && isEquippableGear(item)) {
     if (equipGear(item)) {
       setStatus("The camper switches to " + item.displayName + ".");
@@ -1180,8 +1652,23 @@ function handleGearAction(id) {
     return;
   }
 
+  if (ownsGear(item.id) && isGearPlaceable(item)) {
+    if (isGearPlaced(item.id)) {
+      if (packGear(item)) {
+        setStatus(item.displayName + " is packed away.");
+        updateScreen();
+        saveGame();
+      }
+    } else if (placeGear(item)) {
+      setStatus(item.displayName + " is placed in camp.");
+      updateScreen();
+      saveGame();
+    }
+    return;
+  }
+
   if (buyGear(item)) {
-    setStatus(item.displayName + " joins the campsite.");
+    setStatus(isEquippableGear(item) || isGearPlaceable(item) ? item.displayName + " joins the campsite." : item.displayName + " is owned.");
     updateScreen();
     saveGame();
   }
@@ -1452,7 +1939,7 @@ function getSeatableSeatTarget(id, def) {
 }
 
 function isSeatableFurnitureAvailable(def) {
-  return Boolean(def && ownsGear(def.id));
+  return Boolean(def && ownsGear(def.id) && isGearPlaced(def.id));
 }
 
 function getAvailableSeatableFurnitureEntries() {
@@ -1621,6 +2108,7 @@ function updateCamperView() {
   camperElement.style.left = camper.x + "%";
   camperElement.style.top = camper.y + "%";
   updateCamperSprite();
+  updateCamperAttachments();
   updateCamperThought();
   camperStateText.textContent = camperActionLabels[camper.currentAction] || camperActionLabels.idle;
 
@@ -1744,6 +2232,15 @@ function getRandomWanderPoint() {
 
 function getTentRestSpot() {
   const tentItem = getEquippedGearItem("tent");
+
+  if (isRooftopTentItem(tentItem)) {
+    const layout = getRooftopTentLayout(tentItem);
+
+    if (layout && layout.position) {
+      return layout.position;
+    }
+  }
+
   const tentRest = tentItem && tentItem.interactions ? tentItem.interactions.tentRest : null;
 
   if (tentRest && tentRest.position) {
