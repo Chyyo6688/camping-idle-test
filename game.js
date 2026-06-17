@@ -232,7 +232,7 @@ const statusLine = document.getElementById("statusLine");
 const campSpots = {
   fire: { x: 39, y: 79 },
   fireSeat: { x: 33, y: 80 },
-  lake: { x: 25, y: 64 },
+  lake: { x: 50, y: 54 },
   tent: { x: 54, y: 69.5 },
   rest: { x: 24, y: 81 }
 };
@@ -1265,10 +1265,36 @@ function getRooftopTentLayout(item) {
     zIndex: mount.zIndex || item.scene.zIndex || 16
   };
 }
+function getVehicleMountLayout(item, mountKey) {
+  const vehicleItem = getCurrentVehicleItem();
 
+  if (!isVehiclePlaced(vehicleItem)) {
+    return null;
+  }
+
+  const vehicleScene = vehicleItem.scene || {};
+  const mount = vehicleScene[mountKey];
+
+  if (!mount) {
+    return null;
+  }
+
+  const position = getScenePointFromSpritePoint(vehicleItem, mount);
+
+  return {
+    position: position,
+    widthPercent: mount.widthPercent || item.scene.widthPercent,
+    zIndex: mount.zIndex || item.scene.zIndex || 20,
+    mirrored: typeof mount.mirrored === "boolean" ? mount.mirrored : item.scene.mirrored
+  };
+}
 function getSceneLayoutOverride(item) {
   if (item && item.scene && item.scene.mountTo === "vehicleRoof") {
     return getRooftopTentLayout(item);
+  }
+
+  if (item && item.scene && item.scene.mountTo === "vehicleAwning") {
+    return getVehicleMountLayout(item, "awningMount");
   }
 
   return null;
