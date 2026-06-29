@@ -31,6 +31,9 @@ function versionAssetPaths(value) {
 const gearCatalog = typeof window !== "undefined" && window.GEAR_CATALOG ? window.GEAR_CATALOG : {};
 const shopGroupData = typeof window !== "undefined" && window.SHOP_GROUPS ? window.SHOP_GROUPS : {};
 const legacyGearIdMap = typeof window !== "undefined" && window.LEGACY_GEAR_ID_MAP ? window.LEGACY_GEAR_ID_MAP : {};
+const BASE_SCENE_WIDTH = typeof window !== "undefined" && window.BASE_SCENE_WIDTH ? window.BASE_SCENE_WIDTH : 900;
+const BASE_SCENE_HEIGHT = typeof window !== "undefined" && window.BASE_SCENE_HEIGHT ? window.BASE_SCENE_HEIGHT : 1600;
+const SCENE_ASSET_SCALE = typeof window !== "undefined" && window.SCENE_ASSET_SCALE ? window.SCENE_ASSET_SCALE : 3;
 
 function getGearItems() {
   return Object.keys(gearCatalog).map(function(id) {
@@ -44,6 +47,36 @@ function getGearItem(id) {
 
 function normalizeGearId(id) {
   return legacyGearIdMap[id] || id;
+}
+
+function sceneXFromPercent(xPercent) {
+  return xPercent * BASE_SCENE_WIDTH / 100;
+}
+
+function sceneYFromPercent(yPercent) {
+  return yPercent * BASE_SCENE_HEIGHT / 100;
+}
+
+function sceneXToPercent(sceneX) {
+  return sceneX / BASE_SCENE_WIDTH * 100;
+}
+
+function sceneYToPercent(sceneY) {
+  return sceneY / BASE_SCENE_HEIGHT * 100;
+}
+
+function scenePointToPercent(point) {
+  return {
+    x: sceneXToPercent(point.x),
+    y: sceneYToPercent(point.y)
+  };
+}
+
+function percentPointToScenePoint(point) {
+  return {
+    x: sceneXFromPercent(point.x),
+    y: sceneYFromPercent(point.y)
+  };
 }
 
 function getDefaultOwnedGearIds() {
@@ -76,9 +109,10 @@ const defaultGameState = {
   placedGear: [],
   equippedGear: getDefaultEquippedGear(),
   vehiclePlacementMigrated: true,
+  onboardingSeen: false,
   nightUnlocked: false,
   isNight: false,
-  gatherWoodMode: true,
+  gatherWoodMode: false,
   lastSaveTime: Date.now()
 };
 
@@ -89,6 +123,7 @@ function createDefaultGameState() {
     placedGear: defaultGameState.placedGear.slice(),
     equippedGear: { ...defaultGameState.equippedGear },
     vehiclePlacementMigrated: defaultGameState.vehiclePlacementMigrated,
+    onboardingSeen: defaultGameState.onboardingSeen,
     lastSaveTime: Date.now()
   };
 }
@@ -114,6 +149,7 @@ const baseOfflineSeconds = 1800;
 const maxWoodItems = 5;
 const camperFrameDurationMs = 200;
 const camperSpriteRefreshMs = 100;
+const DEV_SCENE_PLACEHOLDER_SIZE = 64;
 
 // All visual assets are listed here so art can be replaced without hunting
 // through the game logic.
@@ -179,6 +215,7 @@ let camper = {
   currentAction: null,
   actionTimer: 0,
   targetWoodId: null,
+  woodCollectionSource: null,
   carryingWood: false,
   facing: "right",
   animationStartedAt: Date.now()
@@ -186,14 +223,23 @@ let camper = {
 
 let woodItems = [];
 let nextWoodId = 1;
+let actionQueue = [];
+let activeQueuedAction = null;
+let nextActionQueueId = 1;
+let uiDisplayMode = 0;
+let selectedActionTargetElement = null;
+let selectedActionTargetKey = "";
 
 // These variables connect JavaScript to the HTML.
 const cozyPointsAmount = document.getElementById("cozyPointsAmount");
 const comfortAmount = document.getElementById("comfortAmount");
 const warmthSecondsAmount = document.getElementById("warmthSecondsAmount");
 const cozyPointStatus = document.getElementById("cozyPointStatus");
+const comfortStatus = comfortAmount.closest(".resource-pill");
+const warmthStatus = warmthSecondsAmount.closest(".resource-pill");
 const cozyGainLayer = document.getElementById("cozyGainLayer");
 const welcomeMessage = document.getElementById("welcomeMessage");
+const gameViewport = document.querySelector(".game-viewport");
 const campScene = document.getElementById("campScene");
 const sceneBackground = document.getElementById("sceneBackground");
 const treelineImage = document.getElementById("treelineImage");
@@ -222,11 +268,36 @@ const gatherModeLabel = document.getElementById("gatherModeLabel");
 const dayNightToggle = document.getElementById("dayNightToggle");
 const dayNightIcon = document.getElementById("dayNightIcon");
 const dayNightLabel = document.getElementById("dayNightLabel");
+const uiDisplayToggle = document.getElementById("uiDisplayToggle");
+const uiDisplayLabel = document.getElementById("uiDisplayLabel");
+const onboardingHelpButton = document.getElementById("onboardingHelpButton");
+const onboardingLayer = document.getElementById("onboardingLayer");
+const onboardingPointer = document.getElementById("onboardingPointer");
+const onboardingPanel = document.getElementById("onboardingPanel");
+const onboardingStepLabel = document.getElementById("onboardingStepLabel");
+const onboardingTitle = document.getElementById("onboardingTitle");
+const onboardingBody = document.getElementById("onboardingBody");
+const onboardingPrimaryButton = document.getElementById("onboardingPrimaryButton");
+const onboardingSkipButton = document.getElementById("onboardingSkipButton");
 const resetSaveButton = document.getElementById("resetSaveButton");
 const campfireLevelAmount = document.getElementById("campfireLevelAmount");
 const cozyRateAmount = document.getElementById("cozyRateAmount");
 const offlineCapAmount = document.getElementById("offlineCapAmount");
 const statusLine = document.getElementById("statusLine");
+
+function syncSceneScale() {
+  if (!campScene || !sceneContent) {
+    return;
+  }
+
+  const sceneRect = campScene.getBoundingClientRect();
+  const scale = Math.min(
+    sceneRect.width / BASE_SCENE_WIDTH,
+    sceneRect.height / BASE_SCENE_HEIGHT
+  );
+
+  sceneContent.style.setProperty("--scene-scale", Number.isFinite(scale) && scale > 0 ? scale : 1);
+}
 
 // These are points in the scene. The camper walks between them.
 const campSpots = {
@@ -241,14 +312,51 @@ let activeShopFilter = "all";
 let statusToastTimer = null;
 let welcomeToastTimer = null;
 let saveWasResetFromUrl = false;
+const ONBOARDING_FIRST_GEAR_ID = "sealChair";
+let onboardingActive = false;
+let onboardingManual = false;
+let onboardingStepIndex = 0;
+let onboardingHighlightedElement = null;
+let onboardingCardFocusElement = null;
+
+const onboardingSteps = [
+  {
+    id: "gather",
+    title: "Start with Gather"
+  },
+  {
+    id: "fire",
+    title: "Feed the fire"
+  },
+  {
+    id: "warmth",
+    title: "Watch Warmth"
+  },
+  {
+    id: "cozy",
+    title: "Earn Cozy Points"
+  },
+  {
+    id: "shop",
+    title: "Open Shop"
+  },
+  {
+    id: "chair",
+    title: "Buy the first chair"
+  },
+  {
+    id: "comfort",
+    title: "Comfort makes it faster"
+  }
+];
 
 const camperActionLabels = {
   idle: "Pausing around camp",
   wandering: "Wandering around camp",
-  movingToWood: "Walking over to fallen wood",
-  pickupWood: "Picking up wood",
-  carryingWoodToFire: "Carrying wood to the campfire",
-  addingWoodToFire: "Adding wood to the fire",
+  movingToWood: "Walking over to fallen branches",
+  pickupWood: "Picking up branches",
+  carryingWoodToFire: "Carrying branches to the campfire",
+  addingWoodToFire: "Adding branches to the fire",
   resting: "Resting in the quiet grass",
   lookingAtLake: "Looking across the lake",
   sittingByFire: "Sitting by the campfire",
@@ -331,6 +439,899 @@ function showWelcome(message) {
 
 function setStatus(message) {
   showToast(statusLine, message, 2400, "status");
+}
+
+function applyUiDisplayMode() {
+  document.body.classList.toggle("queue-numbers-hidden", uiDisplayMode === 1);
+  document.body.classList.toggle("ui-hidden", uiDisplayMode === 2);
+
+  if (uiDisplayMode === 2 && isShopOpen()) {
+    closeShop();
+  }
+
+  if (uiDisplayLabel) {
+    uiDisplayLabel.textContent = uiDisplayMode === 0 ? "UI" : uiDisplayMode === 1 ? "#" : "Show";
+  }
+
+  if (uiDisplayToggle) {
+    const label = uiDisplayMode === 0 ? "Hide queue numbers" : uiDisplayMode === 1 ? "Hide UI" : "Show UI";
+    uiDisplayToggle.setAttribute("aria-label", label);
+    uiDisplayToggle.setAttribute("title", label);
+  }
+}
+
+function toggleUiDisplayMode() {
+  uiDisplayMode = (uiDisplayMode + 1) % 3;
+  applyUiDisplayMode();
+}
+
+function getDirectChildByClass(element, className) {
+  if (!element) {
+    return null;
+  }
+
+  for (let index = 0; index < element.children.length; index += 1) {
+    const child = element.children[index];
+
+    if (child.classList && child.classList.contains(className)) {
+      return child;
+    }
+  }
+
+  return null;
+}
+
+function getTargetOutlineElement(target) {
+  let outlineImage = getDirectChildByClass(target, "target-outline-image");
+
+  target.classList.add("target-outline-enabled");
+
+  if (outlineImage && outlineImage.tagName !== "IMG") {
+    const replacement = document.createElement("img");
+    replacement.className = "target-outline-image";
+    replacement.alt = "";
+    replacement.setAttribute("aria-hidden", "true");
+    outlineImage.replaceWith(replacement);
+    outlineImage = replacement;
+  }
+
+  if (!outlineImage) {
+    outlineImage = document.createElement("img");
+    outlineImage.className = "target-outline-image";
+    outlineImage.alt = "";
+    outlineImage.setAttribute("aria-hidden", "true");
+    target.insertBefore(outlineImage, target.firstChild);
+  }
+
+  return outlineImage;
+}
+
+function removeTargetOutlineElement(target) {
+  const outlineImage = getDirectChildByClass(target, "target-outline-image");
+
+  if (outlineImage) {
+    outlineImage.remove();
+  }
+
+  target.classList.remove("target-outline-enabled");
+}
+
+function getGearOutlineBasePath(item) {
+  if (!item || !item.image) {
+    return "";
+  }
+
+  const imagePath = item.image.split("?")[0];
+
+  if (!imagePath.startsWith("assets/gear/") || !imagePath.endsWith("/icon.png")) {
+    return "";
+  }
+
+  return imagePath.replace(/\/icon\.png$/, "/icon_base.png");
+}
+
+function getTargetOutlineBaseAssetPath(target) {
+  if (target && target.classList && target.classList.contains("wood-item")) {
+    return assetPaths.resources.wood;
+  }
+
+  if (target === campfire) {
+    return assetPaths.campfire.base[gameState.campfireLevel] || "";
+  }
+
+  const targetId = target && target.dataset ? target.dataset.actionTargetId : "";
+  const item = getGearItem(targetId);
+
+  return getGearOutlineBasePath(item);
+}
+
+function shouldUseTargetOutline(target) {
+  return Boolean(getTargetOutlineBaseAssetPath(target));
+}
+
+function isOutlineSourceImage(image) {
+  return Boolean(
+    image &&
+    image.classList &&
+    image.classList.contains("object-image") &&
+    !image.classList.contains("target-outline-image") &&
+    !image.classList.contains("tent-glow") &&
+    !image.classList.contains("lantern-glow") &&
+    !image.classList.contains("string-lights-glow") &&
+    !image.classList.contains("fire-glow-img") &&
+    !image.classList.contains("campfire-flame-img")
+  );
+}
+
+function getTargetOutlineSourceImage(target) {
+  if (!target) {
+    return null;
+  }
+
+  if (target.classList.contains("wood-item")) {
+    return target.querySelector(".wood-image");
+  }
+
+  if (target === campfire) {
+    return campfireBaseImage;
+  }
+
+  return target.querySelector(".gear-layer-base") || Array.from(target.querySelectorAll(".object-image")).find(isOutlineSourceImage);
+}
+
+function syncTargetOutlineLayout(outlineImage, sourceImage) {
+  if (!outlineImage || !sourceImage) {
+    return;
+  }
+
+  outlineImage.style.right = "auto";
+  outlineImage.style.bottom = "auto";
+  outlineImage.style.objectFit = "contain";
+
+  if (!sourceImage.classList.contains("object-image") || typeof window === "undefined") {
+    outlineImage.style.left = "0";
+    outlineImage.style.top = "0";
+    outlineImage.style.width = "100%";
+    outlineImage.style.height = "100%";
+    return;
+  }
+
+  const sourceStyles = window.getComputedStyle(sourceImage);
+
+  outlineImage.style.left = sourceStyles.left === "auto" ? "0" : sourceStyles.left;
+  outlineImage.style.top = sourceStyles.top === "auto" ? "0" : sourceStyles.top;
+  outlineImage.style.width = sourceStyles.width && sourceStyles.width !== "auto" ? sourceStyles.width : "100%";
+  outlineImage.style.height = sourceStyles.height && sourceStyles.height !== "auto" ? sourceStyles.height : "100%";
+  outlineImage.style.objectFit = sourceStyles.objectFit || "contain";
+}
+
+function updateTargetOutline(target, sourceImage) {
+  if (!target || !shouldUseTargetOutline(target)) {
+    removeTargetOutlineElement(target);
+    return;
+  }
+
+  const outlineImage = getTargetOutlineElement(target);
+  const outlineBaseAssetPath = getTargetOutlineBaseAssetPath(target);
+
+  if (sourceImage) {
+    syncTargetOutlineLayout(outlineImage, sourceImage);
+  }
+
+  if (outlineBaseAssetPath) {
+    outlineImage.src = withVersion(outlineBaseAssetPath);
+  } else {
+    outlineImage.removeAttribute("src");
+  }
+}
+
+function updateTargetOutlineForElement(target) {
+  updateTargetOutline(target, getTargetOutlineSourceImage(target));
+}
+
+function refreshTargetOutlines() {
+  document.querySelectorAll(".wood-item, .interactive-action-target").forEach(updateTargetOutlineForElement);
+}
+
+function getActionTargetKey(type, targetId) {
+  return type + ":" + targetId;
+}
+
+function getActionKey(action) {
+  return action ? getActionTargetKey(action.type, action.targetId) : "";
+}
+
+function clearSelectedActionTarget() {
+  if (selectedActionTargetElement) {
+    selectedActionTargetElement.classList.remove("selected-action-target");
+  }
+
+  selectedActionTargetElement = null;
+  selectedActionTargetKey = "";
+}
+
+function getGearSelectionKey(item) {
+  const actionType = getGearActionType(item);
+
+  return actionType && item ? getActionTargetKey(actionType, item.id) : "";
+}
+
+function getGearTouchPrompt(item) {
+  const actionType = getGearActionType(item);
+
+  if (actionType === "chair") {
+    return "Tap again to send the camper to sit at " + item.displayName + ".";
+  }
+
+  if (actionType === "tent") {
+    return "Tap again to send the camper to rest in " + item.displayName + ".";
+  }
+
+  return "Tap again to send the camper to " + item.displayName + ".";
+}
+
+function isSelectedActionTarget(element, item) {
+  return selectedActionTargetElement === element && selectedActionTargetKey === getGearSelectionKey(item);
+}
+
+function selectActionTarget(element, item) {
+  const selectionKey = getGearSelectionKey(item);
+
+  if (!element || !selectionKey) {
+    return;
+  }
+
+  clearSelectedActionTarget();
+  updateTargetOutlineForElement(element);
+  element.classList.add("selected-action-target");
+  selectedActionTargetElement = element;
+  selectedActionTargetKey = selectionKey;
+  setStatus(getGearTouchPrompt(item));
+}
+
+function isTouchLikeActionEvent(event, element) {
+  const pointerType = (event && event.pointerType) || (element && element.dataset && element.dataset.lastPointerType) || "";
+
+  return pointerType === "touch" || pointerType === "pen";
+}
+
+function rememberActionPointerType(event, element) {
+  if (!element || !element.dataset) {
+    return;
+  }
+
+  element.dataset.lastPointerType = (event && event.pointerType) || "";
+}
+
+function handleGearActionClick(event, element, item) {
+  const actionType = getGearActionType(item);
+
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  if (!actionType || !isGearVisibleInScene(item)) {
+    clearSelectedActionTarget();
+    return;
+  }
+
+  if (hasQueuedAction(actionType, item.id)) {
+    clearSelectedActionTarget();
+    queueGearAction(item);
+    return;
+  }
+
+  if (isTouchLikeActionEvent(event, element)) {
+    if (isSelectedActionTarget(element, item)) {
+      clearSelectedActionTarget();
+      queueGearAction(item);
+    } else {
+      selectActionTarget(element, item);
+    }
+
+    return;
+  }
+
+  clearSelectedActionTarget();
+  queueGearAction(item);
+}
+
+function getQueuedActionsInOrder() {
+  const queuedActions = activeQueuedAction && activeQueuedAction.indicatorVisible !== false ? [activeQueuedAction] : [];
+
+  return queuedActions.concat(actionQueue);
+}
+
+function getActionTargetElement(action) {
+  if (!action) {
+    return null;
+  }
+
+  if (action.type === "wood") {
+    return document.getElementById("wood-" + action.targetId);
+  }
+
+  if (action.type === "fire") {
+    return campfire;
+  }
+
+  const item = getGearItem(action.targetId);
+
+  return getGearSceneElement(item);
+}
+
+function clearActionQueueIndicators() {
+  document.querySelectorAll(".queue-order-badge").forEach(function(badge) {
+    badge.remove();
+  });
+
+  document.querySelectorAll(".queued-action-target, .active-action-target").forEach(function(element) {
+    element.classList.remove("queued-action-target", "active-action-target");
+    element.removeAttribute("data-queue-order");
+  });
+}
+
+function updateActionQueueIndicators() {
+  clearActionQueueIndicators();
+
+  getQueuedActionsInOrder().forEach(function(action, index) {
+    const target = getActionTargetElement(action);
+
+    if (!target || target.classList.contains("hidden")) {
+      return;
+    }
+
+    const order = index + 1;
+    const badge = document.createElement("span");
+
+    updateTargetOutlineForElement(target);
+    target.classList.add("queued-action-target");
+    target.classList.toggle("active-action-target", index === 0);
+    target.setAttribute("data-queue-order", String(order));
+
+    badge.className = "queue-order-badge";
+    badge.textContent = order;
+    badge.setAttribute("aria-hidden", "true");
+    target.appendChild(badge);
+  });
+}
+
+function hasQueuedAction(type, targetId) {
+  const key = getActionTargetKey(type, targetId);
+
+  if (getActionKey(activeQueuedAction) === key) {
+    return true;
+  }
+
+  return actionQueue.some(function(action) {
+    return getActionKey(action) === key;
+  });
+}
+
+function getQueuedActionLabel(type, targetId) {
+  if (type === "wood") {
+    return "fallen branches";
+  }
+
+  if (type === "fire") {
+    return "campfire";
+  }
+
+  const item = getGearItem(targetId);
+
+  return item ? item.displayName : "target";
+}
+
+function enqueueAction(type, targetId) {
+  const label = getQueuedActionLabel(type, targetId);
+
+  if (hasQueuedAction(type, targetId)) {
+    if (selectedActionTargetKey === getActionTargetKey(type, targetId)) {
+      clearSelectedActionTarget();
+    }
+
+    setStatus(label + " is already in the queue.");
+    return false;
+  }
+
+  actionQueue.push({
+    id: nextActionQueueId,
+    type: type,
+    targetId: targetId
+  });
+  nextActionQueueId += 1;
+  clearSelectedActionTarget();
+  updateActionQueueIndicators();
+
+  if (!beginNextQueuedAction()) {
+    setStatus(label + " added to the queue.");
+  }
+
+  return true;
+}
+
+function clearActionQueue() {
+  actionQueue = [];
+  activeQueuedAction = null;
+  updateActionQueueIndicators();
+}
+
+function canStartQueuedAction() {
+  return !activeQueuedAction && actionQueue.length > 0 && !camper.carryingWood;
+}
+
+function beginNextQueuedAction() {
+  if (!canStartQueuedAction()) {
+    return false;
+  }
+
+  activeQueuedAction = actionQueue.shift();
+  activeQueuedAction.indicatorVisible = true;
+  updateActionQueueIndicators();
+  executeQueuedAction(activeQueuedAction);
+  return true;
+}
+
+function hideActiveQueuedActionIndicator() {
+  if (!activeQueuedAction || activeQueuedAction.indicatorVisible === false) {
+    return;
+  }
+
+  activeQueuedAction.indicatorVisible = false;
+  updateActionQueueIndicators();
+}
+
+function completeActiveQueuedAction() {
+  activeQueuedAction = null;
+  updateActionQueueIndicators();
+
+  if (!beginNextQueuedAction()) {
+    chooseNextCamperAction();
+  }
+}
+
+function isGearQueueInteractive(item) {
+  if (!item || !item.scene) {
+    return false;
+  }
+
+  if (item.category === "chair" && item.interactions && item.interactions.seatable) {
+    return true;
+  }
+
+  if (isTentItem(item) && item.interactions && item.interactions.tentRest) {
+    return true;
+  }
+
+  return false;
+}
+
+function getGearActionType(item) {
+  if (item && item.category === "chair" && item.interactions && item.interactions.seatable) {
+    return "chair";
+  }
+
+  if (item && isTentItem(item) && item.interactions && item.interactions.tentRest) {
+    return "tent";
+  }
+
+  return "";
+}
+
+function queueGearAction(item) {
+  const actionType = getGearActionType(item);
+
+  if (!actionType || !isGearVisibleInScene(item)) {
+    return;
+  }
+
+  enqueueAction(actionType, item.id);
+}
+
+function executeQueuedAction(action) {
+  if (!action) {
+    return;
+  }
+
+  if (action.type === "wood") {
+    executeQueuedWoodAction(action);
+    return;
+  }
+
+  if (action.type === "chair") {
+    executeQueuedChairAction(action);
+    return;
+  }
+
+  if (action.type === "tent") {
+    executeQueuedTentAction(action);
+    return;
+  }
+
+  if (action.type === "fire") {
+    executeQueuedFireAction();
+    return;
+  }
+
+  completeActiveQueuedAction();
+}
+
+function getOnboardingFirstGearItem() {
+  return getGearItem(ONBOARDING_FIRST_GEAR_ID);
+}
+
+function getOnboardingStep() {
+  return onboardingSteps[onboardingStepIndex] || null;
+}
+
+function isShopOpen() {
+  return document.body.classList.contains("shop-open");
+}
+
+function getOnboardingFirstGearCard() {
+  return shopCards[ONBOARDING_FIRST_GEAR_ID] || null;
+}
+
+function getOnboardingTarget(step) {
+  if (!step) {
+    return null;
+  }
+
+  if (step.id === "gather") {
+    return gatherWoodToggle;
+  }
+
+  if (step.id === "fire") {
+    return campfire;
+  }
+
+  if (step.id === "warmth") {
+    return warmthStatus;
+  }
+
+  if (step.id === "cozy") {
+    return cozyPointStatus;
+  }
+
+  if (step.id === "shop") {
+    return shopToggle;
+  }
+
+  if (step.id === "chair") {
+    const chairCard = getOnboardingFirstGearCard();
+    return chairCard && chairCard.detailLabel || chairCard && chairCard.button || null;
+  }
+
+  if (step.id === "comfort") {
+    return comfortStatus;
+  }
+
+  return null;
+}
+
+function getOnboardingStepBody(step) {
+  const firstGear = getOnboardingFirstGearItem();
+  const firstGearName = firstGear ? firstGear.displayName : "first chair";
+  const firstGearComfort = firstGear ? Number(firstGear.comfort) || 0 : 0;
+  const firstGearCost = firstGear ? Number(firstGear.cost) || 0 : 0;
+  const missingPoints = Math.max(0, firstGearCost - gameState.cozyPoints);
+
+  if (!step) {
+    return "";
+  }
+
+  if (step.id === "gather") {
+    return gameState.gatherWoodMode ?
+      "Tap objects to interact. Gather is on, so the camper automatically collects fallen branches. You can still tap a branch to send the camper to that one." :
+      "Tap objects to interact. Tap Gather to turn on automatic branch collecting. Even with Gather Off, you can tap fallen branches to send the camper to feed the fire.";
+  }
+
+  if (step.id === "fire") {
+    return gameState.warmthSeconds > 0 ?
+      "The fire is lit. Branches add Warmth after the camper carries them back to the campfire." :
+      "The camper is bringing branches to the fire. You can also tap any fallen branch to send the camper over.";
+  }
+
+  if (step.id === "warmth") {
+    return "Warmth shows how cozy and alive your camp feels. Keep the fire going to maintain Warmth. If Warmth reaches 0, your camp stops earning Cozy Points.";
+  }
+
+  if (step.id === "cozy") {
+    return "Cozy Points are the main progress points. Spend them on gear, upgrades, and later unlocks.";
+  }
+
+  if (step.id === "shop") {
+    return "Open Shop once the fire has earned points. The first useful goal is " + firstGearName + ".";
+  }
+
+  if (step.id === "chair") {
+    if (ownsGear(ONBOARDING_FIRST_GEAR_ID)) {
+      return firstGearName + " is owned. Its +" + firstGearComfort + " Comfort now helps the camp earn faster.";
+    }
+
+    if (missingPoints > 0) {
+      return firstGearName + " costs " + formatNumber(firstGearCost) + " CP and gives +" + firstGearComfort + " Comfort. You need " + formatNumber(missingPoints) + " more CP, so keep Gather on or tap fallen branches to feed the fire.";
+    }
+
+    return "Tap the " + firstGearName + " card. It gives +" + firstGearComfort + " Comfort, and Comfort raises Cozy Point production.";
+  }
+
+  if (step.id === "comfort") {
+    return "Comfort is now part of the loop: Gather, Warmth, Cozy Points, gear, Comfort, faster Cozy Points.";
+  }
+
+  return "";
+}
+
+function getOnboardingPrimaryLabel(step) {
+  const firstGear = getOnboardingFirstGearItem();
+  const firstGearName = firstGear ? firstGear.displayName : "chair";
+  const firstGearCost = firstGear ? Number(firstGear.cost) || 0 : 0;
+  const missingPoints = Math.max(0, firstGearCost - gameState.cozyPoints);
+
+  if (!step) {
+    return "Next";
+  }
+
+  if (step.id === "gather") {
+    return gameState.gatherWoodMode ? "Next" : "Tap Gather";
+  }
+
+  if (step.id === "shop") {
+    return isShopOpen() ? "Next" : "Tap Shop";
+  }
+
+  if (step.id === "fire") {
+    return gameState.warmthSeconds > 0 ? "Next" : "Waiting for wood";
+  }
+
+  if (step.id === "chair") {
+    if (ownsGear(ONBOARDING_FIRST_GEAR_ID)) {
+      return "Next";
+    }
+
+    if (missingPoints > 0) {
+      return "Need " + formatNumber(missingPoints) + " CP";
+    }
+
+    return "Tap " + firstGearName;
+  }
+
+  if (step.id === "comfort") {
+    return "Finish";
+  }
+
+  return "Next";
+}
+
+function canAdvanceOnboarding(step) {
+  if (!step) {
+    return false;
+  }
+
+  if (step.id === "gather") {
+    return gameState.gatherWoodMode;
+  }
+
+  if (step.id === "shop") {
+    return isShopOpen();
+  }
+
+  if (step.id === "fire") {
+    return gameState.warmthSeconds > 0;
+  }
+
+  if (step.id === "chair") {
+    return ownsGear(ONBOARDING_FIRST_GEAR_ID);
+  }
+
+  return true;
+}
+
+function clearOnboardingHighlight() {
+  if (onboardingHighlightedElement) {
+    onboardingHighlightedElement.classList.remove("onboarding-highlight");
+  }
+
+  if (onboardingCardFocusElement) {
+    onboardingCardFocusElement.classList.remove("onboarding-card-focus");
+  }
+
+  onboardingHighlightedElement = null;
+  onboardingCardFocusElement = null;
+}
+
+function focusOnboardingShopCard() {
+  const chairCard = getOnboardingFirstGearCard();
+
+  if (!chairCard || !chairCard.button) {
+    return;
+  }
+
+  chairCard.button.scrollIntoView({ block: "center", inline: "nearest" });
+}
+
+function applyOnboardingStepSetup(step) {
+  if (!step) {
+    return;
+  }
+
+  if (step.id === "chair") {
+    openShop();
+    setShopFilter("living");
+    requestAnimationFrame(function() {
+      focusOnboardingShopCard();
+      positionOnboardingLayer();
+    });
+    return;
+  }
+
+  if (step.id !== "shop" && isShopOpen()) {
+    closeShop();
+  }
+}
+
+function positionOnboardingLayer() {
+  if (!onboardingActive || !onboardingLayer || !onboardingPanel || !onboardingPointer || !gameViewport) {
+    return;
+  }
+
+  const target = onboardingHighlightedElement || getOnboardingTarget(getOnboardingStep());
+
+  if (!target) {
+    return;
+  }
+
+  const viewportRect = gameViewport.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+
+  if (viewportRect.width <= 0 || viewportRect.height <= 0 || targetRect.width <= 0 || targetRect.height <= 0) {
+    return;
+  }
+
+  const targetCenterX = targetRect.left - viewportRect.left + targetRect.width / 2;
+  const targetCenterY = targetRect.top - viewportRect.top + targetRect.height / 2;
+  const targetTop = targetRect.top - viewportRect.top;
+  const targetBottom = targetRect.bottom - viewportRect.top;
+  const margin = Math.max(8, Math.min(14, viewportRect.width * 0.035));
+  const gap = 18;
+
+  onboardingPanel.style.left = margin + "px";
+  onboardingPanel.style.top = margin + "px";
+  onboardingPanel.style.bottom = "auto";
+
+  const panelRect = onboardingPanel.getBoundingClientRect();
+  const panelWidth = Math.min(panelRect.width, viewportRect.width - margin * 2);
+  const panelHeight = Math.min(panelRect.height, viewportRect.height - margin * 2);
+  const maxLeft = Math.max(margin, viewportRect.width - panelWidth - margin);
+  const maxTop = Math.max(margin, viewportRect.height - panelHeight - margin);
+  const left = clamp(targetCenterX - panelWidth / 2, margin, maxLeft);
+  const belowTop = targetBottom + gap;
+  const aboveTop = targetTop - panelHeight - gap;
+  const hasRoomBelow = belowTop + panelHeight <= viewportRect.height - margin;
+  const hasRoomAbove = aboveTop >= margin;
+  let top = belowTop;
+  let pointsUp = true;
+
+  if ((!hasRoomBelow && hasRoomAbove) || targetCenterY > viewportRect.height * 0.58) {
+    top = aboveTop;
+    pointsUp = false;
+  }
+
+  top = clamp(top, margin, maxTop);
+
+  onboardingPanel.style.left = left + "px";
+  onboardingPanel.style.top = top + "px";
+
+  if (pointsUp) {
+    onboardingPointer.classList.add("point-up");
+    onboardingPointer.classList.remove("point-down");
+    onboardingPointer.style.top = clamp(top - 10, margin, viewportRect.height - margin) + "px";
+  } else {
+    onboardingPointer.classList.add("point-down");
+    onboardingPointer.classList.remove("point-up");
+    onboardingPointer.style.top = clamp(top + panelHeight + 10, margin, viewportRect.height - margin) + "px";
+  }
+
+  onboardingPointer.style.left = clamp(targetCenterX, left + 16, left + panelWidth - 16) + "px";
+}
+
+function updateOnboardingView() {
+  if (!onboardingActive || !onboardingLayer) {
+    return;
+  }
+
+  const step = getOnboardingStep();
+  const target = getOnboardingTarget(step);
+
+  clearOnboardingHighlight();
+
+  if (target) {
+    target.classList.add("onboarding-highlight");
+    onboardingHighlightedElement = target;
+  }
+
+  if (step && step.id === "chair") {
+    const chairCard = getOnboardingFirstGearCard();
+
+    if (chairCard && chairCard.button) {
+      chairCard.button.classList.add("onboarding-card-focus");
+      onboardingCardFocusElement = chairCard.button;
+    }
+  }
+
+  onboardingStepLabel.textContent = "Guide " + (onboardingStepIndex + 1) + " / " + onboardingSteps.length;
+  onboardingTitle.textContent = step ? step.title : "";
+  onboardingBody.textContent = getOnboardingStepBody(step);
+  onboardingPrimaryButton.textContent = getOnboardingPrimaryLabel(step);
+  onboardingPrimaryButton.disabled = !canAdvanceOnboarding(step);
+  onboardingSkipButton.textContent = onboardingManual ? "Close" : "Skip";
+
+  requestAnimationFrame(positionOnboardingLayer);
+}
+
+function showOnboardingStep() {
+  const step = getOnboardingStep();
+
+  if (!step || !onboardingLayer) {
+    return;
+  }
+
+  onboardingLayer.classList.remove("hidden");
+  onboardingLayer.setAttribute("aria-hidden", "false");
+  applyOnboardingStepSetup(step);
+  updateOnboardingView();
+}
+
+function completeOnboarding(markSeen) {
+  onboardingActive = false;
+  clearOnboardingHighlight();
+
+  if (onboardingLayer) {
+    onboardingLayer.classList.add("hidden");
+    onboardingLayer.setAttribute("aria-hidden", "true");
+  }
+
+  if (markSeen) {
+    gameState.onboardingSeen = true;
+    saveGame();
+  }
+}
+
+function advanceOnboarding() {
+  if (!onboardingActive) {
+    return;
+  }
+
+  const step = getOnboardingStep();
+
+  if (!canAdvanceOnboarding(step)) {
+    updateOnboardingView();
+    return;
+  }
+
+  if (onboardingStepIndex >= onboardingSteps.length - 1) {
+    completeOnboarding(true);
+    setStatus("Guide complete. Keep the fire warm and make camp cozier.");
+    return;
+  }
+
+  onboardingStepIndex += 1;
+  showOnboardingStep();
+}
+
+function startOnboarding(isManual) {
+  onboardingManual = Boolean(isManual);
+  onboardingActive = true;
+  onboardingStepIndex = 0;
+  showOnboardingStep();
+}
+
+function maybeStartOnboarding() {
+  if (!gameState.onboardingSeen) {
+    startOnboarding(false);
+  }
 }
 
 function resetSaveIfRequestedByUrl() {
@@ -579,6 +1580,7 @@ function resetCamperForNewGame() {
     currentAction: null,
     actionTimer: 0,
     targetWoodId: null,
+    woodCollectionSource: null,
     carryingWood: false,
     facing: "right",
     animationStartedAt: Date.now()
@@ -592,6 +1594,7 @@ function resetGameToFreshStart(message) {
   woodItems = [];
   nextWoodId = 1;
   woodLayer.innerHTML = "";
+  clearActionQueue();
 
   resetCamperForNewGame();
   closeShop();
@@ -603,6 +1606,7 @@ function resetGameToFreshStart(message) {
   chooseNextCamperAction();
   saveGame();
   showWelcome(message || "Save reset. Camp starts fresh.");
+  startOnboarding(false);
 }
 
 function confirmResetSave() {
@@ -633,7 +1637,16 @@ function sanitizeSave(savedGame) {
     cleanState.campfireLevel = savedGame.campfireLevel;
     cleanState.nightUnlocked = savedGame.nightUnlocked;
     cleanState.isNight = savedGame.isNight;
-    cleanState.gatherWoodMode = savedGame.gatherWoodMode;
+    if (savedGame.gatherWoodMode !== undefined) {
+      cleanState.gatherWoodMode = savedGame.gatherWoodMode;
+    } else {
+      cleanState.gatherWoodMode = true;
+    }
+    if (savedGame.onboardingSeen !== undefined) {
+      cleanState.onboardingSeen = Boolean(savedGame.onboardingSeen);
+    } else {
+      cleanState.onboardingSeen = true;
+    }
     cleanState.vehiclePlacementMigrated = Boolean(savedGame.vehiclePlacementMigrated);
     if (savedGame.lastSaveTime !== undefined) {
       cleanState.lastSaveTime = savedGame.lastSaveTime;
@@ -784,7 +1797,7 @@ function sanitizeSave(savedGame) {
   cleanState.campfireLevel = clamp(Number(cleanState.campfireLevel) || 1, 1, 3);
   cleanState.nightUnlocked = Boolean(cleanState.nightUnlocked || hasNightUnlock(cleanState));
   cleanState.isNight = Boolean(cleanState.isNight && cleanState.nightUnlocked);
-  cleanState.gatherWoodMode = cleanState.gatherWoodMode !== false;
+  cleanState.gatherWoodMode = Boolean(cleanState.gatherWoodMode);
   cleanState.lastSaveTime = Number(cleanState.lastSaveTime) || Date.now();
   cleanState.comfort = calculateComfort(cleanState);
 
@@ -829,7 +1842,7 @@ function applyOfflineEarnings() {
     gameState.warmthSeconds = Math.max(0, gameState.warmthSeconds - activeSeconds * netBurnRate);
     showWelcome("Welcome back: +" + formatNumber(earnedPoints) + " Cozy Points from " + formatShortTime(activeSeconds) + " of firelight.");
   } else if (secondsAway > 60) {
-    showWelcome("Welcome back. The campfire is waiting for more wood.");
+    showWelcome("Welcome back. The campfire is waiting for more branches.");
   }
 
   gameState.lastSaveTime = now;
@@ -856,6 +1869,7 @@ function updateScreen() {
 
   updateShopCards();
   updateSceneEquipment();
+  updateOnboardingView();
 }
 
 function getShopGroupsInOrder() {
@@ -1131,8 +2145,41 @@ function updateShopCards() {
 
 function setVersionedLayerSource(image, path) {
   if (image && path) {
-    image.src = withVersion(path);
+    const nextSrc = withVersion(path);
+
+    image.dataset.assetPath = path;
+
+    if (image.getAttribute("src") !== nextSrc) {
+      image.dataset.imageLoadError = "";
+      image.src = nextSrc;
+    }
+
+    image.onerror = function() {
+      image.dataset.imageLoadError = "true";
+    };
   }
+}
+
+function reapplyGearSceneLayoutWhenImageReady(element, item, zIndex) {
+  const sourceImage = getSceneAssetSourceImage(element);
+
+  if (!sourceImage) {
+    return;
+  }
+
+  const reapplyLayout = function() {
+    applyGearSceneLayout(element, item, zIndex);
+    updateTargetOutlineForElement(element);
+    updateActionQueueIndicators();
+  };
+
+  if (sourceImage.naturalWidth && sourceImage.naturalHeight) {
+    reapplyLayout();
+    return;
+  }
+
+  sourceImage.addEventListener("load", reapplyLayout, { once: true });
+  sourceImage.addEventListener("error", reapplyLayout, { once: true });
 }
 
 function ensureLayerImage(element, className) {
@@ -1179,7 +2226,50 @@ function getOrCreateGearSceneElement(item) {
     gearLayer.appendChild(element);
   }
 
+  configureGearActionTarget(element, item);
+
   return element;
+}
+
+function configureGearActionTarget(element, item) {
+  if (!element || !item) {
+    return;
+  }
+
+  element.setAttribute("data-action-target-id", item.id);
+
+  if (!isGearQueueInteractive(item)) {
+    if (selectedActionTargetElement === element) {
+      clearSelectedActionTarget();
+    }
+
+    element.onclick = null;
+    element.onpointerdown = null;
+    element.ontouchstart = null;
+    element.onkeydown = null;
+    element.removeAttribute("role");
+    element.removeAttribute("tabindex");
+    return;
+  }
+
+  element.setAttribute("role", "button");
+  element.tabIndex = 0;
+  element.onpointerdown = function(event) {
+    rememberActionPointerType(event, element);
+  };
+  element.ontouchstart = function() {
+    element.dataset.lastPointerType = "touch";
+  };
+  element.onclick = function(event) {
+    handleGearActionClick(event, element, item);
+  };
+  element.onkeydown = function(event) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      clearSelectedActionTarget();
+      queueGearAction(item);
+    }
+  };
 }
 
 function getOrCreateGearFrontElement(item) {
@@ -1197,18 +2287,166 @@ function getOrCreateGearFrontElement(item) {
   return frontElement;
 }
 
-function getSceneSpriteSize(item) {
-  const scene = item && item.scene ? item.scene : {};
+function getNaturalSceneAssetLogicalSize(image) {
+  if (!image || !image.naturalWidth || !image.naturalHeight) {
+    return null;
+  }
 
-  return scene.spriteSize || item && item.spriteSize || { width: 80, height: 80 };
+  return {
+    width: image.naturalWidth / SCENE_ASSET_SCALE,
+    height: image.naturalHeight / SCENE_ASSET_SCALE,
+    source: "natural"
+  };
 }
 
-function getSceneGroundAnchor(item) {
-  const spriteSize = getSceneSpriteSize(item);
+function getSceneAssetSourceImage(element) {
+  if (!element) {
+    return null;
+  }
+
+  return element.querySelector(".gear-layer-base") || Array.from(element.querySelectorAll(".object-image")).find(isOutlineSourceImage);
+}
+
+function getSceneAssetPathForLog(item, image) {
+  return image && image.dataset && image.dataset.assetPath || item && item.image || "missing image path";
+}
+
+function reportSceneAssetSizeState(element, item, status, image) {
+  const path = getSceneAssetPathForLog(item, image);
+  const id = item && item.id ? item.id : element && element.id || "unknown";
+  const key = status + ":" + id + ":" + path;
+
+  if (element && element.dataset.sceneSizeLogKey === key) {
+    return;
+  }
+
+  if (element) {
+    element.dataset.sceneSizeLogKey = key;
+  }
+
+  const message = "[scene asset] " + status + " for gear " + id + ": " + path;
+
+  if (status === "loading") {
+    console.warn(message);
+  } else {
+    console.error(message);
+  }
+}
+
+function getScenePlaceholderLogicalSize(source) {
+  return {
+    width: DEV_SCENE_PLACEHOLDER_SIZE,
+    height: DEV_SCENE_PLACEHOLDER_SIZE,
+    source: source
+  };
+}
+
+function getSceneAssetLogicalSize(item, element, sourceImage) {
+  const image = sourceImage || getSceneAssetSourceImage(element);
+  const naturalSize = getNaturalSceneAssetLogicalSize(image);
+
+  if (naturalSize) {
+    if (element) {
+      element.dataset.sceneSizeLogKey = "";
+    }
+
+    return naturalSize;
+  }
+
+  if (!image) {
+    reportSceneAssetSizeState(element, item, "missing-image", image);
+    return getScenePlaceholderLogicalSize("missing-image");
+  }
+
+  if (image.dataset && image.dataset.imageLoadError === "true") {
+    reportSceneAssetSizeState(element, item, "error", image);
+    return getScenePlaceholderLogicalSize("error");
+  }
+
+  if (!image.complete) {
+    reportSceneAssetSizeState(element, item, "loading", image);
+    return getScenePlaceholderLogicalSize("loading");
+  }
+
+  reportSceneAssetSizeState(element, item, "error", image);
+  return getScenePlaceholderLogicalSize("error");
+}
+
+function getScenePixelPosition(scene, layoutOverride) {
+  const override = layoutOverride || {};
+
+  if (typeof override.sceneX === "number" && typeof override.sceneY === "number") {
+    return { x: override.sceneX, y: override.sceneY };
+  }
+
+  if (override.position) {
+    return percentPointToScenePoint(override.position);
+  }
+
+  if (scene && typeof scene.sceneX === "number" && typeof scene.sceneY === "number") {
+    return { x: scene.sceneX, y: scene.sceneY };
+  }
+
+  if (scene && scene.position) {
+    return percentPointToScenePoint(scene.position);
+  }
+
+  return { x: 0, y: 0 };
+}
+
+function getScenePercentPosition(scene, layoutOverride) {
+  const override = layoutOverride || {};
+
+  if (override.position) {
+    return override.position;
+  }
+
+  if (typeof override.sceneX === "number" && typeof override.sceneY === "number") {
+    return scenePointToPercent({ x: override.sceneX, y: override.sceneY });
+  }
+
+  if (scene && scene.position) {
+    return scene.position;
+  }
+
+  if (scene && typeof scene.sceneX === "number" && typeof scene.sceneY === "number") {
+    return scenePointToPercent({ x: scene.sceneX, y: scene.sceneY });
+  }
+
+  return { x: 0, y: 0 };
+}
+
+function getSceneAssetLogicalPoint(item, point, logicalSize) {
+  if (!point) {
+    return { x: 0, y: 0 };
+  }
+
+  if (typeof point.ratioX === "number" && typeof point.ratioY === "number") {
+    return {
+      x: point.ratioX * logicalSize.width,
+      y: point.ratioY * logicalSize.height
+    };
+  }
+
+  console.error("[scene asset] missing normalized point ratio for gear " + (item && item.id ? item.id : "unknown"));
+
+  return {
+    x: logicalSize.width / 2,
+    y: logicalSize.height
+  };
+}
+
+function getSceneGroundAnchor(item, logicalSize) {
+  const assetSize = logicalSize || getScenePlaceholderLogicalSize("missing-image");
   const anchors = item && item.anchors ? item.anchors : {};
   const scene = item && item.scene ? item.scene : {};
+  const anchor = scene.anchor || anchors.ground;
 
-  return scene.anchor || anchors.ground || { x: spriteSize.width / 2, y: spriteSize.height };
+  if (anchor) {
+    return getSceneAssetLogicalPoint(item, anchor, assetSize);
+  }
+
+  return { x: assetSize.width / 2, y: assetSize.height };
 }
 
 function getCurrentVehicleItem(state) {
@@ -1219,28 +2457,25 @@ function isVehiclePlaced(item, state) {
   return Boolean(item && isVehicleItem(item) && getEquippedGearId("vehicle", state || gameState) === item.id && isGearPlaced(item.id, state));
 }
 
-function getScenePointFromSpritePoint(item, point) {
-  const spriteSize = getSceneSpriteSize(item);
-  const groundAnchor = getSceneGroundAnchor(item);
+function getScenePointFromAssetPoint(item, point, layoutOverride) {
   const scene = item.scene || {};
-  const position = scene.position || { x: 0, y: 0 };
-  const widthPercent = scene.widthPercent || 0;
-  const sceneWidthToHeightRatio = getSceneWidthToHeightRatio();
+  const logicalSize = getSceneAssetLogicalSize(item, getGearSceneElement(item));
+  const groundAnchor = getSceneGroundAnchor(item, logicalSize);
+  const assetPoint = getSceneAssetLogicalPoint(item, point, logicalSize);
+  const position = getScenePixelPosition(scene, layoutOverride);
 
   return {
-    x: position.x + ((point.x - groundAnchor.x) / spriteSize.width) * widthPercent,
-    y: position.y + ((point.y - groundAnchor.y) / spriteSize.width) * widthPercent * sceneWidthToHeightRatio
+    x: position.x + assetPoint.x - groundAnchor.x,
+    y: position.y + assetPoint.y - groundAnchor.y
   };
 }
 
 function getVehicleRoofMount(vehicleItem) {
-  const spriteSize = getSceneSpriteSize(vehicleItem);
   const scene = vehicleItem && vehicleItem.scene ? vehicleItem.scene : {};
 
   return scene.roofMount || {
-    x: spriteSize.width / 2,
-    y: spriteSize.height * 0.34,
-    widthPercent: (scene.widthPercent || 0) * 0.74,
+    ratioX: 0.5,
+    ratioY: 0.34,
     zIndex: (scene.zIndex || 14) + 2
   };
 }
@@ -1257,11 +2492,12 @@ function getRooftopTentLayout(item) {
   }
 
   const mount = getVehicleRoofMount(vehicleItem);
-  const position = getScenePointFromSpritePoint(vehicleItem, mount);
+  const scenePoint = getScenePointFromAssetPoint(vehicleItem, mount);
 
   return {
-    position: position,
-    widthPercent: mount.widthPercent || item.scene.widthPercent,
+    sceneX: scenePoint.x,
+    sceneY: scenePoint.y,
+    position: scenePointToPercent(scenePoint),
     zIndex: mount.zIndex || item.scene.zIndex || 16
   };
 }
@@ -1279,11 +2515,12 @@ function getVehicleMountLayout(item, mountKey) {
     return null;
   }
 
-  const position = getScenePointFromSpritePoint(vehicleItem, mount);
+  const scenePoint = getScenePointFromAssetPoint(vehicleItem, mount);
 
   return {
-    position: position,
-    widthPercent: mount.widthPercent || item.scene.widthPercent,
+    sceneX: scenePoint.x,
+    sceneY: scenePoint.y,
+    position: scenePointToPercent(scenePoint),
     zIndex: mount.zIndex || item.scene.zIndex || 20,
     mirrored: typeof mount.mirrored === "boolean" ? mount.mirrored : item.scene.mirrored
   };
@@ -1301,21 +2538,23 @@ function getSceneLayoutOverride(item) {
 }
 
 function applyGearSceneLayout(element, item, zIndex) {
-  const spriteSize = getSceneSpriteSize(item);
-  const groundAnchor = getSceneGroundAnchor(item);
   const scene = item.scene || {};
   const layoutOverride = getSceneLayoutOverride(item);
-  const position = layoutOverride && layoutOverride.position || scene.position || { x: 0, y: 0 };
-  const widthPercent = layoutOverride && layoutOverride.widthPercent || scene.widthPercent || 0;
+  const logicalSize = getSceneAssetLogicalSize(item, element);
+  const groundAnchor = getSceneGroundAnchor(item, logicalSize);
+  const position = getScenePixelPosition(scene, layoutOverride);
+  const mirrored = layoutOverride && typeof layoutOverride.mirrored === "boolean" ? layoutOverride.mirrored : scene.mirrored;
 
-  element.style.left = position.x + "%";
-  element.style.top = position.y + "%";
-  element.style.width = widthPercent + "%";
-  element.style.aspectRatio = scene.aspectRatio || spriteSize.width + " / " + spriteSize.height;
+  element.style.left = position.x + "px";
+  element.style.top = position.y + "px";
+  element.style.width = logicalSize.width + "px";
+  element.style.height = logicalSize.height + "px";
+  element.style.aspectRatio = logicalSize.width + " / " + logicalSize.height;
   element.style.zIndex = layoutOverride && layoutOverride.zIndex || zIndex;
-  element.style.setProperty("--object-anchor-x", -groundAnchor.x / spriteSize.width * 100 + "%");
-  element.style.setProperty("--object-anchor-y", -groundAnchor.y / spriteSize.height * 100 + "%");
-  element.style.setProperty("--object-scale-x", scene.mirrored ? "-1" : "1");
+  element.style.setProperty("--object-anchor-x", -groundAnchor.x / logicalSize.width * 100 + "%");
+  element.style.setProperty("--object-anchor-y", -groundAnchor.y / logicalSize.height * 100 + "%");
+  element.style.setProperty("--object-scale-x", mirrored ? "-1" : "1");
+  element.dataset.sceneSizeSource = logicalSize.source;
 }
 
 function updateGearSceneElement(item) {
@@ -1332,7 +2571,6 @@ function updateGearSceneElement(item) {
   }
 
   element.className = "gear-object asset-object category-" + item.category + " hidden";
-  applyGearSceneLayout(element, item, scene.zIndex || 20);
 
   Object.keys(layers).forEach(function(layerName) {
     if (layerName === "front" || !layers[layerName]) {
@@ -1351,13 +2589,16 @@ function updateGearSceneElement(item) {
     setVersionedLayerSource(ensureLayerImage(element, "gear-layer-base"), item.image);
   }
 
+  applyGearSceneLayout(element, item, scene.zIndex || 20);
+  reapplyGearSceneLayoutWhenImageReady(element, item, scene.zIndex || 20);
+
   const frontElement = layers.front ? getOrCreateGearFrontElement(item) : document.getElementById(getGearFrontElementId(item));
 
   if (frontElement) {
-    applyGearSceneLayout(frontElement, item, scene.frontZIndex || 31);
-
     if (layers.front) {
       setVersionedLayerSource(ensureLayerImage(frontElement, "gear-layer-front"), layers.front);
+      applyGearSceneLayout(frontElement, item, scene.frontZIndex || 31);
+      reapplyGearSceneLayoutWhenImageReady(frontElement, item, scene.frontZIndex || 31);
     }
   }
 }
@@ -1398,21 +2639,32 @@ function getCamperAttachmentOffset(attachment, offsetGroupName, facingKey) {
 function applyCamperAttachmentLayout(element, item, layerName, options) {
   const layerOptions = options || {};
   const attachment = item.attachment || {};
-  const spriteSize = layerOptions.spriteSize || getSceneSpriteSize(item);
   const facingKey = getCamperAttachmentFacingKey();
   const offset = layerOptions.offset || getCamperAttachmentOffset(attachment, "offsets", facingKey);
   const facing = normalizeFacing(camper.facing);
+  const logicalSize = getSceneAssetLogicalSize(item, element, element);
 
-  element.style.left = camper.x + offset.x + "%";
-  element.style.top = camper.y + offset.y + "%";
-  element.style.width = (layerOptions.widthPercent || attachment.widthPercent || 3) + "%";
-  element.style.aspectRatio = spriteSize.width + " / " + spriteSize.height;
+  element.style.left = sceneXFromPercent(camper.x + offset.x) + "px";
+  element.style.top = sceneYFromPercent(camper.y + offset.y) + "px";
+  element.style.width = logicalSize.width + "px";
+  element.style.height = logicalSize.height + "px";
+  element.style.aspectRatio = logicalSize.width + " / " + logicalSize.height;
   element.style.zIndex = layerOptions.zIndex || attachment.zIndex || 32;
   element.style.setProperty("--attachment-scale-x", layerOptions.mirrorWithFacing === false ? "1" : facing === "left" ? "-1" : "1");
   element.style.setProperty("--attachment-rotate", (offset.rotate || 0) + "deg");
   element.classList.toggle("camper-attachment-back-pose", facingKey === "back");
   element.classList.toggle("camper-attachment-" + item.id, true);
   element.classList.toggle("camper-attachment-layer-" + layerName, true);
+  element.dataset.sceneSizeSource = logicalSize.source;
+
+  if (!element.naturalWidth || !element.naturalHeight) {
+    const relayout = function() {
+      applyCamperAttachmentLayout(element, item, layerName, options);
+    };
+
+    element.addEventListener("load", relayout, { once: true });
+    element.addEventListener("error", relayout, { once: true });
+  }
 }
 
 function updateCamperAttachmentElement(item) {
@@ -1429,21 +2681,17 @@ function updateCamperAttachmentElement(item) {
   const coneElement = getOrCreateCamperAttachmentElement(item, "cone");
 
   if (frontElement && layers.front) {
-    frontElement.src = withVersion(layers.front);
+    setVersionedLayerSource(frontElement, layers.front);
     frontElement.className = "camper-attachment camper-attachment-front camper-attachment-" + item.id + (shouldShow && facingKey !== "back" ? "" : " hidden");
     applyCamperAttachmentLayout(frontElement, item, "front", {
-      spriteSize: { width: 64, height: 44 },
-      widthPercent: attachment.widthPercent,
       zIndex: attachment.zIndex
     });
   }
 
   if (backElement && layers.back) {
-    backElement.src = withVersion(layers.back);
+    setVersionedLayerSource(backElement, layers.back);
     backElement.className = "camper-attachment camper-attachment-back camper-attachment-" + item.id + (shouldShow && facingKey === "back" ? "" : " hidden");
     applyCamperAttachmentLayout(backElement, item, "back", {
-      spriteSize: { width: 64, height: 44 },
-      widthPercent: attachment.backWidthPercent || attachment.widthPercent,
       zIndex: attachment.backZIndex || attachment.zIndex
     });
   }
@@ -1451,12 +2699,10 @@ function updateCamperAttachmentElement(item) {
   if (coneElement && layers.cone) {
     const coneOffset = getCamperAttachmentOffset(attachment, "coneOffsets", facingKey);
 
-    coneElement.src = withVersion(layers.cone);
+    setVersionedLayerSource(coneElement, layers.cone);
     coneElement.className = "camper-attachment camper-attachment-cone camper-attachment-" + item.id + (shouldShow ? "" : " hidden");
     applyCamperAttachmentLayout(coneElement, item, "cone", {
-      spriteSize: { width: 220, height: 92 },
       offset: coneOffset,
-      widthPercent: attachment.coneWidthPercent,
       zIndex: facingKey === "back" ? attachment.backZIndex || 29 : attachment.coneZIndex || 31
     });
   }
@@ -1499,14 +2745,44 @@ function updateSceneGearVisibility(item) {
   const frontElement = document.getElementById(getGearFrontElementId(item));
   const isVisible = isGearVisibleInScene(item);
   const layers = item.scene && item.scene.layers ? item.scene.layers : {};
+  const isInteractive = isVisible && isGearQueueInteractive(item);
 
   if (element && item.scene.renderMode !== "campfire") {
     element.classList.toggle("hidden", !isVisible);
+    element.classList.toggle("interactive-action-target", isInteractive);
+    element.tabIndex = isInteractive ? 0 : -1;
+
+    if (!isInteractive && selectedActionTargetElement === element) {
+      clearSelectedActionTarget();
+    }
+
+    if (isInteractive) {
+      updateTargetOutlineForElement(element);
+    }
   }
 
   if (frontElement) {
     frontElement.classList.toggle("hidden", !isVisible || !layers.front);
   }
+}
+
+function configureCampfireActionTarget() {
+  campfire.classList.add("interactive-action-target", "campfire-action-target");
+  campfire.setAttribute("role", "button");
+  campfire.tabIndex = 0;
+  campfire.onclick = function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    clearSelectedActionTarget();
+    enqueueAction("fire", "campfire");
+  };
+  campfire.onkeydown = function(event) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      clearSelectedActionTarget();
+      enqueueAction("fire", "campfire");
+    }
+  };
 }
 
 function updateSceneEquipment() {
@@ -1522,11 +2798,14 @@ function updateSceneEquipment() {
 
   campfire.className = "campfire asset-object level-" + gameState.campfireLevel;
   campfire.classList.toggle("lit", gameState.warmthSeconds > 0);
+  configureCampfireActionTarget();
   fireGlowImage.src = assetPaths.campfire.glow;
   campfireBaseImage.src = assetPaths.campfire.base[gameState.campfireLevel];
   campfireFlameImage.src = getCurrentFlameImage();
+  updateTargetOutline(campfire, campfireBaseImage);
 
   dayNightIcon.src = gameState.isNight ? assetPaths.ui.day : assetPaths.ui.night;
+  updateActionQueueIndicators();
 }
 
 function spendCozyPoints(cost) {
@@ -1697,6 +2976,10 @@ function handleGearAction(id) {
     setStatus(isEquippableGear(item) || isGearPlaceable(item) ? item.displayName + " joins the campsite." : item.displayName + " is owned.");
     updateScreen();
     saveGame();
+
+    if (onboardingActive && getOnboardingStep() && getOnboardingStep().id === "chair" && item.id === ONBOARDING_FIRST_GEAR_ID) {
+      advanceOnboarding();
+    }
   }
 }
 
@@ -1704,6 +2987,10 @@ function openShop() {
   document.body.classList.add("shop-open");
   shopDrawer.setAttribute("aria-hidden", "false");
   setShopFilter(activeShopFilter);
+
+  if (onboardingActive && getOnboardingStep() && getOnboardingStep().id === "shop") {
+    advanceOnboarding();
+  }
 }
 
 function closeShop() {
@@ -1740,9 +3027,13 @@ function setShopFilter(filter) {
 function toggleGatherWoodMode() {
   gameState.gatherWoodMode = !gameState.gatherWoodMode;
   camper.actionTimer = 0;
-  setStatus(gameState.gatherWoodMode ? "The camper is focused on firewood." : "The camper returns to slow camp life.");
+  setStatus(gameState.gatherWoodMode ? "The camper will automatically collect fallen branches." : "Gather is off. You can still tap branches by hand.");
   updateScreen();
   saveGame();
+
+  if (onboardingActive && getOnboardingStep() && getOnboardingStep().id === "gather" && gameState.gatherWoodMode) {
+    advanceOnboarding();
+  }
 }
 
 function toggleDayNight() {
@@ -1774,15 +3065,89 @@ function spawnWood() {
 }
 
 function renderWoodItem(wood) {
-  const woodElement = document.createElement("img");
+  const woodElement = document.createElement("button");
+  const woodImage = document.createElement("img");
+
   woodElement.className = "wood-item";
   woodElement.id = "wood-" + wood.id;
-  woodElement.src = assetPaths.resources.wood;
-  woodElement.alt = "";
-  woodElement.style.left = wood.x + "%";
-  woodElement.style.top = wood.y + "%";
+  woodElement.type = "button";
+  woodElement.setAttribute("aria-label", "Send camper to collect fallen branches");
+  woodElement.style.left = sceneXFromPercent(wood.x) + "px";
+  woodElement.style.top = sceneYFromPercent(wood.y) + "px";
   woodElement.style.setProperty("--wood-rotate", wood.rotate + "deg");
+
+  woodImage.className = "wood-image";
+  woodImage.src = assetPaths.resources.wood;
+  woodImage.alt = "";
+  woodElement.appendChild(woodImage);
+
+  woodElement.addEventListener("click", function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    collectWoodManually(wood.id);
+  });
+  woodElement.addEventListener("keydown", function(event) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      collectWoodManually(wood.id);
+    }
+  });
   woodLayer.appendChild(woodElement);
+  updateTargetOutline(woodElement, woodImage);
+}
+
+function setTargetWood(woodId) {
+  camper.targetWoodId = woodId;
+}
+
+function addWarmthFromBranches(source) {
+  const warmthGain = getWoodWarmthValue();
+
+  gameState.warmthSeconds += warmthGain;
+
+  if (source === "manual") {
+    setStatus("The camper adds your chosen branches. Warmth rises.");
+  } else {
+    setStatus("Branches become Warmth. The fire keeps working.");
+  }
+
+  updateScreen();
+  saveGame();
+  return warmthGain;
+}
+
+function collectWoodManually(woodId) {
+  const wood = woodItems.find(function(item) {
+    return item.id === woodId;
+  });
+
+  if (!wood) {
+    return;
+  }
+
+  clearSelectedActionTarget();
+  enqueueAction("wood", wood.id);
+}
+
+function executeQueuedWoodAction(action) {
+  const wood = woodItems.find(function(item) {
+    return item.id === action.targetId;
+  });
+
+  if (!wood) {
+    completeActiveQueuedAction();
+    return;
+  }
+
+  setTargetWood(wood.id);
+  camper.woodCollectionSource = activeQueuedAction ? "manual" : "auto";
+  startMovingTo(
+    { x: wood.x, y: wood.y },
+    "pickupWood",
+    { labelAction: "movingToWood" }
+  );
+
+  setStatus("The camper heads over to those fallen branches.");
 }
 
 function removeWoodItem(woodId) {
@@ -1865,72 +3230,70 @@ function getSeatableElement(def) {
   return getGearSceneElement(def);
 }
 
-function getSeatableSpriteSize(def) {
-  return getSceneSpriteSize(def);
+function getSeatableLogicalSize(def) {
+  return getSceneAssetLogicalSize(def, getSeatableElement(def));
 }
 
-function getSeatableGroundAnchor(def) {
-  return getSceneGroundAnchor(def);
+function getSeatableGroundAnchor(def, logicalSize) {
+  return getSceneGroundAnchor(def, logicalSize || getSeatableLogicalSize(def));
 }
 
 function getSeatableFacing(def) {
-  return normalizeFacing(def && def.scene && def.scene.facing);
+  const facing = normalizeFacing(def && def.scene && def.scene.facing);
+  return isSeatableMirrored(def) ? getOppositeFacing(facing) : facing;
 }
 
 function isSeatableMirrored(def) {
   return Boolean(def && def.scene && def.scene.mirrored);
 }
 
-function mirrorSeatOffset(spriteSize, offset) {
+function mirrorSeatOffset(logicalSize, offset) {
   return {
-    x: spriteSize.width - offset.x,
+    x: logicalSize.width - offset.x,
     y: offset.y
   };
 }
 
 function getSeatableSeatOffset(def, facing) {
-  const spriteSize = getSeatableSpriteSize(def);
+  const logicalSize = getSeatableLogicalSize(def);
   const seatable = def && def.interactions ? def.interactions.seatable : null;
   const seatOffsets = seatable && seatable.seatOffsets ? seatable.seatOffsets : {};
   const normalizedFacing = normalizeFacing(facing);
   const explicitOffset = seatOffsets[normalizedFacing];
 
   if (explicitOffset) {
-    return explicitOffset;
+    return getSceneAssetLogicalPoint(def, explicitOffset, logicalSize);
   }
 
   const oppositeOffset = seatOffsets[getOppositeFacing(normalizedFacing)];
 
   if (oppositeOffset) {
-    return mirrorSeatOffset(spriteSize, oppositeOffset);
+    return mirrorSeatOffset(logicalSize, getSceneAssetLogicalPoint(def, oppositeOffset, logicalSize));
   }
 
-  const fallbackOffset = seatOffsets.default || getSeatableGroundAnchor(def);
-  return isSeatableMirrored(def) ? mirrorSeatOffset(spriteSize, fallbackOffset) : fallbackOffset;
+  const defaultSeatOffset = seatOffsets.default ? getSceneAssetLogicalPoint(def, seatOffsets.default, logicalSize) : getSeatableGroundAnchor(def, logicalSize);
+  return isSeatableMirrored(def) ? mirrorSeatOffset(logicalSize, defaultSeatOffset) : defaultSeatOffset;
 }
 
 function getSceneWidthToHeightRatio() {
-  const sceneRect = campScene.getBoundingClientRect();
-
-  if (sceneRect.width > 0 && sceneRect.height > 0) {
-    return sceneRect.width / sceneRect.height;
-  }
-
-  return 9 / 16;
+  return BASE_SCENE_WIDTH / BASE_SCENE_HEIGHT;
 }
 
 function getSeatableSceneFallbackTarget(id, def, facing) {
-  const spriteSize = getSeatableSpriteSize(def);
-  const groundAnchor = getSeatableGroundAnchor(def);
+  const logicalSize = getSeatableLogicalSize(def);
+  const groundAnchor = getSeatableGroundAnchor(def, logicalSize);
   const seatOffset = getSeatableSeatOffset(def, facing);
   const scene = def.scene || {};
-  const position = scene.position || { x: 0, y: 0 };
-  const widthPercent = scene.widthPercent || 0;
-  const sceneWidthToHeightRatio = getSceneWidthToHeightRatio();
+  const position = getScenePixelPosition(scene);
+  const seatPoint = {
+    x: position.x + seatOffset.x - groundAnchor.x,
+    y: position.y + seatOffset.y - groundAnchor.y
+  };
+  const percentPoint = scenePointToPercent(seatPoint);
 
   return {
-    x: position.x + ((seatOffset.x - groundAnchor.x) / spriteSize.width) * widthPercent,
-    y: position.y + ((seatOffset.y - groundAnchor.y) / spriteSize.width) * widthPercent * sceneWidthToHeightRatio,
+    x: percentPoint.x,
+    y: percentPoint.y,
     seatableId: id,
     furnitureFacing: facing
   };
@@ -1938,7 +3301,7 @@ function getSeatableSceneFallbackTarget(id, def, facing) {
 
 function getSeatableSeatTarget(id, def) {
   const element = getSeatableElement(def);
-  const spriteSize = getSeatableSpriteSize(def);
+  const logicalSize = getSeatableLogicalSize(def);
   const facing = getSeatableFacing(def);
 
   if (!element || element.classList.contains("hidden")) {
@@ -1953,8 +3316,8 @@ function getSeatableSeatTarget(id, def) {
   }
 
   const seatOffset = getSeatableSeatOffset(def, facing);
-  const seatX = furnitureRect.left - sceneRect.left + seatOffset.x * (furnitureRect.width / spriteSize.width);
-  const seatY = furnitureRect.top - sceneRect.top + seatOffset.y * (furnitureRect.height / spriteSize.height);
+  const seatX = furnitureRect.left - sceneRect.left + seatOffset.x * (furnitureRect.width / logicalSize.width);
+  const seatY = furnitureRect.top - sceneRect.top + seatOffset.y * (furnitureRect.height / logicalSize.height);
 
   return {
     x: seatX / sceneRect.width * 100,
@@ -1983,6 +3346,18 @@ function getRandomSeatableSeatTarget() {
 
   const entry = entries[Math.floor(Math.random() * entries.length)];
   return getSeatableSeatTarget(entry.id, entry.def);
+}
+
+function executeQueuedChairAction(action) {
+  const item = getGearItem(action.targetId);
+
+  if (!item || !isGearVisibleInScene(item) || !isGearQueueInteractive(item)) {
+    completeActiveQueuedAction();
+    return;
+  }
+
+  startMovingTo(getSeatableSeatTarget(item.id, item), "sittingOnFurniture");
+  setStatus("The camper heads over to " + item.displayName + ".");
 }
 
 function getCamperFacingForSeatable(target) {
@@ -2091,14 +3466,6 @@ function startActing(action, durationSeconds) {
   camper.animationStartedAt = now;
   camper.actionTimer = now + durationSeconds * 1000;
 
-  if (action === "addingWoodToFire") {
-    gameState.warmthSeconds += getWoodWarmthValue();
-    camper.carryingWood = false;
-    setStatus("Wood becomes Warmth. The fire keeps working.");
-    updateScreen();
-    saveGame();
-  }
-
   updateCamperView();
 }
 
@@ -2131,8 +3498,8 @@ function getPoseForAction(action) {
 }
 
 function updateCamperView() {
-  camperElement.style.left = camper.x + "%";
-  camperElement.style.top = camper.y + "%";
+  camperElement.style.left = sceneXFromPercent(camper.x) + "px";
+  camperElement.style.top = sceneYFromPercent(camper.y) + "px";
   updateCamperSprite();
   updateCamperAttachments();
   updateCamperThought();
@@ -2146,8 +3513,8 @@ function updateCamperThought() {
   const shouldShowThought = !gameState.gatherWoodMode && thought;
 
   camperThoughtBubble.textContent = shouldShowThought ? thought : "";
-  camperThoughtBubble.style.left = camper.x + "%";
-  camperThoughtBubble.style.top = Math.max(8, camper.y - 10.5) + "%";
+  camperThoughtBubble.style.left = sceneXFromPercent(camper.x) + "px";
+  camperThoughtBubble.style.top = sceneYFromPercent(Math.max(8, camper.y - 10.5)) + "px";
   camperThoughtBubble.classList.toggle("show", Boolean(shouldShowThought));
 }
 
@@ -2194,22 +3561,27 @@ function updateCamperSprite() {
 }
 
 function chooseNextCamperAction() {
+  if (beginNextQueuedAction()) {
+    return;
+  }
+
   if (gameState.gatherWoodMode && woodItems.length > 0) {
     const wood = findClosestWood();
-    camper.targetWoodId = wood.id;
+    setTargetWood(wood.id);
+    camper.woodCollectionSource = "auto";
     startMovingTo(
       { x: wood.x, y: wood.y },
       "pickupWood",
       { labelAction: "movingToWood" }
     );
-    setStatus("The camper spotted fallen wood.");
+    setStatus("The camper spotted fallen branches.");
     return;
   }
 
   if (gameState.gatherWoodMode) {
     const wanderPoint = getRandomWanderPoint();
     startMovingTo(wanderPoint, "wandering", { labelAction: "wandering" });
-    setStatus("The camper is searching the ground for wood.");
+    setStatus("The camper is searching for fallen branches.");
     return;
   }
 
@@ -2256,28 +3628,50 @@ function getRandomWanderPoint() {
   };
 }
 
-function getTentRestSpot() {
-  const tentItem = getEquippedGearItem("tent");
+function getTentRestSpotForItem(tentItem) {
+  const tentRest = tentItem && tentItem.interactions ? tentItem.interactions.tentRest : null;
+  const layout = isRooftopTentItem(tentItem) ? getRooftopTentLayout(tentItem) : null;
+
+  if (tentItem && tentRest && tentRest.point) {
+    return scenePointToPercent(getScenePointFromAssetPoint(tentItem, tentRest.point, layout));
+  }
 
   if (isRooftopTentItem(tentItem)) {
-    const layout = getRooftopTentLayout(tentItem);
-
     if (layout && layout.position) {
       return layout.position;
     }
   }
 
-  const tentRest = tentItem && tentItem.interactions ? tentItem.interactions.tentRest : null;
-
   if (tentRest && tentRest.position) {
     return tentRest.position;
   }
 
-  if (tentItem && tentItem.scene && tentItem.scene.position) {
-    return tentItem.scene.position;
+  if (tentItem && tentItem.scene) {
+    return getScenePercentPosition(tentItem.scene);
   }
 
   return campSpots.tent;
+}
+
+function getTentRestSpot() {
+  return getTentRestSpotForItem(getEquippedGearItem("tent"));
+}
+
+function executeQueuedTentAction(action) {
+  const item = getGearItem(action.targetId);
+
+  if (!item || !isGearVisibleInScene(item) || !isGearQueueInteractive(item)) {
+    completeActiveQueuedAction();
+    return;
+  }
+
+  startMovingTo(getTentRestSpotForItem(item), "tentRest");
+  setStatus("The camper heads into " + item.displayName + ".");
+}
+
+function executeQueuedFireAction() {
+  startMovingTo(campSpots.fireSeat, "sittingByFire");
+  setStatus("The camper heads closer to the campfire.");
 }
 
 function updateCamperAI() {
@@ -2298,11 +3692,17 @@ function updateCamperAI() {
     return;
   }
 
+  if (beginNextQueuedAction()) {
+    return;
+  }
+
   chooseNextCamperAction();
 }
 
 function arriveAtTarget() {
   const action = camper.actionAfterArrival;
+
+  hideActiveQueuedActionIndicator();
 
   if (action === "pickupWood") {
     pickupTargetWood();
@@ -2357,6 +3757,27 @@ function finishCurrentAction() {
     return;
   }
 
+  if (camper.currentAction === "addingWoodToFire") {
+    const source = camper.woodCollectionSource === "manual" ? "manual" : "auto";
+
+    camper.carryingWood = false;
+    camper.woodCollectionSource = null;
+    addWarmthFromBranches(source);
+
+    if (activeQueuedAction) {
+      completeActiveQueuedAction();
+    } else {
+      chooseNextCamperAction();
+    }
+
+    return;
+  }
+
+  if (activeQueuedAction) {
+    completeActiveQueuedAction();
+    return;
+  }
+
   chooseNextCamperAction();
 }
 
@@ -2366,11 +3787,16 @@ function pickupTargetWood() {
   });
 
   if (!wood) {
-    chooseNextCamperAction();
+    if (activeQueuedAction) {
+      completeActiveQueuedAction();
+    } else {
+      chooseNextCamperAction();
+    }
     return;
   }
 
   removeWoodItem(wood.id);
+  setTargetWood(null);
   camper.carryingWood = true;
   startActing("pickupWood", 0.55);
 }
@@ -2437,23 +3863,40 @@ function createCozySpark() {
 shopToggle.addEventListener("click", toggleShop);
 closeShopButton.addEventListener("click", closeShop);
 shopBackdrop.addEventListener("click", closeShop);
+campScene.addEventListener("click", clearSelectedActionTarget);
 gatherWoodToggle.addEventListener("click", toggleGatherWoodMode);
 dayNightToggle.addEventListener("click", toggleDayNight);
+uiDisplayToggle.addEventListener("click", toggleUiDisplayMode);
+onboardingHelpButton.addEventListener("click", function() {
+  startOnboarding(true);
+});
+onboardingPrimaryButton.addEventListener("click", advanceOnboarding);
+onboardingSkipButton.addEventListener("click", function() {
+  completeOnboarding(true);
+});
 resetSaveButton.addEventListener("click", confirmResetSave);
 
 if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", saveGame);
+  window.addEventListener("resize", function() {
+    syncSceneScale();
+    positionOnboardingLayer();
+    refreshTargetOutlines();
+  });
 }
 
+syncSceneScale();
 renderShopFromCatalog();
 resetSaveIfRequestedByUrl();
 loadGame();
 spawnWood();
 spawnWood();
 setShopFilter("all");
+applyUiDisplayMode();
 updateScreen();
 updateCamperView();
 chooseNextCamperAction();
+maybeStartOnboarding();
 
 setInterval(gameTick, 1000);
 setInterval(updateCamperAI, 400);

@@ -105,6 +105,17 @@ V2.4 将 welcome/status 文本改为 toast，避免长期遮挡底部营地。
 - `lanternPoleLight` 已按 80/120 比例和底部 anchor 调整，视觉上比普通营地灯更高。
 - `share-build/` 已同步本轮 `game.js`、`gearCatalog.js`、`style.css` 和新增头灯 asset，但没有 deploy。
 
+## WIP Handoff Notes - 2026-06-19
+
+- 新玩家 onboarding 已接入 `onboardingSeen`，存于 `cozyCampfireSave`；新存档默认 `gatherWoodMode: false`，旧存档保留已有 Gather 状态。
+- 新增轻量手动 action queue：树枝、椅子、当前帐篷、火堆点击都进入同一个内存队列，不写入存档。
+- Queue 目标描边已切到通用 gear 逻辑：所有 `assets/gear/**/icon.png` 旁边都有同尺寸 `icon_base.png`。Scene 仍渲染原 `icon.png`，未来任意 gear 接入互动后会自动用同目录 `icon_base.png` 作为下层 alpha source 生成 0.5px 白色描边，不替换物品本体。白色描边只用于 hover / focus / touch 选中提示；目标加入 queue 后描边消失，只保留右下角淡白色圆形编号，camper 到达当前目标交互点后编号消失，后续编号立即前移。
+- Mobile touch 指引：树枝 tap 一下直接加入 queue；gear tap 第一下选中并显示白色描边 + status 提示，第二下加入 queue；点场景空白处取消选中。新手引导 Gather 步骤加入 “Tap objects to interact.”。
+- 新增右上 `UI` 显示切换按钮：第一次隐藏 queue 序号，第二次隐藏大部分 UI 只保留场景和恢复按钮，第三次恢复全部 UI。
+- 手动点击树枝不再立即加 Warmth：camper 会走到树枝、捡起、回到篝火后增加 Warmth。Gather On 自动收集不进入手动 queue，也不会显示树枝 queued 高亮或编号。
+- 当前接入的物品交互：椅子 -> `sittingOnFurniture`，帐篷 -> `tentRest`，火堆 -> `sittingByFire`。这还是轻量行为队列，不是复杂任务系统。
+- 语法检查和 `git diff --check` 已通过；本轮 headless Chrome 行为验证因 Codex 额度限制未能完成，后续交接时需要再跑一次真实浏览器 smoke：自动 Gather 无 queued 高亮、手动 1/2/3/4 编号、mobile touch 二次确认、树枝 Warmth 延迟生效、队列完成后编号清空。
+
 ## 本轮需要人工复测
 
 - 在真实手机浏览器看 rooftop tent 与所有 vehicle 的贴合度，尤其是 SUV / van / pickup 的车顶高度。

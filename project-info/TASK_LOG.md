@@ -101,6 +101,17 @@
 - `share-build/` 已同步 `game.js`、`gearCatalog.js`、`style.css` 和新增头灯 asset，未 deploy。
 - 本轮本地验证：购买自动 place、tarp replacement、vehicle stow/place、rooftop tent 随 SUV/Van roof anchor 对齐、headlamp pack/place 与背向 layer 切换、刷新后状态保持、console error 为空、source/share-build JS 语法检查通过。
 
+## WIP - Onboarding / Manual Action Queue
+
+- 新增新玩家 onboarding：Help / ? 可重开，引导 Gather -> Warmth -> Cozy Points -> Shop -> 海狗椅 -> Comfort；`onboardingSeen` 存在 `cozyCampfireSave`。
+- 新存档默认 Gather Off；旧存档如已有 `gatherWoodMode` 会保留，旧存档没有 onboarding 字段时默认视为已看过。
+- 场景 fallen branches 可手动点击；点击后进入轻量手动 action queue，不再立即增加 Warmth。
+- 手动 queue 当前接入：树枝、椅子、当前帐篷、火堆。描边修正已覆盖所有 gear：每个 `assets/gear/**/icon.png` 旁边都有同尺寸 `icon_base.png`；scene 仍显示原 `icon.png`，未来任意 gear 接入互动后会自动用同目录 `icon_base.png` 作为下层 alpha source 生成 0.5px 白色描边，不替换物品本体。白色描边只用于 hover / focus / touch 选中提示；目标加入 queue 后描边消失，只保留右下角淡白圆形顺序编号。camper 到达当前目标交互点后，该目标编号消失，后续编号前移。
+- Mobile touch 指引：树枝 tap 一下直接加入 queue；gear tap 第一下选中并显示白色描边 + status 提示，第二下加入 queue；点场景空白处取消选中。新手引导 Gather 步骤加入 “Tap objects to interact.”。
+- 新增 `UI` 显示切换按钮：正常显示 -> 隐藏 queue 序号 -> 隐藏大部分 UI 只保留场景和恢复按钮 -> 恢复正常显示。
+- Gather On 自动收集仍沿原 camper 自动逻辑，不显示 queue 编号或手动目标高亮。
+- 本轮已通过 `game.js` / `gearCatalog.js` 语法检查和 `git diff --check`；headless Chrome 行为验证被 Codex 额度限制挡住，后续需要补测 queue 编号前移、mobile touch 二次确认和四类动作完整执行。
+
 ## 当前还没做
 
 - 最终高质量原生透明 PNG 素材仍未完成。

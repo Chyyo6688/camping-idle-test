@@ -1,4 +1,8 @@
 (function(global) {
+  const BASE_SCENE_WIDTH = 900;
+  const BASE_SCENE_HEIGHT = 1600;
+  const SCENE_ASSET_SCALE = 3;
+
   const GEAR_CATEGORIES = [
     "vehicle",
     "tent",
@@ -88,9 +92,9 @@
     campWagonCar: { width: 160, height: 96 },
     campPickupTruck: { width: 176, height: 104 },
     tinyCampVan: { width: 160, height: 96 },
-    nokaVillageCabinTent: { width: 144, height: 104 },
-    BetaBreezeTent: { width: 144, height: 104 },
-    LakeNestDomeTent: { width: 128, height: 100 },
+    nokaVillageCabinTent: { width: 334, height: 223 },
+    BetaBreezeTent: { width: 128, height: 100 },
+    LakeNestDomeTent: { width: 380, height: 240 },
     LakeLockLivingShelter: { width: 176, height: 128 },
     starterInstantTent: { width: 128, height: 100 },
     rooftopTent: { width: 120, height: 72 },
@@ -100,7 +104,7 @@
     largeLivingTarp: { width: 176, height: 120 },
     vehicleAwning: { width: 136, height: 96 },
     sealChair: { width: 80, height: 80 },
-    nokaMoonChair: { width: 80, height: 80 },
+    nokaMoonChair: { width: 150, height: 175 },
     redDirectorChair: { width: 80, height: 80 },
     tripleCampSofa: { width: 128, height: 80 },
     inflatableLoungeChair: { width: 112, height: 96 },
@@ -122,8 +126,8 @@
     basicCampLantern: { width: 64, height: 84 },
     starterHeadlamp: { width: 48, height: 40 },
     warmStringLights: { width: 160, height: 60 },
-    hozukiLantern: { width: 64, height: 84 },
-    miniHozukiLantern: { width: 64, height: 84 },
+    hozukiLantern: { width: 66, height: 86 },
+    miniHozukiLantern: { width: 66, height: 86 },
     lanternPoleLight: { width: 80, height: 120 },
     stackingShelfContainer25: { width: 80, height: 80 },
     stackingShelfContainer50: { width: 96, height: 70 },
@@ -146,13 +150,41 @@
     return "assets/gear/light/starterHeadlamp/" + name + ".png";
   }
 
+  function sceneXFromPercent(xPercent) {
+    return xPercent * BASE_SCENE_WIDTH / 100;
+  }
+
+  function sceneYFromPercent(yPercent) {
+    return yPercent * BASE_SCENE_HEIGHT / 100;
+  }
+
+  function addScenePosition(sceneDefinition) {
+    if (!sceneDefinition || !sceneDefinition.position) {
+      return;
+    }
+
+    if (typeof sceneDefinition.sceneX !== "number") {
+      sceneDefinition.sceneX = sceneXFromPercent(sceneDefinition.position.x);
+    }
+
+    if (typeof sceneDefinition.sceneY !== "number") {
+      sceneDefinition.sceneY = sceneYFromPercent(sceneDefinition.position.y);
+    }
+  }
+
   function scene(position, widthPercent, zIndex, extra) {
-    return Object.assign({
+    const sceneDefinition = Object.assign({
       position: position,
+      sceneX: sceneXFromPercent(position.x),
+      sceneY: sceneYFromPercent(position.y),
       widthPercent: widthPercent,
       zIndex: zIndex || 20,
       layers: { base: null }
     }, extra || {});
+
+    addScenePosition(sceneDefinition);
+
+    return sceneDefinition;
   }
 
   function gear(item) {
@@ -170,10 +202,9 @@
     normalizedItem.spriteSize = normalizedItem.spriteSize || getSpriteSize(normalizedItem.id);
 
     if (normalizedItem.scene) {
-      const spriteSize = normalizedItem.scene.spriteSize || normalizedItem.spriteSize;
       const groundAnchor = normalizedItem.anchors && normalizedItem.anchors.ground;
-      normalizedItem.scene.spriteSize = spriteSize;
-      normalizedItem.scene.anchor = normalizedItem.scene.anchor || groundAnchor || { x: spriteSize.width / 2, y: spriteSize.height };
+      normalizedItem.scene.anchor = normalizedItem.scene.anchor || groundAnchor || { ratioX: 0.5, ratioY: 1 };
+      addScenePosition(normalizedItem.scene);
     }
 
     return normalizedItem;
@@ -190,22 +221,22 @@
       detail: "+6 Comfort",
       image: imagePath("vehicle", "compactCampSuv", "png"),
       scene: scene({ x: 72, y: 75 }, 30, 19, {
-        roofMount: { x: 100, y: 32, widthPercent: 18.6, zIndex: 19 }, 
-        awningMount: { x: 92, y: 31, widthPercent: 29, zIndex: 19 }
+        roofMount: { ratioX: 0.6, ratioY: 0.42, zIndex: 19 }, 
+        awningMount: { ratioX: 0.55, ratioY: 0.13, zIndex: 19 }
       })
     }),
     gear({
       id: "creamCampVan",
       category: "vehicle",
       shopGroup: "shelter",
-      displayName: "奶油露营Van",
+      displayName: "奶油露营车",
       cost: 360,
       comfort: 10,
       detail: "+10 Comfort",
       image: imagePath("vehicle", "creamCampVan", "png"),
       scene: scene({ x: 72, y: 75 }, 30, 19, {
-        roofMount: { x: 100, y: 32, widthPercent: 20.6, zIndex: 19 },
-        awningMount: { x: 88, y: 31, widthPercent: 29, zIndex: 19 }
+        roofMount: { ratioX: 0.5, ratioY: 0.41, zIndex: 19 },
+        awningMount: { ratioX: 0.5, ratioY: 0.2, zIndex: 19 }
       })
     }),
     gear({
@@ -218,8 +249,8 @@
       detail: "+8 Comfort",
       image: imagePath("vehicle", "campWagonCar", "png"),
       scene: scene({ x: 72, y: 75 }, 30, 19, {
-        roofMount: { x: 100, y: 30, widthPercent: 19.8, zIndex: 19 },
-        awningMount: { x: 88, y: 30, widthPercent: 29, zIndex: 19 }
+        roofMount: { ratioX: 0.61, ratioY: 0.4, zIndex: 19 },
+        awningMount: { ratioX: 0.5, ratioY: 0.16, zIndex: 19 }
       })
     }),
     gear({
@@ -232,8 +263,8 @@
       detail: "+12 Comfort",
       image: imagePath("vehicle", "campPickupTruck", "png"),
       scene: scene({ x: 72, y: 75 }, 34, 19, {
-        roofMount: { x: 90, y: 37, widthPercent: 20.8, zIndex: 19 },
-        awningMount: { x: 86, y: 34, widthPercent: 29, zIndex: 19 }
+        roofMount: { ratioX: 0.55, ratioY: 0.35, zIndex: 19 },
+        awningMount: { ratioX: 0.55, ratioY: 0.06, zIndex: 19 }
       })
     }),
     gear({
@@ -246,8 +277,8 @@
       detail: "+7 Comfort",
       image: imagePath("vehicle", "tinyCampVan", "png"),
       scene: scene({ x: 72, y: 75 }, 30, 19, {
-        roofMount: { x: 84, y: 33, widthPercent: 19.2, zIndex: 19 },
-        awningMount: { x: 88, y: 31, widthPercent: 29, zIndex: 19 }
+        roofMount: { ratioX: 0.48, ratioY: 0.4, zIndex: 19 },
+        awningMount: { ratioX: 0.55, ratioY: 0.2, zIndex: 19 }
       })
     }),
 
@@ -262,7 +293,7 @@
       image: imagePath("tent", "nokaVillageCabinTent", "png"),
       offlineBonusSeconds: 14400,
       scene: scene({ x: 54, y: 69.5 }, 34, 18),
-      interactions: { tentRest: { position: { x: 54, y: 69.5 } } }
+      interactions: { tentRest: { point: { ratioX: 0.5, ratioY: 1 } } }
     }),
     gear({
       id: "BetaBreezeTent",
@@ -274,8 +305,8 @@
       detail: "+15 Comfort",
       image: imagePath("tent", "BetaBreezeTent", "png"),
       offlineBonusSeconds: 10800,
-      scene: scene({ x: 54, y: 69.5 }, 32, 18),
-      interactions: { tentRest: { position: { x: 54, y: 69.5 } } }
+      scene: scene({ x: 54, y: 69.5 }, 30, 18),
+      interactions: { tentRest: { point: { ratioX: 0.5, ratioY: 1 } } }
     }),
     gear({
       id: "LakeNestDomeTent",
@@ -287,8 +318,8 @@
       detail: "+14 Comfort",
       image: imagePath("tent", "LakeNestDomeTent", "png"),
       offlineBonusSeconds: 10800,
-      scene: scene({ x: 54, y: 69.5 }, 27, 18),
-      interactions: { tentRest: { position: { x: 54, y: 69.5 } } }
+      scene: scene({ x: 54, y: 69.5 }, 32, 18),
+      interactions: { tentRest: { point: { ratioX: 0.5, ratioY: 1 } } }
     }),
     gear({
       id: "LakeLockLivingShelter",
@@ -301,7 +332,7 @@
       image: imagePath("tent", "LakeLockLivingShelter", "png"),
       offlineBonusSeconds: 14400,
       scene: scene({ x: 54, y: 69.5 }, 34, 18),
-      interactions: { tentRest: { position: { x: 54, y: 69.5 } } }
+      interactions: { tentRest: { point: { ratioX: 0.5, ratioY: 1 } } }
     }),
     gear({
       id: "starterInstantTent",
@@ -316,7 +347,7 @@
       defaultEquipped: true,
       offlineBonusSeconds: 1800,
       scene: scene({ x: 54, y: 69.5 }, 25, 18),
-      interactions: { tentRest: { position: { x: 54, y: 69.5 } } }
+      interactions: { tentRest: { point: { ratioX: 0.5, ratioY: 1 } } }
     }),
     gear({
       id: "rooftopTent",
@@ -330,10 +361,10 @@
       offlineBonusSeconds: 10800,
       requires: { anyOwnedCategory: ["vehicle"] },
       scene: scene({ x: 74, y: 70 }, 19, 19, {
-        anchor: { x: 60, y: 66 },
+        anchor: { ratioX: 0.5, ratioY: 1 },
         mountTo: "vehicleRoof"
       }),
-      interactions: { tentRest: { position: { x: 74, y: 70 } } }
+      interactions: { tentRest: { point: { ratioX: 0.350877193, ratioY: 0.8 } } }
     }),
     gear({
       id: "smallDomeTent",
@@ -346,7 +377,7 @@
       image: imagePath("tent", "smallDomeTent", "png"),
       offlineBonusSeconds: 7200,
       scene: scene({ x: 54, y: 69.5 }, 28, 18),
-      interactions: { tentRest: { position: { x: 54, y: 69.5 } } }
+      interactions: { tentRest: { point: { ratioX: 0.5, ratioY: 1 } } }
     }),
 
     gear({ id: "pentaMiniTarp", 
@@ -364,7 +395,7 @@
       cost: 110, comfort: 7, 
       detail: "+7 Comfort", 
       image: imagePath("tarp", "hexaCampTarp", "png"), 
-      scene: scene({ x: 31, y: 70 }, 35, 18) }),
+      scene: scene({ x: 31, y: 68 }, 10, 18) }),
     gear({ id: "largeLivingTarp", 
       category: "tarp", 
       shopGroup: "shelter", 
@@ -383,7 +414,7 @@
       requires: { anyOwnedCategory: ["vehicle"] }, 
       scene: scene({ x: 74, y: 80 }, 29, 19, 
         { mirrored: true, 
-        anchor: { x: 4, y: 26 },
+        anchor: { ratioX: 0, ratioY: 0 },
         mountTo: "vehicleAwning"}
       ) 
     }
@@ -398,8 +429,7 @@
       comfort: 5,
       detail: "+5 Comfort",
       image: imagePath("chair", "sealChair", "png"),
-      scene: scene({ x: 50, y: 74 }, 13.3, 22, {
-        spriteSize: { width: 80, height: 80 },
+      scene: scene({ x: 50, y: 74 }, 20, 22, {
         layers: { base: imagePath("chair", "sealChair", "png"), front: null },
         facing: "left",
         mirrored: false,
@@ -409,12 +439,11 @@
         seatable: {
           camperFacingMode: "sameAsFurniture",
           seatOffsets: {
-            left: { x: 30, y: 80 },
-            right: { x: 50, y: 80 }
+            left: { ratioX: 0.3125, ratioY: 0.95 }
           }
         }
       },
-      anchors: { ground: { x: 40, y: 72 } }
+      anchors: { ground: { ratioX: 0.4166666667, ratioY: 1 } }
     }),
     gear({ id: "nokaMoonChair", 
       category: "chair", 
@@ -422,10 +451,10 @@
       displayName: "月亮椅", 
       cost: 75, comfort: 6, detail: "+6 Comfort", 
       image: imagePath("chair", "nokaMoonChair", "png"), 
-      scene: scene({ x: 57, y: 79 }, 10, 22, { facing: "left" }), 
+      scene: scene({ x: 57, y: 79 }, 10, 22, { facing: "left", mirrored: false }),
       interactions: { seatable: { camperFacingMode: "sameAsFurniture", 
-        seatOffsets: { left: { x: 30, y: 80 }, right: { x: 50, y: 80 } } } }, 
-        anchors: { ground: { x: 40, y: 72 } } }),
+        seatOffsets: { left: { ratioX: 0.3, ratioY: 0.94 } } } },
+        anchors: { ground: { ratioX: 0.8333333333, ratioY: 1 } } }),
     gear({ id: "redDirectorChair", 
       category: "chair", 
       shopGroup: "living", 
@@ -434,28 +463,28 @@
       image: imagePath("chair", "redDirectorChair", "png"), 
       scene: scene({ x: 75, y: 76 }, 11, 22, { facing: "left" }), 
       interactions: { seatable: { camperFacingMode: "sameAsFurniture", 
-        seatOffsets: { left: { x: 30, y: 80 }, right: { x: 50, y: 80 } } } }, 
-        anchors: { ground: { x: 40, y: 72 } } }),
+        seatOffsets: { left: { ratioX: 0.3370786517, ratioY: 0.94 } } } }, 
+        anchors: { ground: { ratioX: 0.4494382022, ratioY: 1 } } }),
     gear({ id: "tripleCampSofa", 
       category: "chair", 
       shopGroup: "living", 
       displayName: "三人沙发椅", 
       cost: 150, comfort: 12, detail: "+12 Comfort", 
       image: imagePath("chair", "tripleCampSofa", "png"), 
-      scene: scene({ x: 26, y: 72 }, 18, 23, { facing: "right", mirrored: true }), 
+      scene: scene({ x: 26, y: 72 }, 18, 23, { facing: "left", mirrored: true }), 
       interactions: { seatable: { camperFacingMode: "sameAsFurniture", 
-        seatOffsets: { left: { x: 52, y: 80 }, right: { x: 80, y: 80 } } } }, 
-        anchors: { ground: { x: 66, y: 72 } } }),
+        seatOffsets: { left: { ratioX: 0.4, ratioY: 0.99 } } } }, 
+        anchors: { ground: { ratioX: 0.4074074074, ratioY: 0.9 } } }),
     gear({ id: "inflatableLoungeChair", 
       category: "chair", 
       shopGroup: "living", 
       displayName: "充气沙发椅", 
       cost: 135, comfort: 11, detail: "+11 Comfort", 
       image: imagePath("chair", "inflatableLoungeChair", "png"), 
-      scene: scene({ x: 37, y: 69 }, 14, 22, { facing: "right",mirrored: true }), 
+      scene: scene({ x: 37, y: 69 }, 14, 22, { facing: "left",mirrored: true }), 
       interactions: { seatable: { camperFacingMode: "sameAsFurniture", 
-        seatOffsets: { left: { x: 42, y: 78 }, right: { x: 66, y: 88 } } } }, 
-        anchors: { ground: { x: 52, y: 72 } } }),
+        seatOffsets: { left: { ratioX: 0.3333333333, ratioY: 0.7244582043 } } } }, 
+        anchors: { ground: { ratioX: 0.4126984127, ratioY: 0.6687306502 } } }),
     gear({ id: "lowCampChair", 
       category: "chair", 
       shopGroup: "living", 
@@ -464,8 +493,8 @@
       image: imagePath("chair", "lowCampChair", "png"), 
       scene: scene({ x: 55, y: 53 }, 11.5, 22, { facing: "left" }), 
       interactions: { seatable: { camperFacingMode: "sameAsFurniture", 
-        seatOffsets: { left: { x: 30, y: 80 }, right: { x: 50, y: 80 } } } }, 
-        anchors: { ground: { x: 40, y: 72 } } }),
+        seatOffsets: { left: { ratioX: 0.2893890675, ratioY: 0.8333333333 } } } }, 
+        anchors: { ground: { ratioX: 0.38585209, ratioY: 0.75 } } }),
 
     gear({ id: "checkerboardTable", 
       category: "table", 
@@ -513,7 +542,7 @@
     gear({ id: "homeCampBurner", 
       category: "stove", 
       shopGroup: "kitchen", 
-      displayName: "Home Camp 卡式炉", 
+      displayName: "Home Camp卡式炉", 
       cost: 110, comfort: 5, detail: "Requires Table", 
       image: imagePath("stove", "homeCampBurner", "png"), 
       requires: { anyOwnedCategory: ["table"] }, 
@@ -529,7 +558,7 @@
     gear({ id: "gigaPowerStove", 
       category: "stove", 
       shopGroup: "kitchen", 
-      displayName: "GigaPower 小炉头", 
+      displayName: "GigaPower小炉头", 
       cost: 80, comfort: 4, detail: "Requires Table", 
       image: imagePath("stove", "gigaPowerStove", "png"), 
       requires: { anyOwnedCategory: ["table"] }, 
@@ -537,7 +566,7 @@
     gear({ id: "gigaPowerLiStove", 
       category: "stove", 
       shopGroup: "kitchen", 
-      displayName: "GigaPower 大炉", 
+      displayName: "GigaPower大炉", 
       cost: 105, comfort: 5, detail: "Requires Table", 
       image: imagePath("stove", "gigaPowerLiStove", "png"), 
       requires: { anyOwnedCategory: ["table"] }, 
@@ -652,7 +681,7 @@
       detail: "Unlock Night", 
       image: imagePath("light", "lanternPoleLight", "png"), 
       unlocks: { nightMode: true }, 
-      scene: scene({ x: 16, y: 66 }, 18, 16, { anchor: { x: 40, y: 118 }, mirrored: true }) }),
+      scene: scene({ x: 16, y: 66 }, 18, 16, { anchor: { ratioX: 0.2469135802, ratioY: 0.4855967078 }, mirrored: true }) }),
 
     gear({ id: "stackingShelfContainer25", 
       category: "storage", 
@@ -799,4 +828,7 @@
   global.SHOP_GROUPS = SHOP_GROUPS;
   global.LEGACY_GEAR_ID_MAP = LEGACY_GEAR_ID_MAP;
   global.GEAR_CATALOG = GEAR_CATALOG;
+  global.BASE_SCENE_WIDTH = BASE_SCENE_WIDTH;
+  global.BASE_SCENE_HEIGHT = BASE_SCENE_HEIGHT;
+  global.SCENE_ASSET_SCALE = SCENE_ASSET_SCALE;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
-  <rect width="80" height="80" rx="10" fill="#34354c" opacity="0.92"/>
-  <rect x="8" y="10" width="64" height="36" rx="8" fill="#8b91c8" opacity="0.92"/>
-  <path d="M14 60h51" stroke="#f5e4bd" stroke-width="4" stroke-linecap="round" opacity="0.75"/>
-  <text x="40" y="70" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="700" fill="#fff0c8">Air Mattress</text>
-</svg>

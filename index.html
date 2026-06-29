@@ -22,7 +22,7 @@
       <img id="treelineImage" class="scene-asset treeline-image" src="assets/backgrounds/treeline_day.png?v=2.5" alt="">
       <img id="lakeImage" class="scene-asset lake-image" src="assets/backgrounds/lake_day.png?v=2.5" alt="">
 
-      <div id="woodLayer" class="wood-layer" aria-label="Wood on the ground"></div>
+      <div id="woodLayer" class="wood-layer" aria-label="Fallen branches on the ground"></div>
       <div id="sparkLayer" class="spark-layer" aria-hidden="true"></div>
       <div id="gearLayer" class="gear-layer-root" aria-label="Camp gear"></div>
 
@@ -76,7 +76,16 @@
         </button>
       </nav>
 
-      <nav class="utility-controls" aria-label="Save controls">
+      <nav class="utility-controls" aria-label="Save and help controls">
+        <button id="uiDisplayToggle" class="utility-button ui-toggle-button" type="button" aria-label="Toggle UI display">
+          <span id="uiDisplayLabel">UI</span>
+        </button>
+
+        <button id="onboardingHelpButton" class="utility-button help-button" type="button" aria-label="Open guide">
+          <span class="help-mark">?</span>
+          <span>Help</span>
+        </button>
+
         <button id="resetSaveButton" class="utility-button" type="button">
           <img class="button-icon" src="assets/ui/icon_tools.png?v=2.5" alt="">
           <span>Reset</span>
@@ -120,6 +129,19 @@
         <p>Offline <strong id="offlineCapAmount">30 min</strong></p>
       </section>
         </aside>
+
+        <div id="onboardingLayer" class="onboarding-layer hidden" aria-hidden="true" aria-live="polite">
+          <div id="onboardingPointer" class="onboarding-pointer" aria-hidden="true"></div>
+          <section id="onboardingPanel" class="onboarding-panel" aria-label="New player guide">
+            <p id="onboardingStepLabel" class="onboarding-step-label"></p>
+            <h2 id="onboardingTitle"></h2>
+            <p id="onboardingBody"></p>
+            <div class="onboarding-actions">
+              <button id="onboardingSkipButton" class="onboarding-button secondary" type="button">Skip</button>
+              <button id="onboardingPrimaryButton" class="onboarding-button primary" type="button">Next</button>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   </main>

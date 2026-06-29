@@ -1,0 +1,245 @@
+[
+  {
+    "group": "tent",
+    "id": "rooftopTent",
+    "label": "rooftopTent",
+    "ref": "assets/gear/tent/rooftopTent/icon.png",
+    "w": 513,
+    "h": 302,
+    "note": "confirm: regenerated details are a bit busier than source"
+  },
+  {
+    "group": "light",
+    "id": "basicCampLantern",
+    "label": "basicCampLantern",
+    "ref": "assets/gear/light/basicCampLantern/icon.png",
+    "w": 203,
+    "h": 266,
+    "note": "confirm: lantern body still reads taller than source"
+  },
+  {
+    "group": "light",
+    "id": "starterHeadlamp-front",
+    "label": "starterHeadlamp front",
+    "ref": "assets/gear/light/starterHeadlamp/headlamp-front.png",
+    "w": 84,
+    "h": 58,
+    "note": ""
+  },
+  {
+    "group": "light",
+    "id": "starterHeadlamp-back",
+    "label": "starterHeadlamp back",
+    "ref": "assets/gear/light/starterHeadlamp/headlamp-back.png",
+    "w": 76,
+    "h": 52,
+    "note": "confirm: rear-view simplicity"
+  },
+  {
+    "group": "light",
+    "id": "starterHeadlamp-cone",
+    "label": "starterHeadlamp cone",
+    "ref": "assets/gear/light/starterHeadlamp/flashlight-cone.png",
+    "w": 459,
+    "h": 192,
+    "note": "confirm: translucent cone effect"
+  },
+  {
+    "group": "light",
+    "id": "warmStringLights",
+    "label": "warmStringLights",
+    "ref": "assets/gear/light/warmStringLights/icon.png",
+    "w": 594,
+    "h": 223,
+    "note": "confirm: string length/arc in canvas"
+  },
+  {
+    "group": "light",
+    "id": "miniHozukiLantern",
+    "label": "miniHozukiLantern",
+    "ref": "assets/gear/light/miniHozukiLantern/icon.png",
+    "w": 135,
+    "h": 176,
+    "note": ""
+  },
+  {
+    "group": "light",
+    "id": "lanternPoleLight",
+    "label": "lanternPoleLight",
+    "ref": "assets/gear/light/lanternPoleLight/icon.png",
+    "w": 486,
+    "h": 729,
+    "note": "confirm: generated pole is fuller than old tiny pole"
+  },
+  {
+    "group": "stove",
+    "id": "homeCampBurner",
+    "label": "homeCampBurner",
+    "ref": "assets/gear/stove/homeCampBurner/icon.png",
+    "w": 243,
+    "h": 211,
+    "note": ""
+  },
+  {
+    "group": "stove",
+    "id": "flatBurner",
+    "label": "flatBurner",
+    "ref": "assets/gear/stove/flatBurner/icon.png",
+    "w": 195,
+    "h": 169,
+    "note": ""
+  },
+  {
+    "group": "stove",
+    "id": "gigaPowerStove",
+    "label": "gigaPowerStove",
+    "ref": "assets/gear/stove/gigaPowerStove/icon.png",
+    "w": 173,
+    "h": 150,
+    "note": "confirm: tiny support geometry"
+  },
+  {
+    "group": "stove",
+    "id": "gigaPowerLiStove",
+    "label": "gigaPowerLiStove",
+    "ref": "assets/gear/stove/gigaPowerLiStove/icon.png",
+    "w": 192,
+    "h": 167,
+    "note": ""
+  },
+  {
+    "group": "stove",
+    "id": "grillBurner",
+    "label": "grillBurner",
+    "ref": "assets/gear/stove/grillBurner/icon.png",
+    "w": 227,
+    "h": 166,
+    "note": ""
+  },
+  {
+    "group": "cooler",
+    "id": "smallSoftCooler",
+    "label": "smallSoftCooler",
+    "ref": "assets/gear/cooler/smallSoftCooler/icon.png",
+    "w": 238,
+    "h": 190,
+    "note": ""
+  },
+  {
+    "group": "cooler",
+    "id": "campCoolerBox",
+    "label": "campCoolerBox",
+    "ref": "assets/gear/cooler/campCoolerBox/icon.png",
+    "w": 257,
+    "h": 187,
+    "note": ""
+  },
+  {
+    "group": "cooler",
+    "id": "systemCoolerBag",
+    "label": "systemCoolerBag",
+    "ref": "assets/gear/cooler/systemCoolerBag/icon.png",
+    "w": 270,
+    "h": 216,
+    "note": ""
+  },
+  {
+    "group": "storage",
+    "id": "stackingShelfContainer25",
+    "label": "stackingShelfContainer25",
+    "ref": "assets/gear/storage/stackingShelfContainer25/icon.png",
+    "w": 257,
+    "h": 257,
+    "note": ""
+  },
+  {
+    "group": "storage",
+    "id": "stackingShelfContainer50",
+    "label": "stackingShelfContainer50",
+    "ref": "assets/gear/storage/stackingShelfContainer50/icon.png",
+    "w": 311,
+    "h": 227,
+    "note": ""
+  },
+  {
+    "group": "storage",
+    "id": "stackedShelfContainerSet",
+    "label": "stackedShelfContainerSet",
+    "ref": "assets/gear/storage/stackedShelfContainerSet/icon.png",
+    "w": 351,
+    "h": 301,
+    "note": "confirm: tower height/detail"
+  },
+  {
+    "group": "storage",
+    "id": "canvasGearBag",
+    "label": "canvasGearBag",
+    "ref": "assets/gear/storage/canvasGearBag/icon.png",
+    "w": 222,
+    "h": 178,
+    "note": ""
+  },
+  {
+    "group": "storage",
+    "id": "kitchenCarryCase",
+    "label": "kitchenCarryCase",
+    "ref": "assets/gear/storage/kitchenCarryCase/icon.png",
+    "w": 227,
+    "h": 182,
+    "note": ""
+  },
+  {
+    "group": "storage",
+    "id": "firewoodPile",
+    "label": "firewoodPile",
+    "ref": "assets/gear/storage/firewoodPile/icon.png",
+    "w": 324,
+    "h": 206,
+    "note": ""
+  },
+  {
+    "group": "activity",
+    "id": "fishingRod",
+    "label": "fishingRod",
+    "ref": "assets/gear/activity/fishingRod/icon.png",
+    "w": 405,
+    "h": 405,
+    "note": "confirm: rod diagonal and hook placement"
+  },
+  {
+    "group": "activity",
+    "id": "campBoardGame",
+    "label": "campBoardGame",
+    "ref": "assets/gear/activity/campBoardGame/icon.png",
+    "w": 195,
+    "h": 156,
+    "note": "confirm: board/token layout"
+  },
+  {
+    "group": "activity",
+    "id": "campGuitar",
+    "label": "campGuitar",
+    "ref": "assets/gear/activity/campGuitar/icon.png",
+    "w": 216,
+    "h": 259,
+    "note": ""
+  },
+  {
+    "group": "activity",
+    "id": "binoculars",
+    "label": "binoculars",
+    "ref": "assets/gear/activity/binoculars/icon.png",
+    "w": 152,
+    "h": 114,
+    "note": ""
+  },
+  {
+    "group": "activity",
+    "id": "cameraTripod",
+    "label": "cameraTripod",
+    "ref": "assets/gear/activity/cameraTripod/icon.png",
+    "w": 270,
+    "h": 338,
+    "note": "confirm: tripod leg shape"
+  }
+]
