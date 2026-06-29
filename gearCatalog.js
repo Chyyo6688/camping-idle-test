@@ -78,6 +78,21 @@
     stringLights: "warmStringLights"
   };
 
+  const DEFAULT_TABLE_SURFACE_ZONE = {
+    id: "tabletop",
+    ratioX: 0.12,
+    ratioY: 0.36,
+    ratioWidth: 0.76,
+    ratioHeight: 0.28,
+    accepts: ["stove", "cooler", "storage"]
+  };
+
+  function cloneSurfaceZone(zone) {
+    return Object.assign({}, zone, {
+      accepts: Array.isArray(zone.accepts) ? zone.accepts.slice() : []
+    });
+  }
+
   function imagePath(category, id, extension) {
     return "assets/gear/" + category + "/" + id + "/icon." + (extension || "svg");
   }
@@ -197,12 +212,29 @@
       unlocks: {},
       requires: {},
       interactions: {},
-      anchors: {}
+      anchors: {},
+      placeableOn: []
     }, item);
     normalizedItem.spriteSize = normalizedItem.spriteSize || getSpriteSize(normalizedItem.id);
 
     if (normalizedItem.scene) {
       const groundAnchor = normalizedItem.anchors && normalizedItem.anchors.ground;
+      normalizedItem.scene.placementLayer = normalizedItem.scene.placementLayer || "ground";
+      if (normalizedItem.scene.mountTo) {
+        normalizedItem.scene.placementLayer = "mounted";
+      }
+      if (normalizedItem.category === "table" && !normalizedItem.scene.surfaceZone) {
+        normalizedItem.scene.surfaceZone = cloneSurfaceZone(DEFAULT_TABLE_SURFACE_ZONE);
+      }
+      if (normalizedItem.category === "stove") {
+        normalizedItem.scene.placementLayer = normalizedItem.scene.placementLayer === "ground" ? "surface" : normalizedItem.scene.placementLayer;
+        if (typeof normalizedItem.scene.depthOffsetY !== "number") {
+          normalizedItem.scene.depthOffsetY = 90;
+        }
+        if (!normalizedItem.placeableOn || normalizedItem.placeableOn.length === 0) {
+          normalizedItem.placeableOn = ["table"];
+        }
+      }
       normalizedItem.scene.anchor = normalizedItem.scene.anchor || groundAnchor || { ratioX: 0.5, ratioY: 1 };
       addScenePosition(normalizedItem.scene);
     }
@@ -453,8 +485,8 @@
       image: imagePath("chair", "nokaMoonChair", "png"), 
       scene: scene({ x: 57, y: 79 }, 10, 22, { facing: "left", mirrored: false }),
       interactions: { seatable: { camperFacingMode: "sameAsFurniture", 
-        seatOffsets: { left: { ratioX: 0.3, ratioY: 0.94 } } } },
-        anchors: { ground: { ratioX: 0.8333333333, ratioY: 1 } } }),
+        seatOffsets: { left: { ratioX: 0.5, ratioY: 0.95 } } } },
+        anchors: { ground: { ratioX: 0.5, ratioY: 0.9 } } }),
     gear({ id: "redDirectorChair", 
       category: "chair", 
       shopGroup: "living", 
@@ -464,7 +496,7 @@
       scene: scene({ x: 75, y: 76 }, 11, 22, { facing: "left" }), 
       interactions: { seatable: { camperFacingMode: "sameAsFurniture", 
         seatOffsets: { left: { ratioX: 0.3370786517, ratioY: 0.94 } } } }, 
-        anchors: { ground: { ratioX: 0.4494382022, ratioY: 1 } } }),
+        anchors: { ground: { ratioX: 0.4494382022, ratioY: 0.9 } } }),
     gear({ id: "tripleCampSofa", 
       category: "chair", 
       shopGroup: "living", 
@@ -483,7 +515,7 @@
       image: imagePath("chair", "inflatableLoungeChair", "png"), 
       scene: scene({ x: 37, y: 69 }, 14, 22, { facing: "left",mirrored: true }), 
       interactions: { seatable: { camperFacingMode: "sameAsFurniture", 
-        seatOffsets: { left: { ratioX: 0.3333333333, ratioY: 0.7244582043 } } } }, 
+        seatOffsets: { left: { ratioX: 0.3333333333, ratioY: 0.95 } } } }, 
         anchors: { ground: { ratioX: 0.4126984127, ratioY: 0.6687306502 } } }),
     gear({ id: "lowCampChair", 
       category: "chair", 
@@ -491,10 +523,10 @@
       displayName: "低矮休闲椅", 
       cost: 70, comfort: 6, detail: "+6 Comfort", 
       image: imagePath("chair", "lowCampChair", "png"), 
-      scene: scene({ x: 55, y: 53 }, 11.5, 22, { facing: "left" }), 
+      scene: scene({ x: 55, y: 52 }, 11.5, 22, { facing: "left" }), 
       interactions: { seatable: { camperFacingMode: "sameAsFurniture", 
-        seatOffsets: { left: { ratioX: 0.2893890675, ratioY: 0.8333333333 } } } }, 
-        anchors: { ground: { ratioX: 0.38585209, ratioY: 0.75 } } }),
+        seatOffsets: { left: { ratioX: 0.35, ratioY: 1 } } } }, 
+        anchors: { ground: { ratioX: 0.38585209, ratioY: 0.9 } } }),
 
     gear({ id: "checkerboardTable", 
       category: "table", 
@@ -530,7 +562,7 @@
       displayName: "IGT 厨房套装", 
       cost: 190, comfort: 14, detail: "+14 Comfort", 
       image: imagePath("table", "igtCampKitchenSet", "png"), 
-      scene: scene({ x: 17, y: 79 }, 20, 29, { mirrored: true }) }),
+      scene: scene({ x: 17, y: 77 }, 20, 29, { mirrored: true }) }),
     gear({ id: "foldingPrepTable", 
       category: "table", 
       shopGroup: "living", 
@@ -546,7 +578,7 @@
       cost: 110, comfort: 5, detail: "Requires Table", 
       image: imagePath("stove", "homeCampBurner", "png"), 
       requires: { anyOwnedCategory: ["table"] }, 
-      scene: scene({ x: 20, y: 80.5 }, 9, 31) }),
+      scene: scene({ x: 20, y: 80 }, 9, 31) }),
     gear({ id: "flatBurner", 
       category: "stove", 
       shopGroup: "kitchen", 
@@ -578,7 +610,7 @@
       cost: 145, comfort: 7, detail: "Requires Table", 
       image: imagePath("stove", "grillBurner", "png"), 
       requires: { anyOwnedCategory: ["table"] }, 
-      scene: scene({ x: 12, y: 76.5 }, 8.4, 31, { mirrored: true }) }),
+      scene: scene({ x: 11, y: 74 }, 8.4, 31, { mirrored: true }) }),
 
     gear({ id: "smallSoftCooler", 
       category: "cooler", 
@@ -610,7 +642,7 @@
       detail: "Unlock Night", 
       image: imagePath("light", "basicCampLantern", "png"), 
       unlocks: { nightMode: true }, 
-      scene: scene({ x: 13.5, y: 78 }, 7.5, 23, { layers: { base: imagePath("light", "basicCampLantern", "png"), glow: layerPath("light", "basicCampLantern", "glow", "png") } }) }),
+      scene: scene({ x: 6, y: 61.5 }, 7.5, 23, { layers: { base: imagePath("light", "basicCampLantern", "png"), glow: layerPath("light", "basicCampLantern", "glow", "png") } }) }),
     gear({ id: "starterHeadlamp", 
       category: "light", 
       shopGroup: "light", 
@@ -622,9 +654,6 @@
       autoPlaceOnBuy: true, 
       attachment: { 
         target: "camperHead", 
-        widthPercent: 3.1, 
-        backWidthPercent: 2.8, 
-        coneWidthPercent: 17, 
         zIndex: 32, 
         backZIndex: 29, 
         coneZIndex: 31, 
@@ -634,13 +663,13 @@
           cone: headlampPath("flashlight-cone") 
         }, 
         offsets: { 
-          right: { x: 1.05, y: -6.45, rotate: -6 }, 
-          left: { x: -1.05, y: -6.45, rotate: 6 }, 
+          right: { x: 0.3, y: -6, rotate: -0, scaleX: -1 }, 
+          left: { x: -0.3, y: -6, rotate: 0, scaleX: 1 }, 
           back: { x: 0, y: -6.35, rotate: 0 } 
         }, 
           coneOffsets: { 
-            right: { x: 7.8, y: -6.1, rotate: -6 }, 
-            left: { x: -7.8, y: -6.1, rotate: 6 }, 
+            right: { x: 9.8, y: -5.8, rotate: 0 }, 
+            left: { x: -9.8, y: -5.8, rotate: 0 }, 
             back: { x: 0, y: -11.2, rotate: -90 } 
           } 
         } 
@@ -681,7 +710,7 @@
       detail: "Unlock Night", 
       image: imagePath("light", "lanternPoleLight", "png"), 
       unlocks: { nightMode: true }, 
-      scene: scene({ x: 16, y: 66 }, 18, 16, { anchor: { ratioX: 0.2469135802, ratioY: 0.4855967078 }, mirrored: true }) }),
+      scene: scene({ x: 13, y: 66 }, 18, 16, { anchor: { ratioX: 0.2469135802, ratioY: 0.4855967078 }, mirrored: true }) }),
 
     gear({ id: "stackingShelfContainer25", 
       category: "storage", 
@@ -690,7 +719,8 @@
       cost: 65, comfort: 3, 
       detail: "+3 Comfort", 
       image: imagePath("storage", "stackingShelfContainer25", "png"), 
-      scene: scene({ x: 86, y: 56 }, 9.5, 16, { mirrored: true }) }),
+      placeableOn: ["storage"],
+      scene: scene({ x: 86, y: 56 }, 9.5, 16, { mirrored: true, placementLayer: "stacked", depthOffsetY: 70 }) }),
     gear({ id: "stackingShelfContainer50", 
       category: "storage", 
       shopGroup: "living", 
@@ -698,7 +728,16 @@
       cost: 80, comfort: 4, 
       detail: "+4 Comfort", 
       image: imagePath("storage", "stackingShelfContainer50", "png"), 
-      scene: scene({ x: 86, y: 58 }, 11.5, 15) }),
+      scene: scene({ x: 86, y: 58 }, 11.5, 15, {
+        surfaceZone: {
+          id: "shelfTop",
+          ratioX: 0.14,
+          ratioY: 0.18,
+          ratioWidth: 0.72,
+          ratioHeight: 0.22,
+          accepts: ["storage"]
+        }
+      }) }),
     gear({ id: "stackedShelfContainerSet", 
       category: "storage", 
       shopGroup: "living", 
@@ -706,7 +745,7 @@
       cost: 120, comfort: 6, 
       detail: "+6 Comfort", 
       image: imagePath("storage", "stackedShelfContainerSet", "png"), 
-      scene: scene({ x: 87, y: 76 }, 13, 16) }),
+      scene: scene({ x: 90, y: 74 }, 13, 16) }),
     gear({ id: "canvasGearBag", 
       category: "storage", 
       shopGroup: "living", 
@@ -785,7 +824,7 @@
       cost: 115, comfort: 5, 
       detail: "+5 Comfort", 
       image: imagePath("activity", "cameraTripod", "png"), 
-      scene: scene({ x: 39, y: 51 }, 10, 16, { mirrored: true }) }),
+      scene: scene({ x: 35, y: 51 }, 10, 16, { mirrored: true }) }),
 
     gear({ id: "sleepingBag", 
       category: "sleepingGear", 

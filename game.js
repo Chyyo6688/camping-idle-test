@@ -34,6 +34,57 @@ const legacyGearIdMap = typeof window !== "undefined" && window.LEGACY_GEAR_ID_M
 const BASE_SCENE_WIDTH = typeof window !== "undefined" && window.BASE_SCENE_WIDTH ? window.BASE_SCENE_WIDTH : 900;
 const BASE_SCENE_HEIGHT = typeof window !== "undefined" && window.BASE_SCENE_HEIGHT ? window.BASE_SCENE_HEIGHT : 1600;
 const SCENE_ASSET_SCALE = typeof window !== "undefined" && window.SCENE_ASSET_SCALE ? window.SCENE_ASSET_SCALE : 3;
+const SCENE_DEPTH_Z_BASE = 100;
+const SCENE_FRONT_LAYER_OFFSET = 6;
+const CAMPER_DEPTH_OFFSET = 2;
+const PATH_GRID_SIZE = 24;
+const CAMPER_COLLISION_RADIUS = 18;
+const PATH_MOVE_SPEED_PX_PER_SECOND = 235;
+const PATH_MIN_DURATION_MS = 800;
+const PATH_MAX_DURATION_MS = 6500;
+const OCCLUSION_DEPTH_GAP = 8;
+const OCCLUSION_SHOW_OVERLAP_RATIO = 0.12;
+const OCCLUSION_HIDE_OVERLAP_RATIO = 0.05;
+const USER_DEPTH_OFFSET_STEP = 40;
+const DEFAULT_SURFACE_DEPTH_OFFSET_Y = 90;
+const DEFAULT_STACKED_DEPTH_OFFSET_Y = 60;
+const DEFAULT_MOUNTED_DEPTH_OFFSET_Y = 220;
+const CAMPER_BODY_RECTS = {
+  default: { ratioX: 0.31, ratioY: 0.14, ratioWidth: 0.38, ratioHeight: 0.78 },
+  walking: { ratioX: 0.3, ratioY: 0.12, ratioWidth: 0.4, ratioHeight: 0.8 },
+  carryingWood: { ratioX: 0.27, ratioY: 0.1, ratioWidth: 0.46, ratioHeight: 0.82 },
+  sittingGround: { ratioX: 0.22, ratioY: 0.34, ratioWidth: 0.56, ratioHeight: 0.54 },
+  sittingChair: { ratioX: 0.22, ratioY: 0.3, ratioWidth: 0.56, ratioHeight: 0.58 },
+  resting: { ratioX: 0.16, ratioY: 0.45, ratioWidth: 0.68, ratioHeight: 0.38 },
+  tentRest: { ratioX: 0.16, ratioY: 0.45, ratioWidth: 0.68, ratioHeight: 0.38 },
+  lookingLakeBack: { ratioX: 0.3, ratioY: 0.14, ratioWidth: 0.4, ratioHeight: 0.78 }
+};
+const DEFAULT_COLLISION_FOOTPRINTS = {
+  vehicle: { ratioX: 0.14, ratioY: 0.62, ratioWidth: 0.72, ratioHeight: 0.28 },
+  tent: { ratioX: 0.2, ratioY: 0.68, ratioWidth: 0.6, ratioHeight: 0.26 },
+  tarp: { ratioX: 0.34, ratioY: 0.86, ratioWidth: 0.32, ratioHeight: 0.1 },
+  chair: { ratioX: 0.24, ratioY: 0.72, ratioWidth: 0.52, ratioHeight: 0.22 },
+  table: { ratioX: 0.18, ratioY: 0.68, ratioWidth: 0.64, ratioHeight: 0.22 },
+  stove: { ratioX: 0.22, ratioY: 0.7, ratioWidth: 0.56, ratioHeight: 0.2 },
+  cooler: { ratioX: 0.2, ratioY: 0.7, ratioWidth: 0.6, ratioHeight: 0.22 },
+  light: { ratioX: 0.36, ratioY: 0.74, ratioWidth: 0.28, ratioHeight: 0.2 },
+  storage: { ratioX: 0.18, ratioY: 0.7, ratioWidth: 0.64, ratioHeight: 0.22 },
+  fire: { ratioX: 0.25, ratioY: 0.64, ratioWidth: 0.5, ratioHeight: 0.3 },
+  activity: { ratioX: 0.22, ratioY: 0.72, ratioWidth: 0.56, ratioHeight: 0.2 }
+};
+const DEFAULT_OCCLUSION_RECTS = {
+  vehicle: { ratioX: 0.08, ratioY: 0.2, ratioWidth: 0.84, ratioHeight: 0.56 },
+  tent: { ratioX: 0.12, ratioY: 0.16, ratioWidth: 0.76, ratioHeight: 0.72 },
+  tarp: { ratioX: 0.2, ratioY: 0.44, ratioWidth: 0.6, ratioHeight: 0.42 },
+  chair: { ratioX: 0.2, ratioY: 0.34, ratioWidth: 0.6, ratioHeight: 0.5 },
+  table: { ratioX: 0.16, ratioY: 0.48, ratioWidth: 0.68, ratioHeight: 0.38 },
+  stove: { ratioX: 0.18, ratioY: 0.5, ratioWidth: 0.64, ratioHeight: 0.36 },
+  cooler: { ratioX: 0.16, ratioY: 0.5, ratioWidth: 0.68, ratioHeight: 0.36 },
+  light: { ratioX: 0.32, ratioY: 0.28, ratioWidth: 0.36, ratioHeight: 0.58 },
+  storage: { ratioX: 0.16, ratioY: 0.44, ratioWidth: 0.68, ratioHeight: 0.44 },
+  fire: { ratioX: 0.22, ratioY: 0.3, ratioWidth: 0.56, ratioHeight: 0.58 },
+  activity: { ratioX: 0.2, ratioY: 0.4, ratioWidth: 0.6, ratioHeight: 0.5 }
+};
 
 function getGearItems() {
   return Object.keys(gearCatalog).map(function(id) {
@@ -108,6 +159,7 @@ const defaultGameState = {
   ownedGear: getDefaultOwnedGearIds(),
   placedGear: [],
   equippedGear: getDefaultEquippedGear(),
+  userDepthOffsetY: {},
   vehiclePlacementMigrated: true,
   onboardingSeen: false,
   nightUnlocked: false,
@@ -122,6 +174,7 @@ function createDefaultGameState() {
     ownedGear: defaultGameState.ownedGear.slice(),
     placedGear: defaultGameState.placedGear.slice(),
     equippedGear: { ...defaultGameState.equippedGear },
+    userDepthOffsetY: { ...defaultGameState.userDepthOffsetY },
     vehiclePlacementMigrated: defaultGameState.vehiclePlacementMigrated,
     onboardingSeen: defaultGameState.onboardingSeen,
     lastSaveTime: Date.now()
@@ -218,7 +271,13 @@ let camper = {
   woodCollectionSource: null,
   carryingWood: false,
   facing: "right",
-  animationStartedAt: Date.now()
+  animationStartedAt: Date.now(),
+  pathPoints: [],
+  pathSegmentLengths: [],
+  pathStartedAt: 0,
+  pathDurationMs: 0,
+  pathLength: 0,
+  interactionTargetId: ""
 };
 
 let woodItems = [];
@@ -229,6 +288,12 @@ let nextActionQueueId = 1;
 let uiDisplayMode = 0;
 let selectedActionTargetElement = null;
 let selectedActionTargetKey = "";
+let camperMotionFrameId = null;
+let sceneDepthControlLayer = null;
+let sceneDepthControlPanel = null;
+let depthControlHoverTargetId = "";
+let depthControlPanelHovered = false;
+let depthControlHideTimer = null;
 
 // These variables connect JavaScript to the HTML.
 const cozyPointsAmount = document.getElementById("cozyPointsAmount");
@@ -633,6 +698,281 @@ function refreshTargetOutlines() {
   document.querySelectorAll(".wood-item, .interactive-action-target").forEach(updateTargetOutlineForElement);
 }
 
+function clearSceneDepthControlHideTimer() {
+  if (depthControlHideTimer !== null) {
+    clearTimeout(depthControlHideTimer);
+    depthControlHideTimer = null;
+  }
+}
+
+function getSceneDepthControlLayer() {
+  if (!sceneDepthControlLayer && sceneContent) {
+    sceneDepthControlLayer = document.createElement("div");
+    sceneDepthControlLayer.className = "scene-depth-control-layer";
+    sceneDepthControlLayer.setAttribute("aria-hidden", "false");
+    sceneContent.appendChild(sceneDepthControlLayer);
+  }
+
+  return sceneDepthControlLayer;
+}
+
+function createSceneDepthControlButton(action, label, ariaLabel) {
+  const button = document.createElement("button");
+
+  button.type = "button";
+  button.className = "scene-depth-control-button";
+  button.dataset.depthAction = action;
+  button.textContent = label;
+  button.setAttribute("aria-label", ariaLabel);
+
+  return button;
+}
+
+function getSceneDepthControlPanel() {
+  const layer = getSceneDepthControlLayer();
+
+  if (!layer) {
+    return null;
+  }
+
+  if (!sceneDepthControlPanel) {
+    sceneDepthControlPanel = document.createElement("div");
+    sceneDepthControlPanel.className = "scene-depth-controls hidden";
+    sceneDepthControlPanel.setAttribute("role", "group");
+    sceneDepthControlPanel.setAttribute("aria-label", "Layer order controls");
+
+    sceneDepthControlPanel.appendChild(createSceneDepthControlButton("forward", "↑", "Bring selected gear forward"));
+    sceneDepthControlPanel.appendChild(createSceneDepthControlButton("backward", "↓", "Send selected gear backward"));
+
+    const resetButton = createSceneDepthControlButton("reset", "Reset", "Reset selected gear layer order");
+    resetButton.classList.add("scene-depth-control-reset");
+    sceneDepthControlPanel.appendChild(resetButton);
+
+    const offsetLabel = document.createElement("span");
+    offsetLabel.className = "scene-depth-control-value";
+    offsetLabel.dataset.depthOffset = "";
+    sceneDepthControlPanel.appendChild(offsetLabel);
+
+    sceneDepthControlPanel.addEventListener("pointerenter", function() {
+      depthControlPanelHovered = true;
+      clearSceneDepthControlHideTimer();
+    });
+
+    sceneDepthControlPanel.addEventListener("pointerleave", function() {
+      depthControlPanelHovered = false;
+      scheduleHideSceneDepthControls();
+    });
+
+    sceneDepthControlPanel.addEventListener("click", function(event) {
+      const eventTarget = event.target && event.target.closest ? event.target : event.target && event.target.parentElement;
+      const button = eventTarget ? eventTarget.closest("[data-depth-action]") : null;
+
+      if (!button) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      handleSceneDepthControlAction(button.dataset.depthAction);
+    });
+
+    layer.appendChild(sceneDepthControlPanel);
+  }
+
+  return sceneDepthControlPanel;
+}
+
+function getSelectedDepthControlTargetId() {
+  return selectedActionTargetElement && selectedActionTargetElement.dataset ? selectedActionTargetElement.dataset.actionTargetId : "";
+}
+
+function getActiveDepthControlTargetId() {
+  return getSelectedDepthControlTargetId() || depthControlHoverTargetId;
+}
+
+function isSceneDepthAdjustableItem(item) {
+  return Boolean(item && item.scene && item.scene.renderMode !== "campfire");
+}
+
+function getSceneAssetBounds(item) {
+  if (!isSceneDepthAdjustableItem(item)) {
+    return null;
+  }
+
+  const element = getGearSceneElement(item);
+  const layoutOverride = getSceneLayoutOverride(item);
+  const logicalSize = getSceneAssetLogicalSize(item, element);
+  const groundAnchor = getSceneGroundAnchor(item, logicalSize);
+  const position = getScenePixelPosition(item.scene || {}, layoutOverride);
+
+  return {
+    left: position.x - groundAnchor.x,
+    top: position.y - groundAnchor.y,
+    width: logicalSize.width,
+    height: logicalSize.height
+  };
+}
+
+function showSceneDepthControlsForItem(itemOrId) {
+  const item = typeof itemOrId === "string" ? getGearItem(itemOrId) : itemOrId;
+
+  if (!isSceneDepthAdjustableItem(item) || !isGearVisibleInScene(item)) {
+    return;
+  }
+
+  clearSceneDepthControlHideTimer();
+  depthControlHoverTargetId = item.id;
+  syncSceneDepthControls();
+}
+
+function scheduleHideSceneDepthControls() {
+  clearSceneDepthControlHideTimer();
+
+  depthControlHideTimer = setTimeout(function() {
+    if (!depthControlPanelHovered && !getSelectedDepthControlTargetId()) {
+      depthControlHoverTargetId = "";
+      syncSceneDepthControls();
+    }
+  }, 320);
+}
+
+function formatDepthOffsetValue(value) {
+  if (!value) {
+    return "Auto";
+  }
+
+  return value > 0 ? "+" + value : String(value);
+}
+
+function syncSceneDepthControls() {
+  const panel = getSceneDepthControlPanel();
+  const item = getGearItem(getActiveDepthControlTargetId());
+  const bounds = getSceneAssetBounds(item);
+
+  if (!panel || !item || !bounds || !isGearVisibleInScene(item)) {
+    if (panel) {
+      panel.classList.add("hidden");
+    }
+
+    return;
+  }
+
+  const panelWidth = 54;
+  const panelHeight = 102;
+  const left = clamp(bounds.left + bounds.width + 10, 8, BASE_SCENE_WIDTH - panelWidth - 8);
+  const top = clamp(bounds.top + bounds.height * 0.34, 8, BASE_SCENE_HEIGHT - panelHeight - 8);
+  const offsetValue = panel.querySelector("[data-depth-offset]");
+
+  panel.dataset.depthTargetId = item.id;
+  panel.style.left = left + "px";
+  panel.style.top = top + "px";
+  panel.classList.remove("hidden");
+
+  if (offsetValue) {
+    offsetValue.textContent = formatDepthOffsetValue(getUserDepthOffsetY(item));
+  }
+}
+
+function getUserDepthOffsetMap() {
+  if (!gameState.userDepthOffsetY || typeof gameState.userDepthOffsetY !== "object") {
+    gameState.userDepthOffsetY = {};
+  }
+
+  return gameState.userDepthOffsetY;
+}
+
+function setUserDepthOffsetY(item, offsetY) {
+  if (!isSceneDepthAdjustableItem(item)) {
+    return;
+  }
+
+  const offsets = getUserDepthOffsetMap();
+  const nextOffset = Number.isFinite(offsetY) ? offsetY : 0;
+
+  if (nextOffset === 0) {
+    delete offsets[item.id];
+  } else {
+    offsets[item.id] = nextOffset;
+  }
+
+  refreshGearSceneLayout(item);
+  saveGame();
+  setStatus(item.displayName + " layer " + formatDepthOffsetValue(nextOffset) + ".");
+}
+
+function handleSceneDepthControlAction(action) {
+  const item = getGearItem(getActiveDepthControlTargetId());
+
+  if (!isSceneDepthAdjustableItem(item)) {
+    return;
+  }
+
+  if (action === "forward") {
+    setUserDepthOffsetY(item, getUserDepthOffsetY(item) + USER_DEPTH_OFFSET_STEP);
+    return;
+  }
+
+  if (action === "backward") {
+    setUserDepthOffsetY(item, getUserDepthOffsetY(item) - USER_DEPTH_OFFSET_STEP);
+    return;
+  }
+
+  if (action === "reset") {
+    setUserDepthOffsetY(item, 0);
+  }
+}
+
+function refreshGearSceneLayout(item) {
+  if (!isSceneDepthAdjustableItem(item)) {
+    return;
+  }
+
+  const scene = item.scene || {};
+  const element = getGearSceneElement(item);
+  const frontElement = document.getElementById(getGearFrontElementId(item));
+  const layers = scene.layers || {};
+
+  if (element) {
+    applyGearSceneLayout(element, item, scene.zIndex || 20);
+  }
+
+  if (frontElement && layers.front) {
+    applyGearSceneLayout(frontElement, item, scene.frontZIndex || 31, SCENE_FRONT_LAYER_OFFSET);
+  }
+
+  updateSceneOcclusion();
+  syncSceneDepthControls();
+}
+
+function configureGearDepthAdjustTarget(element, item) {
+  if (!element || !item || !item.scene || item.scene.renderMode === "campfire") {
+    return;
+  }
+
+  element.dataset.depthTargetId = item.id;
+  element.classList.add("depth-adjustable-target");
+
+  if (element.dataset.depthAdjustHandlersBound === "true") {
+    return;
+  }
+
+  element.dataset.depthAdjustHandlersBound = "true";
+  element.addEventListener("pointerenter", function(event) {
+    const targetItem = getGearItem(event.currentTarget.dataset.depthTargetId);
+    showSceneDepthControlsForItem(targetItem);
+  });
+  element.addEventListener("pointerleave", scheduleHideSceneDepthControls);
+  element.addEventListener("focusin", function(event) {
+    const targetItem = getGearItem(event.currentTarget.dataset.depthTargetId);
+    showSceneDepthControlsForItem(targetItem);
+  });
+  element.addEventListener("focusout", scheduleHideSceneDepthControls);
+  element.addEventListener("pointerdown", function(event) {
+    const targetItem = getGearItem(event.currentTarget.dataset.depthTargetId);
+    showSceneDepthControlsForItem(targetItem);
+  });
+}
+
 function getActionTargetKey(type, targetId) {
   return type + ":" + targetId;
 }
@@ -648,6 +988,7 @@ function clearSelectedActionTarget() {
 
   selectedActionTargetElement = null;
   selectedActionTargetKey = "";
+  syncSceneDepthControls();
 }
 
 function getGearSelectionKey(item) {
@@ -686,6 +1027,7 @@ function selectActionTarget(element, item) {
   element.classList.add("selected-action-target");
   selectedActionTargetElement = element;
   selectedActionTargetKey = selectionKey;
+  showSceneDepthControlsForItem(item);
   setStatus(getGearTouchPrompt(item));
 }
 
@@ -1583,7 +1925,13 @@ function resetCamperForNewGame() {
     woodCollectionSource: null,
     carryingWood: false,
     facing: "right",
-    animationStartedAt: Date.now()
+    animationStartedAt: Date.now(),
+    pathPoints: [],
+    pathSegmentLengths: [],
+    pathStartedAt: 0,
+    pathDurationMs: 0,
+    pathLength: 0,
+    interactionTargetId: ""
   };
 }
 
@@ -1791,6 +2139,18 @@ function sanitizeSave(savedGame) {
       addUniquePlacedGear(cleanState.placedGear, cleanState.equippedGear.vehicle);
     }
   }
+
+  cleanState.userDepthOffsetY = {};
+  const savedUserDepthOffsetY = savedGame && savedGame.userDepthOffsetY && typeof savedGame.userDepthOffsetY === "object" ? savedGame.userDepthOffsetY : {};
+  Object.keys(savedUserDepthOffsetY).forEach(function(id) {
+    const normalizedId = normalizeGearId(id);
+    const item = getGearItem(normalizedId);
+    const offsetY = Number(savedUserDepthOffsetY[id]);
+
+    if (item && item.scene && Number.isFinite(offsetY) && offsetY !== 0) {
+      cleanState.userDepthOffsetY[normalizedId] = offsetY;
+    }
+  });
 
   cleanState.cozyPoints = Math.max(0, Number(cleanState.cozyPoints) || 0);
   cleanState.warmthSeconds = Math.max(0, Number(cleanState.warmthSeconds) || 0);
@@ -2160,7 +2520,7 @@ function setVersionedLayerSource(image, path) {
   }
 }
 
-function reapplyGearSceneLayoutWhenImageReady(element, item, zIndex) {
+function reapplyGearSceneLayoutWhenImageReady(element, item, zIndex, depthOffset) {
   const sourceImage = getSceneAssetSourceImage(element);
 
   if (!sourceImage) {
@@ -2168,9 +2528,11 @@ function reapplyGearSceneLayoutWhenImageReady(element, item, zIndex) {
   }
 
   const reapplyLayout = function() {
-    applyGearSceneLayout(element, item, zIndex);
+    applyGearSceneLayout(element, item, zIndex, depthOffset);
     updateTargetOutlineForElement(element);
     updateActionQueueIndicators();
+    updateSceneOcclusion();
+    syncSceneDepthControls();
   };
 
   if (sourceImage.naturalWidth && sourceImage.naturalHeight) {
@@ -2227,6 +2589,7 @@ function getOrCreateGearSceneElement(item) {
   }
 
   configureGearActionTarget(element, item);
+  configureGearDepthAdjustTarget(element, item);
 
   return element;
 }
@@ -2449,6 +2812,279 @@ function getSceneGroundAnchor(item, logicalSize) {
   return { x: assetSize.width / 2, y: assetSize.height };
 }
 
+function getSceneDepthY(item, layoutOverride) {
+  return getScenePixelPosition(item && item.scene ? item.scene : {}, layoutOverride).y;
+}
+
+function getScenePlacementLayer(item, layoutOverride) {
+  const scene = item && item.scene ? item.scene : {};
+
+  return layoutOverride && layoutOverride.placementLayer || scene.placementLayer || "ground";
+}
+
+function getAutoDepthOffsetY(item, layoutOverride) {
+  const scene = item && item.scene ? item.scene : {};
+  const placementLayer = getScenePlacementLayer(item, layoutOverride);
+
+  if (layoutOverride && typeof layoutOverride.depthOffsetY === "number") {
+    return layoutOverride.depthOffsetY;
+  }
+
+  if (typeof scene.depthOffsetY === "number") {
+    return scene.depthOffsetY;
+  }
+
+  if (scene.mountTo || placementLayer === "mounted") {
+    return DEFAULT_MOUNTED_DEPTH_OFFSET_Y;
+  }
+
+  if (placementLayer === "surface") {
+    return DEFAULT_SURFACE_DEPTH_OFFSET_Y;
+  }
+
+  if (placementLayer === "stacked") {
+    return DEFAULT_STACKED_DEPTH_OFFSET_Y;
+  }
+
+  return 0;
+}
+
+function getUserDepthOffsetY(item) {
+  const offsets = gameState && gameState.userDepthOffsetY ? gameState.userDepthOffsetY : {};
+
+  if (!item || !item.id || typeof offsets[item.id] !== "number" || !Number.isFinite(offsets[item.id])) {
+    return 0;
+  }
+
+  return offsets[item.id];
+}
+
+function getSceneDepthOffsetY(item, layoutOverride, layerOffset) {
+  return getAutoDepthOffsetY(item, layoutOverride) + getUserDepthOffsetY(item) + (layerOffset || 0);
+}
+
+function getSceneDisplayDepthY(item, layoutOverride, layerOffset) {
+  return getSceneDepthY(item, layoutOverride) + getSceneDepthOffsetY(item, layoutOverride, layerOffset);
+}
+
+function getDepthZ(depthY, offset) {
+  const safeDepthY = Number.isFinite(depthY) ? depthY : 0;
+  return SCENE_DEPTH_Z_BASE + Math.round(safeDepthY) + (offset || 0);
+}
+
+function setSceneElementDepth(element, depthY, offset) {
+  if (!element) {
+    return;
+  }
+
+  const safeDepthY = Number.isFinite(depthY) ? depthY : 0;
+  const depthOffset = Number.isFinite(offset) ? offset : 0;
+  const displayDepthY = safeDepthY + depthOffset;
+
+  element.style.zIndex = getDepthZ(displayDepthY, 0);
+  element.dataset.sceneDepthY = String(depthY);
+  element.dataset.sceneDisplayDepthY = String(displayDepthY);
+  element.dataset.sceneDepthOffsetY = String(depthOffset);
+}
+
+function getSceneMirrored(item, layoutOverride) {
+  const scene = item && item.scene ? item.scene : {};
+  return Boolean(layoutOverride && typeof layoutOverride.mirrored === "boolean" ? layoutOverride.mirrored : scene.mirrored);
+}
+
+function getCollisionConfig(item) {
+  return item && item.scene && item.scene.collision ? item.scene.collision : {};
+}
+
+function isValidCollisionFootprint(footprint) {
+  return Boolean(
+    footprint &&
+    typeof footprint.ratioX === "number" &&
+    typeof footprint.ratioY === "number" &&
+    typeof footprint.ratioWidth === "number" &&
+    typeof footprint.ratioHeight === "number" &&
+    footprint.ratioWidth > 0 &&
+    footprint.ratioHeight > 0
+  );
+}
+
+function getCollisionFootprint(item) {
+  if (!item || !item.scene) {
+    return null;
+  }
+
+  const collision = getCollisionConfig(item);
+
+  if (collision.enabled === false) {
+    return null;
+  }
+
+  if (item.scene.mountTo && collision.enabled !== true) {
+    return null;
+  }
+
+  const footprint = collision.footprint || DEFAULT_COLLISION_FOOTPRINTS[item.category] || {
+    ratioX: 0.25,
+    ratioY: 0.74,
+    ratioWidth: 0.5,
+    ratioHeight: 0.2
+  };
+
+  return isValidCollisionFootprint(footprint) ? footprint : null;
+}
+
+function getMirroredCollisionFootprint(footprint) {
+  return {
+    ratioX: 1 - footprint.ratioX - footprint.ratioWidth,
+    ratioY: footprint.ratioY,
+    ratioWidth: footprint.ratioWidth,
+    ratioHeight: footprint.ratioHeight
+  };
+}
+
+function getSceneCollisionRect(item, layoutOverride) {
+  const footprint = getCollisionFootprint(item);
+
+  if (!footprint) {
+    return null;
+  }
+
+  const element = getGearSceneElement(item);
+  const logicalSize = getSceneAssetLogicalSize(item, element);
+  const groundAnchor = getSceneGroundAnchor(item, logicalSize);
+  const position = getScenePixelPosition(item.scene || {}, layoutOverride);
+  const activeFootprint = getSceneMirrored(item, layoutOverride) ? getMirroredCollisionFootprint(footprint) : footprint;
+  const assetLeft = position.x - groundAnchor.x;
+  const assetTop = position.y - groundAnchor.y;
+
+  return {
+    id: item.id,
+    x: assetLeft + activeFootprint.ratioX * logicalSize.width,
+    y: assetTop + activeFootprint.ratioY * logicalSize.height,
+    width: activeFootprint.ratioWidth * logicalSize.width,
+    height: activeFootprint.ratioHeight * logicalSize.height,
+    depthY: position.y
+  };
+}
+
+function getOcclusionConfig(item) {
+  return item && item.scene && item.scene.occlusion ? item.scene.occlusion : {};
+}
+
+function getOcclusionFootprint(item) {
+  if (!item || !item.scene) {
+    return null;
+  }
+
+  const occlusion = getOcclusionConfig(item);
+
+  if (occlusion.enabled === false) {
+    return null;
+  }
+
+  const footprint = occlusion.rect || occlusion.footprint || DEFAULT_OCCLUSION_RECTS[item.category] || getCollisionFootprint(item);
+  return isValidCollisionFootprint(footprint) ? footprint : null;
+}
+
+function getSceneAssetRatioRect(item, footprint, layoutOverride) {
+  if (!item || !item.scene || !footprint) {
+    return null;
+  }
+
+  const element = getGearSceneElement(item);
+  const logicalSize = getSceneAssetLogicalSize(item, element);
+  const groundAnchor = getSceneGroundAnchor(item, logicalSize);
+  const position = getScenePixelPosition(item.scene || {}, layoutOverride);
+  const activeFootprint = getSceneMirrored(item, layoutOverride) ? getMirroredCollisionFootprint(footprint) : footprint;
+  const assetLeft = position.x - groundAnchor.x;
+  const assetTop = position.y - groundAnchor.y;
+
+  return {
+    id: item.id,
+    x: assetLeft + activeFootprint.ratioX * logicalSize.width,
+    y: assetTop + activeFootprint.ratioY * logicalSize.height,
+    width: activeFootprint.ratioWidth * logicalSize.width,
+    height: activeFootprint.ratioHeight * logicalSize.height,
+    depthY: position.y
+  };
+}
+
+function getSceneOcclusionRect(item, layoutOverride) {
+  const rect = getSceneAssetRatioRect(item, getOcclusionFootprint(item), layoutOverride);
+
+  if (rect) {
+    rect.depthY = getSceneDisplayDepthY(item, layoutOverride);
+  }
+
+  return rect;
+}
+
+function sceneRectToViewportRect(sceneRect) {
+  if (!sceneRect || !sceneContent) {
+    return null;
+  }
+
+  const contentRect = sceneContent.getBoundingClientRect();
+  const scaleX = contentRect.width / BASE_SCENE_WIDTH;
+  const scaleY = contentRect.height / BASE_SCENE_HEIGHT;
+
+  return {
+    left: contentRect.left + sceneRect.x * scaleX,
+    top: contentRect.top + sceneRect.y * scaleY,
+    right: contentRect.left + (sceneRect.x + sceneRect.width) * scaleX,
+    bottom: contentRect.top + (sceneRect.y + sceneRect.height) * scaleY
+  };
+}
+
+function getViewportRatioRect(baseRect, ratioRect) {
+  return {
+    left: baseRect.left + baseRect.width * ratioRect.ratioX,
+    top: baseRect.top + baseRect.height * ratioRect.ratioY,
+    right: baseRect.left + baseRect.width * (ratioRect.ratioX + ratioRect.ratioWidth),
+    bottom: baseRect.top + baseRect.height * (ratioRect.ratioY + ratioRect.ratioHeight)
+  };
+}
+
+function getRectArea(rect) {
+  return Math.max(0, rect.right - rect.left) * Math.max(0, rect.bottom - rect.top);
+}
+
+function getRectOverlapArea(firstRect, secondRect) {
+  if (!rectsOverlap(firstRect, secondRect)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(firstRect.right, secondRect.right) - Math.max(firstRect.left, secondRect.left)) *
+    Math.max(0, Math.min(firstRect.bottom, secondRect.bottom) - Math.max(firstRect.top, secondRect.top));
+}
+
+function getOverlapRatioAgainstCamper(overlapRect, camperBodyRect) {
+  const camperArea = getRectArea(camperBodyRect);
+  return camperArea > 0 ? getRectOverlapArea(overlapRect, camperBodyRect) / camperArea : 0;
+}
+
+function inflateRect(rect, amount) {
+  return {
+    id: rect.id,
+    x: rect.x - amount,
+    y: rect.y - amount,
+    width: rect.width + amount * 2,
+    height: rect.height + amount * 2,
+    depthY: rect.depthY
+  };
+}
+
+function pointInRect(point, rect) {
+  return Boolean(
+    point &&
+    rect &&
+    point.x >= rect.x &&
+    point.x <= rect.x + rect.width &&
+    point.y >= rect.y &&
+    point.y <= rect.y + rect.height
+  );
+}
+
 function getCurrentVehicleItem(state) {
   return getEquippedGearItem("vehicle", state || gameState);
 }
@@ -2498,7 +3134,8 @@ function getRooftopTentLayout(item) {
     sceneX: scenePoint.x,
     sceneY: scenePoint.y,
     position: scenePointToPercent(scenePoint),
-    zIndex: mount.zIndex || item.scene.zIndex || 16
+    zIndex: mount.zIndex || item.scene.zIndex || 16,
+    placementLayer: "mounted"
   };
 }
 function getVehicleMountLayout(item, mountKey) {
@@ -2522,6 +3159,7 @@ function getVehicleMountLayout(item, mountKey) {
     sceneY: scenePoint.y,
     position: scenePointToPercent(scenePoint),
     zIndex: mount.zIndex || item.scene.zIndex || 20,
+    placementLayer: "mounted",
     mirrored: typeof mount.mirrored === "boolean" ? mount.mirrored : item.scene.mirrored
   };
 }
@@ -2537,24 +3175,27 @@ function getSceneLayoutOverride(item) {
   return null;
 }
 
-function applyGearSceneLayout(element, item, zIndex) {
+function applyGearSceneLayout(element, item, zIndex, depthOffset) {
   const scene = item.scene || {};
   const layoutOverride = getSceneLayoutOverride(item);
   const logicalSize = getSceneAssetLogicalSize(item, element);
   const groundAnchor = getSceneGroundAnchor(item, logicalSize);
   const position = getScenePixelPosition(scene, layoutOverride);
   const mirrored = layoutOverride && typeof layoutOverride.mirrored === "boolean" ? layoutOverride.mirrored : scene.mirrored;
+  const depthY = getSceneDepthY(item, layoutOverride);
+  const sceneDepthOffsetY = getSceneDepthOffsetY(item, layoutOverride, depthOffset);
 
   element.style.left = position.x + "px";
   element.style.top = position.y + "px";
   element.style.width = logicalSize.width + "px";
   element.style.height = logicalSize.height + "px";
   element.style.aspectRatio = logicalSize.width + " / " + logicalSize.height;
-  element.style.zIndex = layoutOverride && layoutOverride.zIndex || zIndex;
+  setSceneElementDepth(element, depthY, sceneDepthOffsetY);
   element.style.setProperty("--object-anchor-x", -groundAnchor.x / logicalSize.width * 100 + "%");
   element.style.setProperty("--object-anchor-y", -groundAnchor.y / logicalSize.height * 100 + "%");
   element.style.setProperty("--object-scale-x", mirrored ? "-1" : "1");
   element.dataset.sceneSizeSource = logicalSize.source;
+  element.dataset.scenePlacementLayer = getScenePlacementLayer(item, layoutOverride);
 }
 
 function updateGearSceneElement(item) {
@@ -2571,6 +3212,7 @@ function updateGearSceneElement(item) {
   }
 
   element.className = "gear-object asset-object category-" + item.category + " hidden";
+  configureGearDepthAdjustTarget(element, item);
 
   Object.keys(layers).forEach(function(layerName) {
     if (layerName === "front" || !layers[layerName]) {
@@ -2597,10 +3239,104 @@ function updateGearSceneElement(item) {
   if (frontElement) {
     if (layers.front) {
       setVersionedLayerSource(ensureLayerImage(frontElement, "gear-layer-front"), layers.front);
-      applyGearSceneLayout(frontElement, item, scene.frontZIndex || 31);
-      reapplyGearSceneLayoutWhenImageReady(frontElement, item, scene.frontZIndex || 31);
+      applyGearSceneLayout(frontElement, item, scene.frontZIndex || 31, SCENE_FRONT_LAYER_OFFSET);
+      reapplyGearSceneLayoutWhenImageReady(frontElement, item, scene.frontZIndex || 31, SCENE_FRONT_LAYER_OFFSET);
     }
   }
+}
+
+function updateCampfireDepth() {
+  const campfireItem = getGearItem("campfire");
+  const depthY = campfireItem && campfireItem.scene ? getSceneDepthY(campfireItem) : sceneYFromPercent(campSpots.fire.y);
+  setSceneElementDepth(campfire, depthY, 0);
+}
+
+function getSceneOccluderElements() {
+  const occluders = Array.from(document.querySelectorAll(".gear-object, .gear-front-layer"));
+
+  if (campfire) {
+    occluders.push(campfire);
+  }
+
+  return occluders;
+}
+
+function rectsOverlap(firstRect, secondRect) {
+  return Boolean(
+    firstRect &&
+    secondRect &&
+    firstRect.left < secondRect.right &&
+    firstRect.right > secondRect.left &&
+    firstRect.top < secondRect.bottom &&
+    firstRect.bottom > secondRect.top
+  );
+}
+
+function getCamperBodyViewportRect() {
+  const camperRect = camperElement.getBoundingClientRect();
+  const bodyRect = CAMPER_BODY_RECTS[camper.pose] || CAMPER_BODY_RECTS.default;
+  return getViewportRatioRect(camperRect, bodyRect);
+}
+
+function getOccluderItemForElement(element) {
+  if (!element) {
+    return null;
+  }
+
+  if (element === campfire) {
+    return getGearItem("campfire");
+  }
+
+  if (element.dataset && element.dataset.actionTargetId) {
+    return getGearItem(element.dataset.actionTargetId);
+  }
+
+  if (element.id && element.id.indexOf("gear-") === 0 && element.id.endsWith("-front")) {
+    return getGearItem(element.id.slice(5, -6));
+  }
+
+  return null;
+}
+
+function shouldIgnoreOccluderItem(item) {
+  return Boolean(item && camper.interactionTargetId && item.id === camper.interactionTargetId);
+}
+
+function getCamperDepthY() {
+  return sceneYFromPercent(camper.y);
+}
+
+function updateCamperDepth() {
+  setSceneElementDepth(camperElement, getCamperDepthY(), CAMPER_DEPTH_OFFSET);
+}
+
+function updateSceneOcclusion() {
+  if (!camperElement) {
+    return;
+  }
+
+  const camperDepthY = getCamperDepthY();
+  const camperBodyRect = getCamperBodyViewportRect();
+
+  getSceneOccluderElements().forEach(function(element) {
+    const item = getOccluderItemForElement(element);
+    const layoutOverride = item ? getSceneLayoutOverride(item) : null;
+    const occlusionRect = item ? getSceneOcclusionRect(item, layoutOverride) : null;
+    const viewportOcclusionRect = sceneRectToViewportRect(occlusionRect);
+    const depthY = occlusionRect ? occlusionRect.depthY : Number(element.dataset.sceneDepthY);
+    const isHidden = element.classList.contains("hidden");
+    const isAlreadyFaded = element.classList.contains("camper-occluder");
+    const overlapRatio = viewportOcclusionRect ? getOverlapRatioAgainstCamper(viewportOcclusionRect, camperBodyRect) : 0;
+    const overlapThreshold = isAlreadyFaded ? OCCLUSION_HIDE_OVERLAP_RATIO : OCCLUSION_SHOW_OVERLAP_RATIO;
+    const shouldFade = !isHidden &&
+      item &&
+      !shouldIgnoreOccluderItem(item) &&
+      Number.isFinite(depthY) &&
+      depthY > camperDepthY + OCCLUSION_DEPTH_GAP &&
+      overlapRatio >= overlapThreshold;
+
+    element.classList.toggle("camper-occluder", shouldFade);
+  });
 }
 
 function isCamperAttachmentItem(item) {
@@ -2649,7 +3385,7 @@ function applyCamperAttachmentLayout(element, item, layerName, options) {
   element.style.width = logicalSize.width + "px";
   element.style.height = logicalSize.height + "px";
   element.style.aspectRatio = logicalSize.width + " / " + logicalSize.height;
-  element.style.zIndex = layerOptions.zIndex || attachment.zIndex || 32;
+  element.style.zIndex = getDepthZ(getCamperDepthY(), layerOptions.depthOffset || 3);
   element.style.setProperty("--attachment-scale-x", layerOptions.mirrorWithFacing === false ? "1" : facing === "left" ? "-1" : "1");
   element.style.setProperty("--attachment-rotate", (offset.rotate || 0) + "deg");
   element.classList.toggle("camper-attachment-back-pose", facingKey === "back");
@@ -2684,7 +3420,7 @@ function updateCamperAttachmentElement(item) {
     setVersionedLayerSource(frontElement, layers.front);
     frontElement.className = "camper-attachment camper-attachment-front camper-attachment-" + item.id + (shouldShow && facingKey !== "back" ? "" : " hidden");
     applyCamperAttachmentLayout(frontElement, item, "front", {
-      zIndex: attachment.zIndex
+      depthOffset: 3
     });
   }
 
@@ -2692,7 +3428,7 @@ function updateCamperAttachmentElement(item) {
     setVersionedLayerSource(backElement, layers.back);
     backElement.className = "camper-attachment camper-attachment-back camper-attachment-" + item.id + (shouldShow && facingKey === "back" ? "" : " hidden");
     applyCamperAttachmentLayout(backElement, item, "back", {
-      zIndex: attachment.backZIndex || attachment.zIndex
+      depthOffset: 1
     });
   }
 
@@ -2703,7 +3439,7 @@ function updateCamperAttachmentElement(item) {
     coneElement.className = "camper-attachment camper-attachment-cone camper-attachment-" + item.id + (shouldShow ? "" : " hidden");
     applyCamperAttachmentLayout(coneElement, item, "cone", {
       offset: coneOffset,
-      zIndex: facingKey === "back" ? attachment.backZIndex || 29 : attachment.coneZIndex || 31
+      depthOffset: facingKey === "back" ? 0 : 4
     });
   }
 }
@@ -2764,6 +3500,11 @@ function updateSceneGearVisibility(item) {
   if (frontElement) {
     frontElement.classList.toggle("hidden", !isVisible || !layers.front);
   }
+
+  if (!isVisible && depthControlHoverTargetId === item.id) {
+    depthControlHoverTargetId = "";
+    syncSceneDepthControls();
+  }
 }
 
 function configureCampfireActionTarget() {
@@ -2803,9 +3544,12 @@ function updateSceneEquipment() {
   campfireBaseImage.src = assetPaths.campfire.base[gameState.campfireLevel];
   campfireFlameImage.src = getCurrentFlameImage();
   updateTargetOutline(campfire, campfireBaseImage);
+  updateCampfireDepth();
 
   dayNightIcon.src = gameState.isNight ? assetPaths.ui.day : assetPaths.ui.night;
   updateActionQueueIndicators();
+  updateSceneOcclusion();
+  syncSceneDepthControls();
 }
 
 function spendCozyPoints(cost) {
@@ -3075,6 +3819,7 @@ function renderWoodItem(wood) {
   woodElement.style.left = sceneXFromPercent(wood.x) + "px";
   woodElement.style.top = sceneYFromPercent(wood.y) + "px";
   woodElement.style.setProperty("--wood-rotate", wood.rotate + "deg");
+  updateWoodDepth(woodElement, wood);
 
   woodImage.className = "wood-image";
   woodImage.src = assetPaths.resources.wood;
@@ -3094,6 +3839,14 @@ function renderWoodItem(wood) {
   });
   woodLayer.appendChild(woodElement);
   updateTargetOutline(woodElement, woodImage);
+}
+
+function updateWoodDepth(woodElement, wood) {
+  if (!woodElement || !wood) {
+    return;
+  }
+
+  setSceneElementDepth(woodElement, sceneYFromPercent(wood.y), -1);
 }
 
 function setTargetWood(woodId) {
@@ -3141,11 +3894,15 @@ function executeQueuedWoodAction(action) {
 
   setTargetWood(wood.id);
   camper.woodCollectionSource = activeQueuedAction ? "manual" : "auto";
-  startMovingTo(
+  if (!startMovingTo(
     { x: wood.x, y: wood.y },
     "pickupWood",
     { labelAction: "movingToWood" }
-  );
+  )) {
+    setStatus("No clear path to those fallen branches.");
+    completeActiveQueuedAction();
+    return;
+  }
 
   setStatus("The camper heads over to those fallen branches.");
 }
@@ -3181,6 +3938,263 @@ function findClosestWood() {
 function getTravelTime(targetX, targetY) {
   const distance = Math.abs(targetX - camper.x) + Math.abs(targetY - camper.y);
   return clamp(0.8 + distance / 24, 1.1, 3.4);
+}
+
+function getTravelTimeForPathLength(pathLength) {
+  return clamp(pathLength / PATH_MOVE_SPEED_PX_PER_SECOND + 0.2, PATH_MIN_DURATION_MS / 1000, PATH_MAX_DURATION_MS / 1000);
+}
+
+function getScenePointDistance(firstPoint, secondPoint) {
+  const dx = secondPoint.x - firstPoint.x;
+  const dy = secondPoint.y - firstPoint.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function clampScenePoint(point) {
+  return {
+    x: clamp(point.x, 0, BASE_SCENE_WIDTH),
+    y: clamp(point.y, 0, BASE_SCENE_HEIGHT)
+  };
+}
+
+function getSceneCollisionObstacles(options) {
+  const pathOptions = options || {};
+  const ignoreObstacleId = pathOptions.ignoreObstacleId || "";
+  const startPoint = pathOptions.startPoint || null;
+  const obstacles = [];
+
+  getGearItems().forEach(function(item) {
+    if (!item || !item.scene || item.id === ignoreObstacleId || !isGearVisibleInScene(item)) {
+      return;
+    }
+
+    const rect = getSceneCollisionRect(item, getSceneLayoutOverride(item));
+
+    if (!rect) {
+      return;
+    }
+
+    const obstacle = inflateRect(rect, CAMPER_COLLISION_RADIUS);
+
+    if (startPoint && pointInRect(startPoint, obstacle)) {
+      return;
+    }
+
+    obstacles.push(obstacle);
+  });
+
+  return obstacles;
+}
+
+function pointToPathCell(point) {
+  return {
+    col: clamp(Math.floor(point.x / PATH_GRID_SIZE), 0, Math.ceil(BASE_SCENE_WIDTH / PATH_GRID_SIZE) - 1),
+    row: clamp(Math.floor(point.y / PATH_GRID_SIZE), 0, Math.ceil(BASE_SCENE_HEIGHT / PATH_GRID_SIZE) - 1)
+  };
+}
+
+function getPathCellKey(cell) {
+  return cell.col + ":" + cell.row;
+}
+
+function pathCellToScenePoint(cell) {
+  return {
+    x: clamp(cell.col * PATH_GRID_SIZE + PATH_GRID_SIZE / 2, 0, BASE_SCENE_WIDTH),
+    y: clamp(cell.row * PATH_GRID_SIZE + PATH_GRID_SIZE / 2, 0, BASE_SCENE_HEIGHT)
+  };
+}
+
+function isScenePointBlocked(point, obstacles) {
+  return obstacles.some(function(obstacle) {
+    return pointInRect(point, obstacle);
+  });
+}
+
+function isPathCellBlocked(cell, obstacles, startCell) {
+  if (startCell && cell.col === startCell.col && cell.row === startCell.row) {
+    return false;
+  }
+
+  return isScenePointBlocked(pathCellToScenePoint(cell), obstacles);
+}
+
+function createPathNode(cell, targetPoint, parent, gCost) {
+  const point = pathCellToScenePoint(cell);
+  const hCost = getScenePointDistance(point, targetPoint);
+
+  return {
+    cell: cell,
+    key: getPathCellKey(cell),
+    parent: parent || null,
+    g: gCost || 0,
+    h: hCost,
+    f: (gCost || 0) + hCost
+  };
+}
+
+function buildPathPointsFromNode(node, startPoint, targetPoint, useTargetPoint) {
+  const cells = [];
+  let currentNode = node;
+
+  while (currentNode) {
+    cells.push(currentNode.cell);
+    currentNode = currentNode.parent;
+  }
+
+  cells.reverse();
+
+  const points = [startPoint];
+
+  cells.slice(1).forEach(function(cell) {
+    points.push(pathCellToScenePoint(cell));
+  });
+
+  points.push(useTargetPoint ? targetPoint : pathCellToScenePoint(node.cell));
+
+  return points.filter(function(point, index) {
+    return index === 0 || getScenePointDistance(point, points[index - 1]) > 0.5;
+  });
+}
+
+function getPathSegmentLengths(points) {
+  const segmentLengths = [];
+
+  for (let index = 1; index < points.length; index += 1) {
+    segmentLengths.push(getScenePointDistance(points[index - 1], points[index]));
+  }
+
+  return segmentLengths;
+}
+
+function getPathLengthFromSegments(segmentLengths) {
+  return segmentLengths.reduce(function(total, length) {
+    return total + length;
+  }, 0);
+}
+
+function findPathOnGrid(startPoint, targetPoint, obstacles) {
+  const startCell = pointToPathCell(startPoint);
+  const targetCell = pointToPathCell(targetPoint);
+  const targetKey = getPathCellKey(targetCell);
+  const targetBlocked = isScenePointBlocked(targetPoint, obstacles) || isPathCellBlocked(targetCell, obstacles, startCell);
+  const openNodes = [];
+  const nodesByKey = {};
+  const closedKeys = {};
+  const maxCol = Math.ceil(BASE_SCENE_WIDTH / PATH_GRID_SIZE) - 1;
+  const maxRow = Math.ceil(BASE_SCENE_HEIGHT / PATH_GRID_SIZE) - 1;
+  let bestNode = createPathNode(startCell, targetPoint, null, 0);
+  let iterations = 0;
+
+  openNodes.push(bestNode);
+  nodesByKey[bestNode.key] = bestNode;
+
+  while (openNodes.length > 0 && iterations < 6000) {
+    iterations += 1;
+    openNodes.sort(function(firstNode, secondNode) {
+      return firstNode.f - secondNode.f;
+    });
+
+    const currentNode = openNodes.shift();
+
+    if (closedKeys[currentNode.key]) {
+      continue;
+    }
+
+    closedKeys[currentNode.key] = true;
+
+    if (currentNode.h < bestNode.h) {
+      bestNode = currentNode;
+    }
+
+    if (!targetBlocked && currentNode.key === targetKey) {
+      const points = buildPathPointsFromNode(currentNode, startPoint, targetPoint, true);
+      const segmentLengths = getPathSegmentLengths(points);
+
+      return {
+        points: points,
+        segmentLengths: segmentLengths,
+        length: getPathLengthFromSegments(segmentLengths),
+        reachedTarget: true
+      };
+    }
+
+    for (let rowOffset = -1; rowOffset <= 1; rowOffset += 1) {
+      for (let colOffset = -1; colOffset <= 1; colOffset += 1) {
+        if (rowOffset === 0 && colOffset === 0) {
+          continue;
+        }
+
+        const nextCell = {
+          col: currentNode.cell.col + colOffset,
+          row: currentNode.cell.row + rowOffset
+        };
+
+        if (nextCell.col < 0 || nextCell.col > maxCol || nextCell.row < 0 || nextCell.row > maxRow) {
+          continue;
+        }
+
+        if (closedKeys[getPathCellKey(nextCell)] || isPathCellBlocked(nextCell, obstacles, startCell)) {
+          continue;
+        }
+
+        if (rowOffset !== 0 && colOffset !== 0) {
+          const horizontalCell = { col: currentNode.cell.col + colOffset, row: currentNode.cell.row };
+          const verticalCell = { col: currentNode.cell.col, row: currentNode.cell.row + rowOffset };
+
+          if (isPathCellBlocked(horizontalCell, obstacles, startCell) || isPathCellBlocked(verticalCell, obstacles, startCell)) {
+            continue;
+          }
+        }
+
+        const nextKey = getPathCellKey(nextCell);
+        const stepCost = rowOffset !== 0 && colOffset !== 0 ? Math.SQRT2 * PATH_GRID_SIZE : PATH_GRID_SIZE;
+        const nextG = currentNode.g + stepCost;
+        const existingNode = nodesByKey[nextKey];
+
+        if (existingNode && existingNode.g <= nextG) {
+          continue;
+        }
+
+        const nextNode = createPathNode(nextCell, targetPoint, currentNode, nextG);
+        nodesByKey[nextKey] = nextNode;
+        openNodes.push(nextNode);
+      }
+    }
+  }
+
+  if (!bestNode || bestNode.key === getPathCellKey(startCell)) {
+    return null;
+  }
+
+  const points = buildPathPointsFromNode(bestNode, startPoint, targetPoint, false);
+  const segmentLengths = getPathSegmentLengths(points);
+
+  return {
+    points: points,
+    segmentLengths: segmentLengths,
+    length: getPathLengthFromSegments(segmentLengths),
+    reachedTarget: false
+  };
+}
+
+function getCamperMovePath(target, options) {
+  const targetPoint = clampScenePoint(percentPointToScenePoint(target));
+  const startPoint = clampScenePoint(percentPointToScenePoint({ x: camper.x, y: camper.y }));
+  const obstacles = getSceneCollisionObstacles({
+    ignoreObstacleId: options && options.ignoreObstacleId,
+    startPoint: startPoint
+  });
+
+  if (getScenePointDistance(startPoint, targetPoint) <= 1) {
+    return {
+      points: [startPoint, targetPoint],
+      segmentLengths: [0],
+      length: 0,
+      reachedTarget: true
+    };
+  }
+
+  return findPathOnGrid(startPoint, targetPoint, obstacles);
 }
 
 function normalizeFacing(facing) {
@@ -3295,7 +4309,8 @@ function getSeatableSceneFallbackTarget(id, def, facing) {
     x: percentPoint.x,
     y: percentPoint.y,
     seatableId: id,
-    furnitureFacing: facing
+    furnitureFacing: facing,
+    ignoreObstacleId: id
   };
 }
 
@@ -3323,7 +4338,8 @@ function getSeatableSeatTarget(id, def) {
     x: seatX / sceneRect.width * 100,
     y: seatY / sceneRect.height * 100,
     seatableId: id,
-    furnitureFacing: facing
+    furnitureFacing: facing,
+    ignoreObstacleId: id
   };
 }
 
@@ -3356,7 +4372,12 @@ function executeQueuedChairAction(action) {
     return;
   }
 
-  startMovingTo(getSeatableSeatTarget(item.id, item), "sittingOnFurniture");
+  if (!startMovingTo(getSeatableSeatTarget(item.id, item), "sittingOnFurniture")) {
+    setStatus("No clear path to " + item.displayName + ".");
+    completeActiveQueuedAction();
+    return;
+  }
+
   setStatus("The camper heads over to " + item.displayName + ".");
 }
 
@@ -3432,25 +4453,111 @@ function getAlternatingCamperImage(firstFrame, secondFrame, fallbackFrame) {
   return getCamperAnimationFrameIndex() === 0 ? firstFrame : secondFrame;
 }
 
+function updateCamperPathMotion(now) {
+  if (camper.state !== "moving" || !camper.pathPoints || camper.pathPoints.length === 0) {
+    return;
+  }
+
+  const durationMs = camper.pathDurationMs || 1;
+  const elapsedMs = clamp(now - camper.pathStartedAt, 0, durationMs);
+  const pathLength = camper.pathLength || 0;
+  let remainingDistance = pathLength * (elapsedMs / durationMs);
+  let nextPoint = camper.pathPoints[camper.pathPoints.length - 1];
+  let previousPoint = camper.pathPoints[0];
+
+  for (let index = 0; index < camper.pathSegmentLengths.length; index += 1) {
+    const segmentLength = camper.pathSegmentLengths[index];
+    const segmentStart = camper.pathPoints[index];
+    const segmentEnd = camper.pathPoints[index + 1];
+
+    if (remainingDistance <= segmentLength || index === camper.pathSegmentLengths.length - 1) {
+      const progress = segmentLength > 0 ? clamp(remainingDistance / segmentLength, 0, 1) : 1;
+      nextPoint = {
+        x: segmentStart.x + (segmentEnd.x - segmentStart.x) * progress,
+        y: segmentStart.y + (segmentEnd.y - segmentStart.y) * progress
+      };
+      previousPoint = segmentStart;
+      break;
+    }
+
+    remainingDistance -= segmentLength;
+  }
+
+  if (Math.abs(nextPoint.x - previousPoint.x) > 0.5) {
+    camper.facing = nextPoint.x < previousPoint.x ? "left" : "right";
+  }
+
+  camper.x = sceneXToPercent(nextPoint.x);
+  camper.y = sceneYToPercent(nextPoint.y);
+  updateCamperView();
+}
+
+function requestCamperMotionFrame() {
+  if (camperMotionFrameId !== null || typeof window === "undefined" || !window.requestAnimationFrame) {
+    return;
+  }
+
+  camperMotionFrameId = window.requestAnimationFrame(function() {
+    camperMotionFrameId = null;
+    updateCamperPathMotion(Date.now());
+
+    if (camper.state === "moving" && Date.now() < camper.actionTimer) {
+      requestCamperMotionFrame();
+    }
+  });
+}
+
+function getInteractionTargetId(target) {
+  return target && (target.interactionTargetId || target.ignoreObstacleId || target.seatableId) || "";
+}
+
 function startMovingTo(target, actionAfterArrival, options) {
   const moveOptions = options || {};
   const actionName = moveOptions.labelAction || actionAfterArrival;
   const now = Date.now();
-  const startX = camper.x;
-  const travelTime = getTravelTime(target.x, target.y);
+  const ignoreObstacleId = moveOptions.ignoreObstacleId || target.ignoreObstacleId || target.seatableId || "";
+  const interactionTargetId = moveOptions.interactionTargetId || getInteractionTargetId(target) || "";
+  const movePath = getCamperMovePath(target, { ignoreObstacleId: ignoreObstacleId });
+
+  if (!movePath || movePath.points.length < 2) {
+    camper.pathPoints = [];
+    camper.pathSegmentLengths = [];
+    camper.pathLength = 0;
+    camper.pathDurationMs = 0;
+    camper.pathStartedAt = 0;
+    camper.state = "idle";
+    camper.pose = "idle";
+    camper.currentAction = "idle";
+    camper.actionAfterArrival = null;
+    camper.target = null;
+    camper.interactionTargetId = "";
+    camper.actionTimer = now + 600;
+    updateCamperView();
+    return false;
+  }
+
+  const travelTime = getTravelTimeForPathLength(movePath.length);
+  const firstMovePoint = movePath.points[1] || movePath.points[0];
 
   camper.target = target;
   camper.actionAfterArrival = actionAfterArrival;
   camper.currentAction = actionName;
+  camper.interactionTargetId = interactionTargetId;
   camper.state = "moving";
   camper.pose = moveOptions.carryingWood ? "carryingWood" : "walking";
-  camper.facing = getMovementFacing(startX, target.x);
+  camper.facing = getMovementFacing(sceneXToPercent(movePath.points[0].x), sceneXToPercent(firstMovePoint.x));
   camper.animationStartedAt = now;
-  camper.actionTimer = now + travelTime * 1000;
-  camper.x = target.x;
-  camper.y = target.y;
+  camper.pathPoints = movePath.points;
+  camper.pathSegmentLengths = movePath.segmentLengths;
+  camper.pathLength = movePath.length;
+  camper.pathDurationMs = travelTime * 1000;
+  camper.pathStartedAt = now;
+  camper.actionTimer = now + camper.pathDurationMs;
 
+  updateCamperPathMotion(now);
   updateCamperView();
+  requestCamperMotionFrame();
+  return true;
 }
 
 function startActing(action, durationSeconds) {
@@ -3461,10 +4568,16 @@ function startActing(action, durationSeconds) {
   camper.currentAction = action;
   camper.actionAfterArrival = null;
   camper.target = null;
+  camper.interactionTargetId = getInteractionTargetId(actionTarget);
   camper.pose = getPoseForAction(action);
   camper.facing = getFacingForAction(action, actionTarget);
   camper.animationStartedAt = now;
   camper.actionTimer = now + durationSeconds * 1000;
+  camper.pathPoints = [];
+  camper.pathSegmentLengths = [];
+  camper.pathLength = 0;
+  camper.pathDurationMs = 0;
+  camper.pathStartedAt = 0;
 
   updateCamperView();
 }
@@ -3500,12 +4613,14 @@ function getPoseForAction(action) {
 function updateCamperView() {
   camperElement.style.left = sceneXFromPercent(camper.x) + "px";
   camperElement.style.top = sceneYFromPercent(camper.y) + "px";
+  updateCamperDepth();
   updateCamperSprite();
   updateCamperAttachments();
   updateCamperThought();
   camperStateText.textContent = camperActionLabels[camper.currentAction] || camperActionLabels.idle;
 
   document.body.classList.toggle("camper-in-tent", camper.pose === "tentRest" && hasNightUnlock());
+  updateSceneOcclusion();
 }
 
 function updateCamperThought() {
@@ -3600,7 +4715,7 @@ function chooseRelaxingAction() {
   if (action === "lookingAtLake") {
     startMovingTo(campSpots.lake, "lookingAtLake");
   } else if (action === "sittingByFire") {
-    startMovingTo(campSpots.fireSeat, "sittingByFire");
+    startMovingTo(Object.assign({}, campSpots.fireSeat, { interactionTargetId: "campfire", ignoreObstacleId: "campfire" }), "sittingByFire");
   } else if (action === "sittingOnFurniture") {
     const seatTarget = getRandomSeatableSeatTarget();
 
@@ -3628,26 +4743,36 @@ function getRandomWanderPoint() {
   };
 }
 
+function withIgnoredObstacle(point, item) {
+  if (!point || !item) {
+    return point;
+  }
+
+  return Object.assign({}, point, {
+    ignoreObstacleId: item.id
+  });
+}
+
 function getTentRestSpotForItem(tentItem) {
   const tentRest = tentItem && tentItem.interactions ? tentItem.interactions.tentRest : null;
   const layout = isRooftopTentItem(tentItem) ? getRooftopTentLayout(tentItem) : null;
 
   if (tentItem && tentRest && tentRest.point) {
-    return scenePointToPercent(getScenePointFromAssetPoint(tentItem, tentRest.point, layout));
+    return withIgnoredObstacle(scenePointToPercent(getScenePointFromAssetPoint(tentItem, tentRest.point, layout)), tentItem);
   }
 
   if (isRooftopTentItem(tentItem)) {
     if (layout && layout.position) {
-      return layout.position;
+      return withIgnoredObstacle(layout.position, tentItem);
     }
   }
 
   if (tentRest && tentRest.position) {
-    return tentRest.position;
+    return withIgnoredObstacle(tentRest.position, tentItem);
   }
 
   if (tentItem && tentItem.scene) {
-    return getScenePercentPosition(tentItem.scene);
+    return withIgnoredObstacle(getScenePercentPosition(tentItem.scene), tentItem);
   }
 
   return campSpots.tent;
@@ -3665,16 +4790,27 @@ function executeQueuedTentAction(action) {
     return;
   }
 
-  startMovingTo(getTentRestSpotForItem(item), "tentRest");
+  if (!startMovingTo(getTentRestSpotForItem(item), "tentRest")) {
+    setStatus("No clear path to " + item.displayName + ".");
+    completeActiveQueuedAction();
+    return;
+  }
+
   setStatus("The camper heads into " + item.displayName + ".");
 }
 
 function executeQueuedFireAction() {
-  startMovingTo(campSpots.fireSeat, "sittingByFire");
+  if (!startMovingTo(Object.assign({}, campSpots.fireSeat, { interactionTargetId: "campfire", ignoreObstacleId: "campfire" }), "sittingByFire")) {
+    setStatus("No clear path to the campfire.");
+    completeActiveQueuedAction();
+    return;
+  }
+
   setStatus("The camper heads closer to the campfire.");
 }
 
 function updateCamperAI() {
+  updateCamperPathMotion(Date.now());
   updateCamperSprite();
   campfireFlameImage.src = getCurrentFlameImage();
 
@@ -3749,11 +4885,22 @@ function arriveAtTarget() {
 
 function finishCurrentAction() {
   if (camper.currentAction === "pickupWood") {
-    startMovingTo(
-      campSpots.fire,
+    if (!startMovingTo(
+      Object.assign({}, campSpots.fire, { interactionTargetId: "campfire", ignoreObstacleId: "campfire" }),
       "addingWoodToFire",
       { carryingWood: true, labelAction: "carryingWoodToFire" }
-    );
+    )) {
+      camper.carryingWood = false;
+      camper.woodCollectionSource = null;
+      setStatus("No clear path to the campfire.");
+
+      if (activeQueuedAction) {
+        completeActiveQueuedAction();
+      } else {
+        chooseNextCamperAction();
+      }
+    }
+
     return;
   }
 
@@ -3882,6 +5029,7 @@ if (typeof window !== "undefined") {
     syncSceneScale();
     positionOnboardingLayer();
     refreshTargetOutlines();
+    updateSceneOcclusion();
   });
 }
 
