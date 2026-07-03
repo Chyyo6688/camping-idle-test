@@ -172,6 +172,10 @@ body:not(.build-mode) .scene-depth-control-layer {
 
 body.build-mode .scene-content {
   cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 body.build-mode .scene-content:active {
@@ -511,10 +515,15 @@ body.night.camper-in-tent .tent-glow {
 body.build-mode .gear-object.depth-adjustable-target,
 body.build-mode .gear-object.build-draggable-target {
   cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 body.build-mode .gear-object.build-dragging {
   cursor: grabbing;
+  touch-action: none;
 }
 
 body.build-mode .gear-object.build-selected-target {
