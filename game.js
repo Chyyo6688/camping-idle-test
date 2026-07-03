@@ -1,5 +1,5 @@
 const SAVE_KEY = "cozyCampfireSave";
-const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "2.5";
+const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "2.6";
 
 function withVersion(path) {
   const separator = path.includes("?") ? "&" : "?";
@@ -42,6 +42,7 @@ const CAMPER_COLLISION_RADIUS = 18;
 const PATH_MOVE_SPEED_PX_PER_SECOND = 235;
 const PATH_MIN_DURATION_MS = 800;
 const PATH_MAX_DURATION_MS = 6500;
+const CAMPER_INTERACTION_DEPTH_APPROACH_DISTANCE = 180;
 const OCCLUSION_DEPTH_GAP = 8;
 const OCCLUSION_SHOW_OVERLAP_RATIO = 0.12;
 const OCCLUSION_HIDE_OVERLAP_RATIO = 0.05;
@@ -49,6 +50,19 @@ const USER_DEPTH_OFFSET_STEP = 40;
 const DEFAULT_SURFACE_DEPTH_OFFSET_Y = 90;
 const DEFAULT_STACKED_DEPTH_OFFSET_Y = 60;
 const DEFAULT_MOUNTED_DEPTH_OFFSET_Y = 220;
+const BUILD_MODE_UNLOCK_PURCHASE_COUNT = 5;
+const BUILD_HIT_ALPHA_THRESHOLD = 16;
+const BUILD_HIT_FALLBACK_ZONES = {
+  tripleCampSofa: [
+    { ratioX: 0.18, ratioY: 0.08, ratioWidth: 0.64, ratioHeight: 0.28 },
+    { ratioX: 0.08, ratioY: 0.34, ratioWidth: 0.84, ratioHeight: 0.52 }
+  ],
+  vehicleAwning: [
+    { ratioX: 0.04, ratioY: 0.04, ratioWidth: 0.9, ratioHeight: 0.36 },
+    { ratioX: 0.04, ratioY: 0.36, ratioWidth: 0.1, ratioHeight: 0.58 },
+    { ratioX: 0.82, ratioY: 0.36, ratioWidth: 0.1, ratioHeight: 0.58 }
+  ]
+};
 const CAMPER_BODY_RECTS = {
   default: { ratioX: 0.31, ratioY: 0.14, ratioWidth: 0.38, ratioHeight: 0.78 },
   walking: { ratioX: 0.3, ratioY: 0.12, ratioWidth: 0.4, ratioHeight: 0.8 },
@@ -160,8 +174,12 @@ const defaultGameState = {
   placedGear: [],
   equippedGear: getDefaultEquippedGear(),
   userDepthOffsetY: {},
+  userGearPositions: {},
+  userGearMountOffsets: {},
   vehiclePlacementMigrated: true,
   onboardingSeen: false,
+  interactionGuideSeen: false,
+  buildModeGuideSeen: false,
   nightUnlocked: false,
   isNight: false,
   gatherWoodMode: false,
@@ -175,8 +193,12 @@ function createDefaultGameState() {
     placedGear: defaultGameState.placedGear.slice(),
     equippedGear: { ...defaultGameState.equippedGear },
     userDepthOffsetY: { ...defaultGameState.userDepthOffsetY },
+    userGearPositions: { ...defaultGameState.userGearPositions },
+    userGearMountOffsets: { ...defaultGameState.userGearMountOffsets },
     vehiclePlacementMigrated: defaultGameState.vehiclePlacementMigrated,
     onboardingSeen: defaultGameState.onboardingSeen,
+    interactionGuideSeen: defaultGameState.interactionGuideSeen,
+    buildModeGuideSeen: defaultGameState.buildModeGuideSeen,
     lastSaveTime: Date.now()
   };
 }
@@ -288,12 +310,18 @@ let nextActionQueueId = 1;
 let uiDisplayMode = 0;
 let selectedActionTargetElement = null;
 let selectedActionTargetKey = "";
+let selectedBuildItemKey = "";
 let camperMotionFrameId = null;
 let sceneDepthControlLayer = null;
 let sceneDepthControlPanel = null;
 let depthControlHoverTargetId = "";
 let depthControlPanelHovered = false;
 let depthControlHideTimer = null;
+let buildModeActive = false;
+let buildDragState = null;
+let buildHitCanvas = null;
+let buildHitCanvasContext = null;
+let suppressNextBuildClick = false;
 
 // These variables connect JavaScript to the HTML.
 const cozyPointsAmount = document.getElementById("cozyPointsAmount");
@@ -333,6 +361,8 @@ const gatherModeLabel = document.getElementById("gatherModeLabel");
 const dayNightToggle = document.getElementById("dayNightToggle");
 const dayNightIcon = document.getElementById("dayNightIcon");
 const dayNightLabel = document.getElementById("dayNightLabel");
+const buildModeToggle = document.getElementById("buildModeToggle");
+const buildModeLabel = document.getElementById("buildModeLabel");
 const uiDisplayToggle = document.getElementById("uiDisplayToggle");
 const uiDisplayLabel = document.getElementById("uiDisplayLabel");
 const onboardingHelpButton = document.getElementById("onboardingHelpButton");
@@ -380,6 +410,8 @@ let saveWasResetFromUrl = false;
 const ONBOARDING_FIRST_GEAR_ID = "sealChair";
 let onboardingActive = false;
 let onboardingManual = false;
+let activeGuideType = "onboarding";
+let activeStandaloneGuideId = "";
 let onboardingStepIndex = 0;
 let onboardingHighlightedElement = null;
 let onboardingCardFocusElement = null;
@@ -414,6 +446,23 @@ const onboardingSteps = [
     title: "Comfort makes it faster"
   }
 ];
+
+const standaloneGuides = {
+  tapInteraction: {
+    id: "tapInteraction",
+    title: "Tap camp items",
+    stepLabel: "Guide +",
+    primaryLabel: "Got it",
+    body: "Some camp items can be tapped to interact with. Try tapping this item."
+  },
+  buildMode: {
+    id: "buildMode",
+    title: "Build Mode",
+    stepLabel: "Build",
+    primaryLabel: "Got it",
+    body: "Build Mode can move camp items. Drag items to adjust position, use depth buttons to change front/back layering, and tap Done to return the camper beside the fire."
+  }
+};
 
 const camperActionLabels = {
   idle: "Pausing around camp",
@@ -528,6 +577,49 @@ function applyUiDisplayMode() {
 function toggleUiDisplayMode() {
   uiDisplayMode = (uiDisplayMode + 1) % 3;
   applyUiDisplayMode();
+}
+
+function isCampfireUpgradeItem(item) {
+  return Boolean(item && item.interactions && item.interactions.upgradeCampfire);
+}
+
+function getPurchasedNonCampfireGearCount(state) {
+  const campState = state || gameState;
+
+  return getOwnedGearItems(campState).filter(function(item) {
+    return item && !item.defaultOwned && !isCampfireUpgradeItem(item);
+  }).length;
+}
+
+function isBuildModeUnlocked(state) {
+  return getPurchasedNonCampfireGearCount(state || gameState) > BUILD_MODE_UNLOCK_PURCHASE_COUNT;
+}
+
+function isBuildModeActive() {
+  return buildModeActive;
+}
+
+function updateBuildModeControls() {
+  const unlocked = isBuildModeUnlocked();
+
+  if (!unlocked && buildModeActive) {
+    exitBuildMode();
+    return;
+  }
+
+  document.body.classList.toggle("build-mode", buildModeActive);
+
+  if (buildModeToggle) {
+    buildModeToggle.classList.toggle("hidden", !unlocked);
+    buildModeToggle.classList.toggle("active", buildModeActive);
+    buildModeToggle.setAttribute("aria-pressed", buildModeActive ? "true" : "false");
+    buildModeToggle.setAttribute("aria-label", buildModeActive ? "Exit Build Mode" : "Enter Build Mode");
+    buildModeToggle.setAttribute("title", buildModeActive ? "Done" : "Build Mode");
+  }
+
+  if (buildModeLabel) {
+    buildModeLabel.textContent = buildModeActive ? "Done" : "Build";
+  }
 }
 
 function getDirectChildByClass(element, className) {
@@ -728,6 +820,10 @@ function createSceneDepthControlButton(action, label, ariaLabel) {
   return button;
 }
 
+function isSceneDepthControlEventTarget(event) {
+  return Boolean(event && event.target && event.target.closest && event.target.closest(".scene-depth-controls"));
+}
+
 function getSceneDepthControlPanel() {
   const layer = getSceneDepthControlLayer();
 
@@ -744,14 +840,28 @@ function getSceneDepthControlPanel() {
     sceneDepthControlPanel.appendChild(createSceneDepthControlButton("forward", "↑", "Bring selected gear forward"));
     sceneDepthControlPanel.appendChild(createSceneDepthControlButton("backward", "↓", "Send selected gear backward"));
 
+    const resetRow = document.createElement("div");
+    resetRow.className = "scene-depth-reset-row";
+
+    const negativeOffsetLabel = document.createElement("span");
+    negativeOffsetLabel.className = "scene-depth-control-value scene-depth-control-value-left";
+    negativeOffsetLabel.dataset.depthOffsetSide = "negative";
+    resetRow.appendChild(negativeOffsetLabel);
+
     const resetButton = createSceneDepthControlButton("reset", "Reset", "Reset selected gear layer order");
     resetButton.classList.add("scene-depth-control-reset");
-    sceneDepthControlPanel.appendChild(resetButton);
+    resetRow.appendChild(resetButton);
 
-    const offsetLabel = document.createElement("span");
-    offsetLabel.className = "scene-depth-control-value";
-    offsetLabel.dataset.depthOffset = "";
-    sceneDepthControlPanel.appendChild(offsetLabel);
+    const positiveOffsetLabel = document.createElement("span");
+    positiveOffsetLabel.className = "scene-depth-control-value scene-depth-control-value-right";
+    positiveOffsetLabel.dataset.depthOffsetSide = "positive";
+    resetRow.appendChild(positiveOffsetLabel);
+
+    sceneDepthControlPanel.appendChild(resetRow);
+
+    const attachButton = createSceneDepthControlButton("attach", "Attach", "Attach selected gear to its default mount point");
+    attachButton.classList.add("scene-depth-control-attach", "hidden");
+    sceneDepthControlPanel.appendChild(attachButton);
 
     sceneDepthControlPanel.addEventListener("pointerenter", function() {
       depthControlPanelHovered = true;
@@ -761,6 +871,16 @@ function getSceneDepthControlPanel() {
     sceneDepthControlPanel.addEventListener("pointerleave", function() {
       depthControlPanelHovered = false;
       scheduleHideSceneDepthControls();
+    });
+
+    sceneDepthControlPanel.addEventListener("pointerdown", function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+
+    sceneDepthControlPanel.addEventListener("pointerup", function(event) {
+      event.preventDefault();
+      event.stopPropagation();
     });
 
     sceneDepthControlPanel.addEventListener("click", function(event) {
@@ -782,12 +902,30 @@ function getSceneDepthControlPanel() {
   return sceneDepthControlPanel;
 }
 
-function getSelectedDepthControlTargetId() {
+function getSelectedActionTargetId() {
   return selectedActionTargetElement && selectedActionTargetElement.dataset ? selectedActionTargetElement.dataset.actionTargetId : "";
 }
 
-function getActiveDepthControlTargetId() {
-  return getSelectedDepthControlTargetId() || depthControlHoverTargetId;
+function getSelectedDepthControlTargetItem() {
+  if (isBuildModeActive()) {
+    return getSelectedBuildItem();
+  }
+
+  return getGearItem(getSelectedActionTargetId());
+}
+
+function getSelectedDepthControlTargetId() {
+  const item = getSelectedDepthControlTargetItem();
+
+  return item ? item.id : "";
+}
+
+function getActiveDepthControlTargetItem() {
+  if (isBuildModeActive()) {
+    return getSelectedBuildItem();
+  }
+
+  return getGearItem(getSelectedActionTargetId() || depthControlHoverTargetId);
 }
 
 function isSceneDepthAdjustableItem(item) {
@@ -815,6 +953,10 @@ function getSceneAssetBounds(item) {
 
 function showSceneDepthControlsForItem(itemOrId) {
   const item = typeof itemOrId === "string" ? getGearItem(itemOrId) : itemOrId;
+
+  if (!isBuildModeActive()) {
+    return;
+  }
 
   if (!isSceneDepthAdjustableItem(item) || !isGearVisibleInScene(item)) {
     return;
@@ -844,12 +986,29 @@ function formatDepthOffsetValue(value) {
   return value > 0 ? "+" + value : String(value);
 }
 
+function shouldShowMountAttachControl(item) {
+  return Boolean(
+    item &&
+    item.scene &&
+    item.scene.mountTo &&
+    isSelectedBuildItem(item)
+  );
+}
+
+function getMountControlAction(item) {
+  if (!shouldShowMountAttachControl(item)) {
+    return "";
+  }
+
+  return isMountedGearDetached(item) ? "attach" : "detach";
+}
+
 function syncSceneDepthControls() {
   const panel = getSceneDepthControlPanel();
-  const item = getGearItem(getActiveDepthControlTargetId());
+  const item = getActiveDepthControlTargetItem();
   const bounds = getSceneAssetBounds(item);
 
-  if (!panel || !item || !bounds || !isGearVisibleInScene(item)) {
+  if (!panel || !isBuildModeActive() || !item || !bounds || !isGearVisibleInScene(item)) {
     if (panel) {
       panel.classList.add("hidden");
     }
@@ -857,20 +1016,42 @@ function syncSceneDepthControls() {
     return;
   }
 
-  const panelWidth = 54;
-  const panelHeight = 102;
-  const left = clamp(bounds.left + bounds.width + 10, 8, BASE_SCENE_WIDTH - panelWidth - 8);
-  const top = clamp(bounds.top + bounds.height * 0.34, 8, BASE_SCENE_HEIGHT - panelHeight - 8);
-  const offsetValue = panel.querySelector("[data-depth-offset]");
+  const mountControlAction = getMountControlAction(item);
+  const shouldShowAttach = Boolean(mountControlAction);
+  const negativeOffsetValue = panel.querySelector("[data-depth-offset-side='negative']");
+  const positiveOffsetValue = panel.querySelector("[data-depth-offset-side='positive']");
+  const attachButton = panel.querySelector(".scene-depth-control-attach");
+  const depthOffsetY = getUserDepthOffsetY(item);
+
+  if (attachButton) {
+    attachButton.classList.toggle("hidden", !shouldShowAttach);
+    attachButton.dataset.depthAction = mountControlAction || "attach";
+    attachButton.textContent = mountControlAction === "detach" ? "Detach" : "Attach";
+    attachButton.setAttribute(
+      "aria-label",
+      mountControlAction === "detach" ? "Detach selected gear from its mount point" : "Attach selected gear to its default mount point"
+    );
+  }
 
   panel.dataset.depthTargetId = item.id;
-  panel.style.left = left + "px";
-  panel.style.top = top + "px";
+  panel.classList.toggle("scene-depth-controls-with-attach", shouldShowAttach);
   panel.classList.remove("hidden");
 
-  if (offsetValue) {
-    offsetValue.textContent = formatDepthOffsetValue(getUserDepthOffsetY(item));
+  if (negativeOffsetValue) {
+    negativeOffsetValue.textContent = depthOffsetY < 0 ? formatDepthOffsetValue(depthOffsetY) : "";
   }
+
+  if (positiveOffsetValue) {
+    positiveOffsetValue.textContent = depthOffsetY >= 0 ? formatDepthOffsetValue(depthOffsetY) : "";
+  }
+
+  const panelWidth = panel.offsetWidth || 92;
+  const panelHeight = panel.offsetHeight || (shouldShowAttach ? 136 : 106);
+  const left = clamp(bounds.left + bounds.width + 10, 8, BASE_SCENE_WIDTH - panelWidth - 8);
+  const top = clamp(bounds.top + bounds.height * 0.34, 8, BASE_SCENE_HEIGHT - panelHeight - 8);
+
+  panel.style.left = left + "px";
+  panel.style.top = top + "px";
 }
 
 function getUserDepthOffsetMap() {
@@ -901,9 +1082,9 @@ function setUserDepthOffsetY(item, offsetY) {
 }
 
 function handleSceneDepthControlAction(action) {
-  const item = getGearItem(getActiveDepthControlTargetId());
+  const item = getActiveDepthControlTargetItem();
 
-  if (!isSceneDepthAdjustableItem(item)) {
+  if (!isBuildModeActive() || !isSceneDepthAdjustableItem(item)) {
     return;
   }
 
@@ -919,6 +1100,18 @@ function handleSceneDepthControlAction(action) {
 
   if (action === "reset") {
     setUserDepthOffsetY(item, 0);
+    return;
+  }
+
+  if (action === "attach" && isSelectedBuildItem(item)) {
+    attachMountedGearItem(item);
+    syncSceneDepthControls();
+    return;
+  }
+
+  if (action === "detach" && isSelectedBuildItem(item)) {
+    detachMountedGearItem(item);
+    syncSceneDepthControls();
   }
 }
 
@@ -942,6 +1135,16 @@ function refreshGearSceneLayout(item) {
 
   updateSceneOcclusion();
   syncSceneDepthControls();
+}
+
+function refreshMountedGearSceneLayouts() {
+  getGearItems().forEach(function(item) {
+    if (!item || !item.scene || !item.scene.mountTo || !isGearVisibleInScene(item)) {
+      return;
+    }
+
+    refreshGearSceneLayout(item);
+  });
 }
 
 function configureGearDepthAdjustTarget(element, item) {
@@ -973,6 +1176,539 @@ function configureGearDepthAdjustTarget(element, item) {
   });
 }
 
+function getBuildSelectionKey(item) {
+  if (!item || !item.id) {
+    return "";
+  }
+
+  const explicitInstanceKey = item.instanceKey || item.instanceId || item.placementKey || item.placementId;
+  const placedIndex = Array.isArray(gameState.placedGear) ? gameState.placedGear.indexOf(item.id) : -1;
+  const instanceKey = explicitInstanceKey || item.id + "#" + (placedIndex >= 0 ? placedIndex : "catalog");
+
+  return getActionTargetKey("build", String(instanceKey));
+}
+
+function getBuildItemBySelectionKey(selectionKey) {
+  if (!selectionKey) {
+    return null;
+  }
+
+  return getGearItems().find(function(item) {
+    return getBuildSelectionKey(item) === selectionKey;
+  }) || null;
+}
+
+function getSelectedBuildItem() {
+  return getBuildItemBySelectionKey(selectedBuildItemKey);
+}
+
+function isSelectedBuildItem(item) {
+  return Boolean(item && selectedBuildItemKey && getBuildSelectionKey(item) === selectedBuildItemKey);
+}
+
+function reconcileSelectedBuildTarget() {
+  if (selectedBuildItemKey && !isBuildDraggableItem(getSelectedBuildItem())) {
+    clearSelectedBuildTarget();
+  }
+}
+
+function isBuildDraggableItem(item) {
+  return Boolean(
+    item &&
+    item.scene &&
+    item.scene.renderMode !== "campfire" &&
+    isGearVisibleInScene(item)
+  );
+}
+
+function selectBuildTarget(element, item) {
+  const selectionKey = getBuildSelectionKey(item);
+
+  if (!element || !item || !selectionKey) {
+    return;
+  }
+
+  clearSelectedBuildTarget();
+  clearSelectedActionTarget();
+  selectedBuildItemKey = selectionKey;
+  element.dataset.buildItemKey = selectionKey;
+  updateTargetOutlineForElement(element);
+  element.classList.add("build-selected-target");
+  showSceneDepthControlsForItem(item);
+}
+
+function getScenePointFromPointerEvent(event) {
+  if (!event || !sceneContent) {
+    return null;
+  }
+
+  const contentRect = sceneContent.getBoundingClientRect();
+  const scaleX = contentRect.width / BASE_SCENE_WIDTH;
+  const scaleY = contentRect.height / BASE_SCENE_HEIGHT;
+
+  if (scaleX <= 0 || scaleY <= 0) {
+    return null;
+  }
+
+  return {
+    x: clamp((event.clientX - contentRect.left) / scaleX, 0, BASE_SCENE_WIDTH),
+    y: clamp((event.clientY - contentRect.top) / scaleY, 0, BASE_SCENE_HEIGHT)
+  };
+}
+
+function isPointInViewportRect(clientX, clientY, rect) {
+  return Boolean(
+    rect &&
+    clientX >= rect.left &&
+    clientX <= rect.right &&
+    clientY >= rect.top &&
+    clientY <= rect.bottom
+  );
+}
+
+function getBuildHitSourceImages(element) {
+  if (!element) {
+    return [];
+  }
+
+  return Array.from(element.querySelectorAll(".object-image")).filter(isOutlineSourceImage);
+}
+
+function getBuildHitCanvasContext(width, height) {
+  if (typeof document === "undefined" || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return null;
+  }
+
+  if (!buildHitCanvas) {
+    buildHitCanvas = document.createElement("canvas");
+  }
+
+  if (!buildHitCanvasContext) {
+    buildHitCanvasContext = buildHitCanvas.getContext("2d", { willReadFrequently: true }) || buildHitCanvas.getContext("2d");
+  }
+
+  if (!buildHitCanvasContext) {
+    return null;
+  }
+
+  if (buildHitCanvas.width !== width || buildHitCanvas.height !== height) {
+    buildHitCanvas.width = width;
+    buildHitCanvas.height = height;
+  } else {
+    buildHitCanvasContext.clearRect(0, 0, width, height);
+  }
+
+  return buildHitCanvasContext;
+}
+
+function isBuildHitImageMirrored(image) {
+  const objectElement = image && image.closest ? image.closest(".asset-object") : null;
+
+  if (!objectElement || typeof window === "undefined") {
+    return false;
+  }
+
+  return window.getComputedStyle(objectElement).getPropertyValue("--object-scale-x").trim() === "-1";
+}
+
+function isBuildHitElementMirrored(element) {
+  if (!element || typeof window === "undefined") {
+    return false;
+  }
+
+  return window.getComputedStyle(element).getPropertyValue("--object-scale-x").trim() === "-1";
+}
+
+function getBuildHitFallbackZones(item) {
+  if (!item) {
+    return [];
+  }
+
+  if (BUILD_HIT_FALLBACK_ZONES[item.id]) {
+    return BUILD_HIT_FALLBACK_ZONES[item.id];
+  }
+
+  if (item.scene && item.scene.buildHitZones) {
+    return item.scene.buildHitZones;
+  }
+
+  const occlusionFootprint = getOcclusionFootprint(item);
+
+  if (occlusionFootprint) {
+    return [occlusionFootprint];
+  }
+
+  const collisionFootprint = getCollisionFootprint(item);
+
+  if (collisionFootprint) {
+    return [collisionFootprint];
+  }
+
+  return [
+    { ratioX: 0.16, ratioY: 0.22, ratioWidth: 0.68, ratioHeight: 0.62 }
+  ];
+}
+
+function doesBuildHitFallbackZone(element, item, clientX, clientY) {
+  const rect = element ? element.getBoundingClientRect() : null;
+
+  if (!isPointInViewportRect(clientX, clientY, rect) || rect.width <= 0 || rect.height <= 0) {
+    return false;
+  }
+
+  const ratioX = clamp((clientX - rect.left) / rect.width, 0, 1);
+  const ratioY = clamp((clientY - rect.top) / rect.height, 0, 1);
+  const sampleRatioX = isBuildHitElementMirrored(element) ? 1 - ratioX : ratioX;
+
+  return getBuildHitFallbackZones(item).some(function(zone) {
+    return Boolean(
+      zone &&
+      sampleRatioX >= zone.ratioX &&
+      sampleRatioX <= zone.ratioX + zone.ratioWidth &&
+      ratioY >= zone.ratioY &&
+      ratioY <= zone.ratioY + zone.ratioHeight
+    );
+  });
+}
+
+function isBuildHitVisibleImagePixel(image, clientX, clientY) {
+  if (!image) {
+    return false;
+  }
+
+  const rect = image.getBoundingClientRect();
+
+  if (!isPointInViewportRect(clientX, clientY, rect) || rect.width <= 0 || rect.height <= 0) {
+    return false;
+  }
+
+  const naturalWidth = image.naturalWidth;
+  const naturalHeight = image.naturalHeight;
+
+  if (!naturalWidth || !naturalHeight || !image.complete) {
+    return null;
+  }
+
+  const ratioX = clamp((clientX - rect.left) / rect.width, 0, 1);
+  const ratioY = clamp((clientY - rect.top) / rect.height, 0, 1);
+  const sampleRatioX = isBuildHitImageMirrored(image) ? 1 - ratioX : ratioX;
+  const sampleX = clamp(Math.floor(sampleRatioX * naturalWidth), 0, naturalWidth - 1);
+  const sampleY = clamp(Math.floor(ratioY * naturalHeight), 0, naturalHeight - 1);
+  const context = getBuildHitCanvasContext(naturalWidth, naturalHeight);
+
+  if (!context) {
+    return null;
+  }
+
+  try {
+    context.drawImage(image, 0, 0, naturalWidth, naturalHeight);
+    return context.getImageData(sampleX, sampleY, 1, 1).data[3] >= BUILD_HIT_ALPHA_THRESHOLD;
+  } catch (error) {
+    return null;
+  }
+}
+
+function doesBuildHitElementVisiblePixel(element, item, clientX, clientY) {
+  const images = getBuildHitSourceImages(element);
+  let hasUnreadableImage = images.length === 0;
+
+  for (let index = 0; index < images.length; index += 1) {
+    const hitResult = isBuildHitVisibleImagePixel(images[index], clientX, clientY);
+
+    if (hitResult === true) {
+      return true;
+    }
+
+    if (hitResult === null) {
+      hasUnreadableImage = true;
+    }
+  }
+
+  return hasUnreadableImage ? doesBuildHitFallbackZone(element, item, clientX, clientY) : false;
+}
+
+function getBuildHitElementZIndex(element) {
+  if (!element) {
+    return 0;
+  }
+
+  const inlineZIndex = parseInt(element.style.zIndex, 10);
+
+  if (Number.isFinite(inlineZIndex)) {
+    return inlineZIndex;
+  }
+
+  if (typeof window !== "undefined") {
+    const computedZIndex = parseInt(window.getComputedStyle(element).zIndex, 10);
+
+    if (Number.isFinite(computedZIndex)) {
+      return computedZIndex;
+    }
+  }
+
+  return Number(element.dataset && element.dataset.sceneDisplayDepthY) || 0;
+}
+
+function getBuildHitCandidates() {
+  return Array.from(document.querySelectorAll(".gear-object, .gear-front-layer")).map(function(element, index) {
+    const item = getOccluderItemForElement(element);
+
+    return {
+      element: element,
+      dragElement: item ? getGearSceneElement(item) : null,
+      item: item,
+      zIndex: getBuildHitElementZIndex(element),
+      sourceOrder: index
+    };
+  }).filter(function(candidate) {
+    return Boolean(
+      candidate.item &&
+      candidate.dragElement &&
+      isBuildDraggableItem(candidate.item) &&
+      !candidate.element.classList.contains("hidden") &&
+      !candidate.dragElement.classList.contains("hidden")
+    );
+  }).sort(function(first, second) {
+    if (first.zIndex !== second.zIndex) {
+      return second.zIndex - first.zIndex;
+    }
+
+    return second.sourceOrder - first.sourceOrder;
+  });
+}
+
+function getBuildHitTarget(event) {
+  if (!event) {
+    return null;
+  }
+
+  const candidates = getBuildHitCandidates();
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
+    const rect = candidate.element.getBoundingClientRect();
+
+    if (
+      isPointInViewportRect(event.clientX, event.clientY, rect) &&
+      doesBuildHitElementVisiblePixel(candidate.element, candidate.item, event.clientX, event.clientY)
+    ) {
+      return {
+        element: candidate.dragElement,
+        item: candidate.item
+      };
+    }
+  }
+
+  return null;
+}
+
+function handleBuildScenePointerDown(event) {
+  if (!isBuildModeActive()) {
+    return;
+  }
+
+  if (event.button !== undefined && event.button !== 0) {
+    return;
+  }
+
+  if (isSceneDepthControlEventTarget(event)) {
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
+
+  const hitTarget = getBuildHitTarget(event);
+
+  if (!hitTarget) {
+    clearSelectedBuildTarget();
+    depthControlHoverTargetId = "";
+    syncSceneDepthControls();
+    return;
+  }
+
+  suppressNextBuildClick = true;
+  startBuildDrag(event, hitTarget.element, hitTarget.item);
+}
+
+function handleCampSceneClick(event) {
+  if (isSceneDepthControlEventTarget(event)) {
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
+
+  if (isBuildModeActive() && suppressNextBuildClick) {
+    suppressNextBuildClick = false;
+    event.preventDefault();
+    event.stopPropagation();
+    return;
+  }
+
+  if (isBuildModeActive()) {
+    clearSelectedBuildTarget();
+  } else {
+    clearSelectedActionTarget();
+  }
+}
+
+function startBuildDrag(event, element, item) {
+  const pointerPoint = getScenePointFromPointerEvent(event);
+  const layoutOverride = getSceneLayoutOverride(item);
+  const startPosition = getScenePixelPosition(item.scene || {}, layoutOverride);
+
+  if (!pointerPoint || !isBuildDraggableItem(item)) {
+    return;
+  }
+
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  selectBuildTarget(element, item);
+
+  if (isMountedGearItem(item) && !isMountedGearDetached(item)) {
+    return;
+  }
+
+  element.classList.add("build-dragging");
+
+  const captureElement = event && event.currentTarget && event.currentTarget.setPointerCapture ? event.currentTarget : element;
+
+  buildDragState = {
+    itemKey: getBuildSelectionKey(item),
+    itemId: item.id,
+    pointerId: event.pointerId,
+    startPointer: pointerPoint,
+    startPosition: startPosition,
+    captureElement: captureElement,
+    moved: false
+  };
+
+  if (captureElement && captureElement.setPointerCapture && event.pointerId !== undefined) {
+    captureElement.setPointerCapture(event.pointerId);
+  }
+}
+
+function updateBuildDrag(event) {
+  if (!buildDragState || !isBuildModeActive()) {
+    return;
+  }
+
+  if (event && buildDragState.pointerId !== undefined && event.pointerId !== buildDragState.pointerId) {
+    return;
+  }
+
+  const item = getBuildItemBySelectionKey(buildDragState.itemKey) || getGearItem(buildDragState.itemId);
+  const pointerPoint = getScenePointFromPointerEvent(event);
+
+  if (!item || !pointerPoint) {
+    return;
+  }
+
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  const delta = {
+    x: pointerPoint.x - buildDragState.startPointer.x,
+    y: pointerPoint.y - buildDragState.startPointer.y
+  };
+  const nextPoint = clampScenePoint({
+    x: buildDragState.startPosition.x + delta.x,
+    y: buildDragState.startPosition.y + delta.y
+  });
+
+  if (getScenePointDistance(nextPoint, buildDragState.startPosition) > 2) {
+    buildDragState.moved = true;
+  }
+
+  if (isMountedGearItem(item) && !isMountedGearDetached(item)) {
+    return;
+  }
+
+  setUserGearPosition(item, scenePointToPercent(nextPoint), false);
+
+  refreshMountedGearSceneLayouts();
+  syncSceneDepthControls();
+}
+
+function finishBuildDrag(event) {
+  if (!buildDragState) {
+    return;
+  }
+
+  if (event && buildDragState.pointerId !== undefined && event.pointerId !== buildDragState.pointerId) {
+    return;
+  }
+
+  const endedDragState = buildDragState;
+  const item = getBuildItemBySelectionKey(endedDragState.itemKey) || getGearItem(endedDragState.itemId);
+  const element = getGearSceneElement(item);
+
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  if (element) {
+    element.classList.remove("build-dragging");
+  }
+
+  if (endedDragState.captureElement && endedDragState.captureElement.releasePointerCapture && endedDragState.pointerId !== undefined) {
+    try {
+      endedDragState.captureElement.releasePointerCapture(endedDragState.pointerId);
+    } catch (error) {
+      // Pointer capture may already be released by the browser.
+    }
+  }
+
+  buildDragState = null;
+
+  if (item && element) {
+    selectBuildTarget(element, item);
+  }
+
+  if (item) {
+    refreshGearSceneLayout(item);
+    refreshMountedGearSceneLayouts();
+    saveGame();
+  }
+}
+
+function configureGearBuildDragTarget(element, item) {
+  if (!element || !item || !item.scene || item.scene.renderMode === "campfire") {
+    return;
+  }
+
+  element.dataset.buildTargetId = item.id;
+  element.dataset.buildItemKey = getBuildSelectionKey(item);
+
+  if (element.dataset.buildDragHandlersBound === "true") {
+    return;
+  }
+
+  element.dataset.buildDragHandlersBound = "true";
+  element.addEventListener("click", function(event) {
+    if (!isBuildModeActive()) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+  });
+  element.addEventListener("pointerdown", function(event) {
+    const targetItem = getBuildItemBySelectionKey(event.currentTarget.dataset.buildItemKey) || getGearItem(event.currentTarget.dataset.buildTargetId);
+
+    if (!isBuildModeActive() || !isBuildDraggableItem(targetItem)) {
+      return;
+    }
+
+    startBuildDrag(event, event.currentTarget, targetItem);
+  });
+}
+
 function getActionTargetKey(type, targetId) {
   return type + ":" + targetId;
 }
@@ -988,6 +1724,17 @@ function clearSelectedActionTarget() {
 
   selectedActionTargetElement = null;
   selectedActionTargetKey = "";
+  syncSceneDepthControls();
+}
+
+function clearSelectedBuildTarget() {
+  if (selectedBuildItemKey) {
+    document.querySelectorAll(".build-selected-target").forEach(function(element) {
+      element.classList.remove("build-selected-target");
+    });
+  }
+
+  selectedBuildItemKey = "";
   syncSceneDepthControls();
 }
 
@@ -1051,6 +1798,10 @@ function handleGearActionClick(event, element, item) {
   if (event) {
     event.preventDefault();
     event.stopPropagation();
+  }
+
+  if (isBuildModeActive()) {
+    return;
   }
 
   if (!actionType || !isGearVisibleInScene(item)) {
@@ -1117,6 +1868,10 @@ function clearActionQueueIndicators() {
 function updateActionQueueIndicators() {
   clearActionQueueIndicators();
 
+  if (isBuildModeActive()) {
+    return;
+  }
+
   getQueuedActionsInOrder().forEach(function(action, index) {
     const target = getActionTargetElement(action);
 
@@ -1168,6 +1923,10 @@ function getQueuedActionLabel(type, targetId) {
 function enqueueAction(type, targetId) {
   const label = getQueuedActionLabel(type, targetId);
 
+  if (isBuildModeActive()) {
+    return false;
+  }
+
   if (hasQueuedAction(type, targetId)) {
     if (selectedActionTargetKey === getActionTargetKey(type, targetId)) {
       clearSelectedActionTarget();
@@ -1200,7 +1959,7 @@ function clearActionQueue() {
 }
 
 function canStartQueuedAction() {
-  return !activeQueuedAction && actionQueue.length > 0 && !camper.carryingWood;
+  return !isBuildModeActive() && !activeQueuedAction && actionQueue.length > 0 && !camper.carryingWood;
 }
 
 function beginNextQueuedAction() {
@@ -1304,6 +2063,10 @@ function getOnboardingFirstGearItem() {
 }
 
 function getOnboardingStep() {
+  if (activeGuideType !== "onboarding") {
+    return standaloneGuides[activeStandaloneGuideId] || null;
+  }
+
   return onboardingSteps[onboardingStepIndex] || null;
 }
 
@@ -1315,9 +2078,34 @@ function getOnboardingFirstGearCard() {
   return shopCards[ONBOARDING_FIRST_GEAR_ID] || null;
 }
 
+function getInteractionGuideTargetItem() {
+  const firstGear = getGearItem(ONBOARDING_FIRST_GEAR_ID);
+
+  if (firstGear && ownsGear(firstGear.id) && isGearVisibleInScene(firstGear)) {
+    return firstGear;
+  }
+
+  const tentItem = getEquippedGearItem("tent");
+
+  if (tentItem && isGearVisibleInScene(tentItem)) {
+    return tentItem;
+  }
+
+  return null;
+}
+
 function getOnboardingTarget(step) {
   if (!step) {
     return null;
+  }
+
+  if (step.id === "tapInteraction") {
+    const targetItem = getInteractionGuideTargetItem();
+    return targetItem ? getGearSceneElement(targetItem) : null;
+  }
+
+  if (step.id === "buildMode") {
+    return buildModeToggle;
   }
 
   if (step.id === "gather") {
@@ -1363,10 +2151,14 @@ function getOnboardingStepBody(step) {
     return "";
   }
 
+  if (step.body) {
+    return step.body;
+  }
+
   if (step.id === "gather") {
     return gameState.gatherWoodMode ?
-      "Tap objects to interact. Gather is on, so the camper automatically collects fallen branches. You can still tap a branch to send the camper to that one." :
-      "Tap objects to interact. Tap Gather to turn on automatic branch collecting. Even with Gather Off, you can tap fallen branches to send the camper to feed the fire.";
+      "Gather is on, so the camper automatically collects fallen branches. You can still tap a branch to send the camper to that one." :
+      "Tap Gather to turn on automatic branch collecting. Even with Gather Off, you can tap fallen branches to send the camper to feed the fire.";
   }
 
   if (step.id === "fire") {
@@ -1416,6 +2208,10 @@ function getOnboardingPrimaryLabel(step) {
     return "Next";
   }
 
+  if (step.primaryLabel) {
+    return step.primaryLabel;
+  }
+
   if (step.id === "gather") {
     return gameState.gatherWoodMode ? "Next" : "Tap Gather";
   }
@@ -1450,6 +2246,10 @@ function getOnboardingPrimaryLabel(step) {
 function canAdvanceOnboarding(step) {
   if (!step) {
     return false;
+  }
+
+  if (activeGuideType !== "onboarding") {
+    return true;
   }
 
   if (step.id === "gather") {
@@ -1496,6 +2296,13 @@ function focusOnboardingShopCard() {
 
 function applyOnboardingStepSetup(step) {
   if (!step) {
+    return;
+  }
+
+  if (step.id === "tapInteraction" || step.id === "buildMode") {
+    if (isShopOpen()) {
+      closeShop();
+    }
     return;
   }
 
@@ -1603,12 +2410,14 @@ function updateOnboardingView() {
     }
   }
 
-  onboardingStepLabel.textContent = "Guide " + (onboardingStepIndex + 1) + " / " + onboardingSteps.length;
+  onboardingStepLabel.textContent = activeGuideType === "onboarding" ?
+    "Guide " + (onboardingStepIndex + 1) + " / " + onboardingSteps.length :
+    (step && step.stepLabel || "Guide");
   onboardingTitle.textContent = step ? step.title : "";
   onboardingBody.textContent = getOnboardingStepBody(step);
   onboardingPrimaryButton.textContent = getOnboardingPrimaryLabel(step);
   onboardingPrimaryButton.disabled = !canAdvanceOnboarding(step);
-  onboardingSkipButton.textContent = onboardingManual ? "Close" : "Skip";
+  onboardingSkipButton.textContent = onboardingManual || activeGuideType !== "onboarding" ? "Close" : "Skip";
 
   requestAnimationFrame(positionOnboardingLayer);
 }
@@ -1627,6 +2436,9 @@ function showOnboardingStep() {
 }
 
 function completeOnboarding(markSeen) {
+  const completedGuideType = activeGuideType;
+  const completedStandaloneGuideId = activeStandaloneGuideId;
+
   onboardingActive = false;
   clearOnboardingHighlight();
 
@@ -1636,9 +2448,19 @@ function completeOnboarding(markSeen) {
   }
 
   if (markSeen) {
-    gameState.onboardingSeen = true;
+    if (completedGuideType === "onboarding") {
+      gameState.onboardingSeen = true;
+    } else if (completedStandaloneGuideId === "tapInteraction") {
+      gameState.interactionGuideSeen = true;
+    } else if (completedStandaloneGuideId === "buildMode") {
+      gameState.buildModeGuideSeen = true;
+    }
+
     saveGame();
   }
+
+  activeGuideType = "onboarding";
+  activeStandaloneGuideId = "";
 }
 
 function advanceOnboarding() {
@@ -1653,9 +2475,15 @@ function advanceOnboarding() {
     return;
   }
 
+  if (activeGuideType !== "onboarding") {
+    completeOnboarding(true);
+    return;
+  }
+
   if (onboardingStepIndex >= onboardingSteps.length - 1) {
     completeOnboarding(true);
     setStatus("Guide complete. Keep the fire warm and make camp cozier.");
+    maybeStartInteractionGuide();
     return;
   }
 
@@ -1665,15 +2493,53 @@ function advanceOnboarding() {
 
 function startOnboarding(isManual) {
   onboardingManual = Boolean(isManual);
+  activeGuideType = "onboarding";
+  activeStandaloneGuideId = "";
   onboardingActive = true;
   onboardingStepIndex = 0;
   showOnboardingStep();
 }
 
+function startStandaloneGuide(guideId) {
+  if (onboardingActive || !standaloneGuides[guideId]) {
+    return;
+  }
+
+  onboardingManual = false;
+  activeGuideType = "standalone";
+  activeStandaloneGuideId = guideId;
+  onboardingActive = true;
+  onboardingStepIndex = 0;
+  showOnboardingStep();
+}
+
+function maybeStartInteractionGuide() {
+  if (!gameState.onboardingSeen || gameState.interactionGuideSeen || onboardingActive) {
+    return;
+  }
+
+  if (!getInteractionGuideTargetItem()) {
+    return;
+  }
+
+  startStandaloneGuide("tapInteraction");
+}
+
+function maybeStartBuildModeGuide() {
+  if (gameState.buildModeGuideSeen || onboardingActive) {
+    return;
+  }
+
+  startStandaloneGuide("buildMode");
+}
+
 function maybeStartOnboarding() {
   if (!gameState.onboardingSeen) {
     startOnboarding(false);
+    return;
   }
+
+  maybeStartInteractionGuide();
 }
 
 function resetSaveIfRequestedByUrl() {
@@ -1995,6 +2861,14 @@ function sanitizeSave(savedGame) {
     } else {
       cleanState.onboardingSeen = true;
     }
+    if (savedGame.interactionGuideSeen !== undefined) {
+      cleanState.interactionGuideSeen = Boolean(savedGame.interactionGuideSeen);
+    } else {
+      cleanState.interactionGuideSeen = Boolean(cleanState.onboardingSeen);
+    }
+    if (savedGame.buildModeGuideSeen !== undefined) {
+      cleanState.buildModeGuideSeen = Boolean(savedGame.buildModeGuideSeen);
+    }
     cleanState.vehiclePlacementMigrated = Boolean(savedGame.vehiclePlacementMigrated);
     if (savedGame.lastSaveTime !== undefined) {
       cleanState.lastSaveTime = savedGame.lastSaveTime;
@@ -2152,6 +3026,25 @@ function sanitizeSave(savedGame) {
     }
   });
 
+  cleanState.userGearPositions = {};
+  const savedUserGearPositions = savedGame && savedGame.userGearPositions && typeof savedGame.userGearPositions === "object" ? savedGame.userGearPositions : {};
+  Object.keys(savedUserGearPositions).forEach(function(id) {
+    const normalizedId = normalizeGearId(id);
+    const item = getGearItem(normalizedId);
+    const savedPosition = savedUserGearPositions[id] || {};
+    const x = Number(savedPosition.x);
+    const y = Number(savedPosition.y);
+
+    if (item && item.scene && Number.isFinite(x) && Number.isFinite(y)) {
+      cleanState.userGearPositions[normalizedId] = {
+        x: clamp(x, 0, 100),
+        y: clamp(y, 0, 100)
+      };
+    }
+  });
+
+  cleanState.userGearMountOffsets = {};
+
   cleanState.cozyPoints = Math.max(0, Number(cleanState.cozyPoints) || 0);
   cleanState.warmthSeconds = Math.max(0, Number(cleanState.warmthSeconds) || 0);
   cleanState.campfireLevel = clamp(Number(cleanState.campfireLevel) || 1, 1, 3);
@@ -2226,6 +3119,7 @@ function updateScreen() {
 
   dayNightToggle.classList.toggle("hidden", !gameState.nightUnlocked);
   dayNightLabel.textContent = gameState.isNight ? "Day" : "Night";
+  updateBuildModeControls();
 
   updateShopCards();
   updateSceneEquipment();
@@ -2590,6 +3484,7 @@ function getOrCreateGearSceneElement(item) {
 
   configureGearActionTarget(element, item);
   configureGearDepthAdjustTarget(element, item);
+  configureGearBuildDragTarget(element, item);
 
   return element;
 }
@@ -2629,6 +3524,9 @@ function configureGearActionTarget(element, item) {
   element.onkeydown = function(event) {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
+      if (isBuildModeActive()) {
+        return;
+      }
       clearSelectedActionTarget();
       queueGearAction(item);
     }
@@ -2704,7 +3602,34 @@ function getScenePlaceholderLogicalSize(source) {
   };
 }
 
+function getElementSceneLogicalSize(element) {
+  if (!element) {
+    return null;
+  }
+
+  const width = element.offsetWidth || parseFloat(window.getComputedStyle(element).width);
+  const height = element.offsetHeight || parseFloat(window.getComputedStyle(element).height);
+
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return null;
+  }
+
+  return {
+    width: width,
+    height: height,
+    source: "dom"
+  };
+}
+
 function getSceneAssetLogicalSize(item, element, sourceImage) {
+  if (item && item.scene && item.scene.renderMode === "campfire") {
+    const elementSize = getElementSceneLogicalSize(element);
+
+    if (elementSize) {
+      return elementSize;
+    }
+  }
+
   const image = sourceImage || getSceneAssetSourceImage(element);
   const naturalSize = getNaturalSceneAssetLogicalSize(image);
 
@@ -2857,6 +3782,130 @@ function getUserDepthOffsetY(item) {
   }
 
   return offsets[item.id];
+}
+
+function getUserGearPositionMap() {
+  if (!gameState.userGearPositions || typeof gameState.userGearPositions !== "object") {
+    gameState.userGearPositions = {};
+  }
+
+  return gameState.userGearPositions;
+}
+
+function getUserGearMountOffsetMap() {
+  if (!gameState.userGearMountOffsets || typeof gameState.userGearMountOffsets !== "object") {
+    gameState.userGearMountOffsets = {};
+  }
+
+  return gameState.userGearMountOffsets;
+}
+
+function getUserGearPosition(item) {
+  const positions = gameState && gameState.userGearPositions ? gameState.userGearPositions : {};
+  const position = item && item.id ? positions[item.id] : null;
+
+  if (!position || typeof position.x !== "number" || typeof position.y !== "number") {
+    return null;
+  }
+
+  return {
+    x: clamp(position.x, 0, 100),
+    y: clamp(position.y, 0, 100)
+  };
+}
+
+function isMountedGearItem(item) {
+  return Boolean(item && item.scene && item.scene.mountTo);
+}
+
+function isMountedGearDetached(item) {
+  return Boolean(isMountedGearItem(item) && getUserGearPosition(item));
+}
+
+function setUserGearPosition(item, position, shouldSave) {
+  if (!item || !item.scene || !position) {
+    return;
+  }
+
+  const positions = getUserGearPositionMap();
+
+  positions[item.id] = {
+    x: clamp(position.x, 0, 100),
+    y: clamp(position.y, 0, 100)
+  };
+
+  refreshGearSceneLayout(item);
+
+  if (shouldSave) {
+    saveGame();
+  }
+}
+
+function clearUserGearPosition(item, shouldSave) {
+  if (!item || !item.id) {
+    return;
+  }
+
+  delete getUserGearPositionMap()[item.id];
+  refreshGearSceneLayout(item);
+
+  if (shouldSave) {
+    saveGame();
+  }
+}
+
+function clearLegacyGearMountOffset(item) {
+  if (!item || !item.id) {
+    return;
+  }
+
+  delete getUserGearMountOffsetMap()[item.id];
+}
+
+function getDisplayedGearLayoutOverride(item) {
+  return getSceneLayoutOverride(item);
+}
+
+function getDisplayedGearScenePosition(item) {
+  if (!item || !item.scene) {
+    return null;
+  }
+
+  return getScenePixelPosition(item.scene || {}, getDisplayedGearLayoutOverride(item));
+}
+
+function getCurrentGearScenePosition(item) {
+  return getDisplayedGearScenePosition(item);
+}
+
+function detachMountedGearItem(item) {
+  if (!isMountedGearItem(item) || isMountedGearDetached(item)) {
+    return;
+  }
+
+  const currentPosition = getCurrentGearScenePosition(item);
+
+  if (!currentPosition) {
+    return;
+  }
+
+  clearLegacyGearMountOffset(item);
+  setUserGearPosition(item, scenePointToPercent(currentPosition), false);
+  refreshMountedGearSceneLayouts();
+  saveGame();
+  setStatus(item.displayName + " detached from its mount point.");
+}
+
+function attachMountedGearItem(item) {
+  if (!isMountedGearItem(item)) {
+    return;
+  }
+
+  clearLegacyGearMountOffset(item);
+  clearUserGearPosition(item, false);
+  refreshMountedGearSceneLayouts();
+  saveGame();
+  setStatus(item.displayName + " attached to its mount point.");
 }
 
 function getSceneDepthOffsetY(item, layoutOverride, layerOffset) {
@@ -3128,7 +4177,8 @@ function getRooftopTentLayout(item) {
   }
 
   const mount = getVehicleRoofMount(vehicleItem);
-  const scenePoint = getScenePointFromAssetPoint(vehicleItem, mount);
+  const vehicleLayoutOverride = getSceneLayoutOverride(vehicleItem);
+  const scenePoint = getScenePointFromAssetPoint(vehicleItem, mount, vehicleLayoutOverride);
 
   return {
     sceneX: scenePoint.x,
@@ -3152,7 +4202,8 @@ function getVehicleMountLayout(item, mountKey) {
     return null;
   }
 
-  const scenePoint = getScenePointFromAssetPoint(vehicleItem, mount);
+  const vehicleLayoutOverride = getSceneLayoutOverride(vehicleItem);
+  const scenePoint = getScenePointFromAssetPoint(vehicleItem, mount, vehicleLayoutOverride);
 
   return {
     sceneX: scenePoint.x,
@@ -3164,12 +4215,27 @@ function getVehicleMountLayout(item, mountKey) {
   };
 }
 function getSceneLayoutOverride(item) {
+  const userPosition = getUserGearPosition(item);
+
+  if (item && item.scene && item.scene.mountTo && userPosition) {
+    return {
+      position: userPosition,
+      placementLayer: "detached"
+    };
+  }
+
   if (item && item.scene && item.scene.mountTo === "vehicleRoof") {
     return getRooftopTentLayout(item);
   }
 
   if (item && item.scene && item.scene.mountTo === "vehicleAwning") {
     return getVehicleMountLayout(item, "awningMount");
+  }
+
+  if (userPosition) {
+    return {
+      position: userPosition
+    };
   }
 
   return null;
@@ -3213,6 +4279,7 @@ function updateGearSceneElement(item) {
 
   element.className = "gear-object asset-object category-" + item.category + " hidden";
   configureGearDepthAdjustTarget(element, item);
+  configureGearBuildDragTarget(element, item);
 
   Object.keys(layers).forEach(function(layerName) {
     if (layerName === "front" || !layers[layerName]) {
@@ -3302,8 +4369,70 @@ function shouldIgnoreOccluderItem(item) {
   return Boolean(item && camper.interactionTargetId && item.id === camper.interactionTargetId);
 }
 
+function getCamperGearInteractionDepthItem(targetId) {
+  const item = getGearItem(targetId);
+
+  return (
+    item &&
+    item.scene &&
+    item.scene.renderMode !== "campfire" &&
+    isGearVisibleInScene(item)
+  ) ? item : null;
+}
+
+function getGearInteractionDepthY(item) {
+  if (!item || !item.scene) {
+    return null;
+  }
+
+  const depthY = getSceneDepthY(item, getDisplayedGearLayoutOverride(item));
+  return Number.isFinite(depthY) ? depthY : null;
+}
+
+function getCamperInteractionApproachDepthY(currentDepthY) {
+  const targetItem = getCamperGearInteractionDepthItem(camper.interactionTargetId);
+
+  if (
+    camper.state !== "moving" ||
+    !camper.target ||
+    !targetItem ||
+    !Number.isFinite(camper.target.x) ||
+    !Number.isFinite(camper.target.y)
+  ) {
+    return currentDepthY;
+  }
+
+  const currentPoint = {
+    x: sceneXFromPercent(camper.x),
+    y: currentDepthY
+  };
+  const targetPoint = percentPointToScenePoint(camper.target);
+  const targetDistance = getScenePointDistance(currentPoint, targetPoint);
+
+  if (targetDistance > CAMPER_INTERACTION_DEPTH_APPROACH_DISTANCE) {
+    return currentDepthY;
+  }
+
+  const targetDepthY = getGearInteractionDepthY(targetItem);
+
+  return Math.max(currentDepthY, targetPoint.y, targetDepthY === null ? currentDepthY : targetDepthY);
+}
+
+function getCamperSeatedDepthY(currentDepthY) {
+  if (
+    camper.state !== "acting" ||
+    (camper.currentAction !== "sittingOnFurniture" && camper.currentAction !== "sittingOnChair")
+  ) {
+    return currentDepthY;
+  }
+
+  const targetDepthY = getGearInteractionDepthY(getCamperGearInteractionDepthItem(camper.interactionTargetId));
+  return Math.max(currentDepthY, targetDepthY === null ? currentDepthY : targetDepthY);
+}
+
 function getCamperDepthY() {
-  return sceneYFromPercent(camper.y);
+  const currentDepthY = sceneYFromPercent(camper.y);
+  return getCamperSeatedDepthY(getCamperInteractionApproachDepthY(currentDepthY));
 }
 
 function updateCamperDepth() {
@@ -3315,12 +4444,19 @@ function updateSceneOcclusion() {
     return;
   }
 
+  if (isBuildModeActive()) {
+    getSceneOccluderElements().forEach(function(element) {
+      element.classList.remove("camper-occluder");
+    });
+    return;
+  }
+
   const camperDepthY = getCamperDepthY();
   const camperBodyRect = getCamperBodyViewportRect();
 
   getSceneOccluderElements().forEach(function(element) {
     const item = getOccluderItemForElement(element);
-    const layoutOverride = item ? getSceneLayoutOverride(item) : null;
+    const layoutOverride = item ? getDisplayedGearLayoutOverride(item) : null;
     const occlusionRect = item ? getSceneOcclusionRect(item, layoutOverride) : null;
     const viewportOcclusionRect = sceneRectToViewportRect(occlusionRect);
     const depthY = occlusionRect ? occlusionRect.depthY : Number(element.dataset.sceneDepthY);
@@ -3481,18 +4617,27 @@ function updateSceneGearVisibility(item) {
   const frontElement = document.getElementById(getGearFrontElementId(item));
   const isVisible = isGearVisibleInScene(item);
   const layers = item.scene && item.scene.layers ? item.scene.layers : {};
-  const isInteractive = isVisible && isGearQueueInteractive(item);
+  const isInteractive = isVisible && isGearQueueInteractive(item) && !isBuildModeActive();
+  const isBuildDraggable = isBuildModeActive() && isVisible && isBuildDraggableItem(item);
+  const isBuildSelected = isSelectedBuildItem(item);
 
   if (element && item.scene.renderMode !== "campfire") {
     element.classList.toggle("hidden", !isVisible);
     element.classList.toggle("interactive-action-target", isInteractive);
-    element.tabIndex = isInteractive ? 0 : -1;
+    element.classList.toggle("build-draggable-target", isBuildDraggable);
+    element.classList.toggle("build-selected-target", isBuildSelected && isBuildDraggable);
+    element.classList.toggle("build-dragging", buildDragState && buildDragState.itemKey === getBuildSelectionKey(item));
+    element.tabIndex = isInteractive || isBuildDraggable ? 0 : -1;
+
+    if (isBuildSelected && !isBuildDraggable) {
+      clearSelectedBuildTarget();
+    }
 
     if (!isInteractive && selectedActionTargetElement === element) {
       clearSelectedActionTarget();
     }
 
-    if (isInteractive) {
+    if (isInteractive || isBuildDraggable) {
       updateTargetOutlineForElement(element);
     }
   }
@@ -3514,12 +4659,18 @@ function configureCampfireActionTarget() {
   campfire.onclick = function(event) {
     event.preventDefault();
     event.stopPropagation();
+    if (isBuildModeActive()) {
+      return;
+    }
     clearSelectedActionTarget();
     enqueueAction("fire", "campfire");
   };
   campfire.onkeydown = function(event) {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
+      if (isBuildModeActive()) {
+        return;
+      }
       clearSelectedActionTarget();
       enqueueAction("fire", "campfire");
     }
@@ -3535,6 +4686,7 @@ function updateSceneEquipment() {
     updateGearSceneElement(item);
     updateSceneGearVisibility(item);
   });
+  reconcileSelectedBuildTarget();
   updateCamperAttachments();
 
   campfire.className = "campfire asset-object level-" + gameState.campfireLevel;
@@ -3716,8 +4868,11 @@ function handleGearAction(id) {
     return;
   }
 
+  const wasBuildModeUnlocked = isBuildModeUnlocked();
+
   if (buyGear(item)) {
-    setStatus(isEquippableGear(item) || isGearPlaceable(item) ? item.displayName + " joins the campsite." : item.displayName + " is owned.");
+    const buildModeJustUnlocked = !wasBuildModeUnlocked && isBuildModeUnlocked();
+    setStatus(buildModeJustUnlocked ? "Build Mode unlocked. Tap Build to move camp items." : isEquippableGear(item) || isGearPlaceable(item) ? item.displayName + " joins the campsite." : item.displayName + " is owned.");
     updateScreen();
     saveGame();
 
@@ -3743,6 +4898,11 @@ function closeShop() {
 }
 
 function toggleShop() {
+  if (isBuildModeActive()) {
+    setStatus("Tap Done before opening Shop.");
+    return;
+  }
+
   if (document.body.classList.contains("shop-open")) {
     closeShop();
   } else {
@@ -3770,14 +4930,52 @@ function setShopFilter(filter) {
 
 function toggleGatherWoodMode() {
   gameState.gatherWoodMode = !gameState.gatherWoodMode;
-  camper.actionTimer = 0;
+  const shouldChooseGatherAction = gameState.gatherWoodMode ? interruptRelaxingActionForGatherMode() : false;
+
+  if (!gameState.gatherWoodMode || !shouldChooseGatherAction) {
+    camper.actionTimer = 0;
+  }
+
   setStatus(gameState.gatherWoodMode ? "The camper will automatically collect fallen branches." : "Gather is off. You can still tap branches by hand.");
   updateScreen();
   saveGame();
 
+  if (shouldChooseGatherAction) {
+    chooseNextCamperAction();
+  }
+
   if (onboardingActive && getOnboardingStep() && getOnboardingStep().id === "gather" && gameState.gatherWoodMode) {
     advanceOnboarding();
   }
+}
+
+function interruptRelaxingActionForGatherMode() {
+  if (activeQueuedAction || camper.carryingWood) {
+    return false;
+  }
+
+  if (camperMotionFrameId !== null && typeof window !== "undefined" && window.cancelAnimationFrame) {
+    window.cancelAnimationFrame(camperMotionFrameId);
+    camperMotionFrameId = null;
+  }
+
+  camper.state = "idle";
+  camper.pose = "idle";
+  camper.target = null;
+  camper.actionAfterArrival = null;
+  camper.currentAction = "idle";
+  camper.actionTimer = 0;
+  camper.targetWoodId = null;
+  camper.woodCollectionSource = null;
+  camper.pathPoints = [];
+  camper.pathSegmentLengths = [];
+  camper.pathStartedAt = 0;
+  camper.pathDurationMs = 0;
+  camper.pathLength = 0;
+  camper.interactionTargetId = "";
+
+  updateCamperView();
+  return true;
 }
 
 function toggleDayNight() {
@@ -3789,6 +4987,111 @@ function toggleDayNight() {
   setStatus(gameState.isNight ? "Night settles over the lake." : "Morning light returns to camp.");
   updateScreen();
   saveGame();
+}
+
+function pauseCamperForBuildMode() {
+  if (camperMotionFrameId !== null && typeof window !== "undefined" && window.cancelAnimationFrame) {
+    window.cancelAnimationFrame(camperMotionFrameId);
+    camperMotionFrameId = null;
+  }
+
+  if (activeQueuedAction) {
+    actionQueue.unshift(activeQueuedAction);
+    activeQueuedAction = null;
+  }
+
+  camper.state = "idle";
+  camper.pose = "idle";
+  camper.target = null;
+  camper.actionAfterArrival = null;
+  camper.currentAction = "idle";
+  camper.actionTimer = Number.POSITIVE_INFINITY;
+  camper.targetWoodId = null;
+  camper.woodCollectionSource = null;
+  camper.carryingWood = false;
+  camper.pathPoints = [];
+  camper.pathSegmentLengths = [];
+  camper.pathStartedAt = 0;
+  camper.pathDurationMs = 0;
+  camper.pathLength = 0;
+  camper.interactionTargetId = "";
+
+  updateActionQueueIndicators();
+  updateCamperView();
+}
+
+function refreshCamperBesideCampfire() {
+  camper.x = campSpots.fireSeat.x;
+  camper.y = campSpots.fireSeat.y;
+  camper.state = "idle";
+  camper.pose = "idle";
+  camper.target = null;
+  camper.actionAfterArrival = null;
+  camper.currentAction = "idle";
+  camper.actionTimer = Date.now() + 250;
+  camper.targetWoodId = null;
+  camper.woodCollectionSource = null;
+  camper.carryingWood = false;
+  camper.facing = "right";
+  camper.animationStartedAt = Date.now();
+  camper.pathPoints = [];
+  camper.pathSegmentLengths = [];
+  camper.pathStartedAt = 0;
+  camper.pathDurationMs = 0;
+  camper.pathLength = 0;
+  camper.interactionTargetId = "";
+
+  updateCamperView();
+}
+
+function enterBuildMode() {
+  if (!isBuildModeUnlocked()) {
+    setStatus("Buy more camp gear to unlock Build Mode.");
+    return;
+  }
+
+  if (buildModeActive) {
+    return;
+  }
+
+  closeShop();
+  clearSelectedActionTarget();
+  clearSelectedBuildTarget();
+  buildModeActive = true;
+  depthControlHoverTargetId = "";
+  pauseCamperForBuildMode();
+  updateBuildModeControls();
+  updateSceneEquipment();
+  setStatus("Build Mode: drag placed items, then tap Done.");
+  maybeStartBuildModeGuide();
+}
+
+function exitBuildMode() {
+  if (!buildModeActive) {
+    updateBuildModeControls();
+    return;
+  }
+
+  finishBuildDrag();
+  depthControlHoverTargetId = "";
+  clearSelectedBuildTarget();
+  buildModeActive = false;
+  clearSelectedActionTarget();
+  refreshCamperBesideCampfire();
+  updateBuildModeControls();
+  updateSceneEquipment();
+  updateActionQueueIndicators();
+  saveGame();
+  setStatus("Done. The camper returns to the fire.");
+  chooseNextCamperAction();
+}
+
+function toggleBuildMode() {
+  if (buildModeActive) {
+    exitBuildMode();
+  } else {
+    enterBuildMode();
+  }
 }
 
 function spawnWood() {
@@ -3870,6 +5173,10 @@ function addWarmthFromBranches(source) {
 }
 
 function collectWoodManually(woodId) {
+  if (isBuildModeActive()) {
+    return;
+  }
+
   const wood = woodItems.find(function(item) {
     return item.id === woodId;
   });
@@ -3919,20 +5226,47 @@ function removeWoodItem(woodId) {
   }
 }
 
-function findClosestWood() {
-  let closestWood = null;
-  let closestDistance = Infinity;
+function getWoodDistanceFromCamper(wood) {
+  if (!wood) {
+    return Infinity;
+  }
 
-  woodItems.forEach(function(wood) {
-    const distance = Math.abs(wood.x - camper.x) + Math.abs(wood.y - camper.y);
+  return Math.abs(wood.x - camper.x) + Math.abs(wood.y - camper.y);
+}
 
-    if (distance < closestDistance) {
-      closestDistance = distance;
-      closestWood = wood;
-    }
+function getWoodItemsByDistance() {
+  return woodItems.slice().filter(Boolean).sort(function(firstWood, secondWood) {
+    return getWoodDistanceFromCamper(firstWood) - getWoodDistanceFromCamper(secondWood);
   });
+}
 
-  return closestWood;
+function startAutoWoodCollection() {
+  const candidates = getWoodItemsByDistance();
+
+  for (let index = 0; index < candidates.length; index += 1) {
+    const wood = candidates[index];
+
+    if (!woodItems.some(function(currentWood) {
+      return currentWood.id === wood.id;
+    })) {
+      continue;
+    }
+
+    if (startMovingTo(
+      { x: wood.x, y: wood.y },
+      "pickupWood",
+      { labelAction: "movingToWood" }
+    )) {
+      setTargetWood(wood.id);
+      camper.woodCollectionSource = "auto";
+      setStatus("The camper spotted fallen branches.");
+      return true;
+    }
+  }
+
+  setTargetWood(null);
+  camper.woodCollectionSource = null;
+  return false;
 }
 
 function getTravelTime(targetX, targetY) {
@@ -4268,37 +5602,37 @@ function mirrorSeatOffset(logicalSize, offset) {
   };
 }
 
-function getSeatableSeatOffset(def, facing) {
-  const logicalSize = getSeatableLogicalSize(def);
+function getSeatableSeatOffset(def, facing, logicalSize) {
+  const assetLogicalSize = logicalSize || getSeatableLogicalSize(def);
   const seatable = def && def.interactions ? def.interactions.seatable : null;
   const seatOffsets = seatable && seatable.seatOffsets ? seatable.seatOffsets : {};
   const normalizedFacing = normalizeFacing(facing);
   const explicitOffset = seatOffsets[normalizedFacing];
 
   if (explicitOffset) {
-    return getSceneAssetLogicalPoint(def, explicitOffset, logicalSize);
+    return getSceneAssetLogicalPoint(def, explicitOffset, assetLogicalSize);
   }
 
   const oppositeOffset = seatOffsets[getOppositeFacing(normalizedFacing)];
 
   if (oppositeOffset) {
-    return mirrorSeatOffset(logicalSize, getSceneAssetLogicalPoint(def, oppositeOffset, logicalSize));
+    return mirrorSeatOffset(assetLogicalSize, getSceneAssetLogicalPoint(def, oppositeOffset, assetLogicalSize));
   }
 
-  const defaultSeatOffset = seatOffsets.default ? getSceneAssetLogicalPoint(def, seatOffsets.default, logicalSize) : getSeatableGroundAnchor(def, logicalSize);
-  return isSeatableMirrored(def) ? mirrorSeatOffset(logicalSize, defaultSeatOffset) : defaultSeatOffset;
+  const defaultSeatOffset = seatOffsets.default ? getSceneAssetLogicalPoint(def, seatOffsets.default, assetLogicalSize) : getSeatableGroundAnchor(def, assetLogicalSize);
+  return isSeatableMirrored(def) ? mirrorSeatOffset(assetLogicalSize, defaultSeatOffset) : defaultSeatOffset;
 }
 
 function getSceneWidthToHeightRatio() {
   return BASE_SCENE_WIDTH / BASE_SCENE_HEIGHT;
 }
 
-function getSeatableSceneFallbackTarget(id, def, facing) {
+function getSeatableSceneTarget(id, def, facing) {
   const logicalSize = getSeatableLogicalSize(def);
   const groundAnchor = getSeatableGroundAnchor(def, logicalSize);
-  const seatOffset = getSeatableSeatOffset(def, facing);
-  const scene = def.scene || {};
-  const position = getScenePixelPosition(scene);
+  const seatOffset = getSeatableSeatOffset(def, facing, logicalSize);
+  const layoutOverride = getDisplayedGearLayoutOverride(def);
+  const position = getScenePixelPosition(def.scene || {}, layoutOverride);
   const seatPoint = {
     x: position.x + seatOffset.x - groundAnchor.x,
     y: position.y + seatOffset.y - groundAnchor.y
@@ -4315,32 +5649,9 @@ function getSeatableSceneFallbackTarget(id, def, facing) {
 }
 
 function getSeatableSeatTarget(id, def) {
-  const element = getSeatableElement(def);
-  const logicalSize = getSeatableLogicalSize(def);
   const facing = getSeatableFacing(def);
 
-  if (!element || element.classList.contains("hidden")) {
-    return getSeatableSceneFallbackTarget(id, def, facing);
-  }
-
-  const sceneRect = campScene.getBoundingClientRect();
-  const furnitureRect = element.getBoundingClientRect();
-
-  if (sceneRect.width <= 0 || sceneRect.height <= 0 || furnitureRect.width <= 0 || furnitureRect.height <= 0) {
-    return getSeatableSceneFallbackTarget(id, def, facing);
-  }
-
-  const seatOffset = getSeatableSeatOffset(def, facing);
-  const seatX = furnitureRect.left - sceneRect.left + seatOffset.x * (furnitureRect.width / logicalSize.width);
-  const seatY = furnitureRect.top - sceneRect.top + seatOffset.y * (furnitureRect.height / logicalSize.height);
-
-  return {
-    x: seatX / sceneRect.width * 100,
-    y: seatY / sceneRect.height * 100,
-    seatableId: id,
-    furnitureFacing: facing,
-    ignoreObstacleId: id
-  };
+  return getSeatableSceneTarget(id, def, facing);
 }
 
 function isSeatableFurnitureAvailable(def) {
@@ -4625,7 +5936,7 @@ function updateCamperView() {
 
 function updateCamperThought() {
   const thought = camperThoughtLines[camper.currentAction] || "";
-  const shouldShowThought = !gameState.gatherWoodMode && thought;
+  const shouldShowThought = !isBuildModeActive() && !gameState.gatherWoodMode && thought;
 
   camperThoughtBubble.textContent = shouldShowThought ? thought : "";
   camperThoughtBubble.style.left = sceneXFromPercent(camper.x) + "px";
@@ -4676,27 +5987,24 @@ function updateCamperSprite() {
 }
 
 function chooseNextCamperAction() {
+  if (isBuildModeActive()) {
+    return;
+  }
+
   if (beginNextQueuedAction()) {
     return;
   }
 
   if (gameState.gatherWoodMode && woodItems.length > 0) {
-    const wood = findClosestWood();
-    setTargetWood(wood.id);
-    camper.woodCollectionSource = "auto";
-    startMovingTo(
-      { x: wood.x, y: wood.y },
-      "pickupWood",
-      { labelAction: "movingToWood" }
-    );
-    setStatus("The camper spotted fallen branches.");
-    return;
+    if (startAutoWoodCollection()) {
+      return;
+    }
   }
 
   if (gameState.gatherWoodMode) {
     const wanderPoint = getRandomWanderPoint();
     startMovingTo(wanderPoint, "wandering", { labelAction: "wandering" });
-    setStatus("The camper is searching for fallen branches.");
+    setStatus(woodItems.length > 0 ? "The camper is looking for a clear path to branches." : "The camper is searching for fallen branches.");
     return;
   }
 
@@ -4755,16 +6063,16 @@ function withIgnoredObstacle(point, item) {
 
 function getTentRestSpotForItem(tentItem) {
   const tentRest = tentItem && tentItem.interactions ? tentItem.interactions.tentRest : null;
-  const layout = isRooftopTentItem(tentItem) ? getRooftopTentLayout(tentItem) : null;
+  const layout = getDisplayedGearLayoutOverride(tentItem);
 
   if (tentItem && tentRest && tentRest.point) {
     return withIgnoredObstacle(scenePointToPercent(getScenePointFromAssetPoint(tentItem, tentRest.point, layout)), tentItem);
   }
 
-  if (isRooftopTentItem(tentItem)) {
-    if (layout && layout.position) {
-      return withIgnoredObstacle(layout.position, tentItem);
-    }
+  const displayedPosition = getDisplayedGearScenePosition(tentItem);
+
+  if (displayedPosition) {
+    return withIgnoredObstacle(scenePointToPercent(displayedPosition), tentItem);
   }
 
   if (tentRest && tentRest.position) {
@@ -4772,7 +6080,7 @@ function getTentRestSpotForItem(tentItem) {
   }
 
   if (tentItem && tentItem.scene) {
-    return withIgnoredObstacle(getScenePercentPosition(tentItem.scene), tentItem);
+    return withIgnoredObstacle(getScenePercentPosition(tentItem.scene, layout), tentItem);
   }
 
   return campSpots.tent;
@@ -4810,6 +6118,11 @@ function executeQueuedFireAction() {
 }
 
 function updateCamperAI() {
+  if (isBuildModeActive()) {
+    campfireFlameImage.src = getCurrentFlameImage();
+    return;
+  }
+
   updateCamperPathMotion(Date.now());
   updateCamperSprite();
   campfireFlameImage.src = getCurrentFlameImage();
@@ -5010,9 +6323,15 @@ function createCozySpark() {
 shopToggle.addEventListener("click", toggleShop);
 closeShopButton.addEventListener("click", closeShop);
 shopBackdrop.addEventListener("click", closeShop);
-campScene.addEventListener("click", clearSelectedActionTarget);
+campScene.addEventListener("click", handleCampSceneClick);
+if (sceneContent) {
+  sceneContent.addEventListener("pointerdown", handleBuildScenePointerDown);
+}
 gatherWoodToggle.addEventListener("click", toggleGatherWoodMode);
 dayNightToggle.addEventListener("click", toggleDayNight);
+if (buildModeToggle) {
+  buildModeToggle.addEventListener("click", toggleBuildMode);
+}
 uiDisplayToggle.addEventListener("click", toggleUiDisplayMode);
 onboardingHelpButton.addEventListener("click", function() {
   startOnboarding(true);
@@ -5025,6 +6344,9 @@ resetSaveButton.addEventListener("click", confirmResetSave);
 
 if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", saveGame);
+  window.addEventListener("pointermove", updateBuildDrag);
+  window.addEventListener("pointerup", finishBuildDrag);
+  window.addEventListener("pointercancel", finishBuildDrag);
   window.addEventListener("resize", function() {
     syncSceneScale();
     positionOnboardingLayer();

@@ -325,7 +325,7 @@
       image: imagePath("tent", "nokaVillageCabinTent", "png"),
       offlineBonusSeconds: 14400,
       scene: scene({ x: 54, y: 69.5 }, 34, 18),
-      interactions: { tentRest: { point: { ratioX: 0.5, ratioY: 1 } } }
+      interactions: { tentRest: { point: { ratioX: 0.25, ratioY: 0.9 } } }
     }),
     gear({
       id: "BetaBreezeTent",
@@ -485,7 +485,7 @@
       image: imagePath("chair", "nokaMoonChair", "png"), 
       scene: scene({ x: 57, y: 79 }, 10, 22, { facing: "left", mirrored: false }),
       interactions: { seatable: { camperFacingMode: "sameAsFurniture", 
-        seatOffsets: { left: { ratioX: 0.5, ratioY: 0.95 } } } },
+        seatOffsets: { left: { ratioX: 0.3, ratioY: 0.95 } } } },
         anchors: { ground: { ratioX: 0.5, ratioY: 0.9 } } }),
     gear({ id: "redDirectorChair", 
       category: "chair", 
@@ -781,7 +781,12 @@
       detail: "Upgrade fire",
       image: "assets/campfire/campfire_lv1_base.png",
       defaultOwned: true,
-      scene: scene({ x: 39, y: 79 }, 23.7, 26, { renderMode: "campfire" }),
+      scene: scene({ x: 39, y: 79 }, 23.7, 26, {
+        renderMode: "campfire",
+        collision: {
+          footprint: { ratioX: 0.32, ratioY: 0.34, ratioWidth: 0.36, ratioHeight: 0.52 }
+        }
+      }),
       interactions: { upgradeCampfire: true }
     }),
 

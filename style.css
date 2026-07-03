@@ -99,7 +99,7 @@ img {
 
 .scene-depth-controls {
   position: absolute;
-  width: 50px;
+  width: 92px;
   display: grid;
   gap: 4px;
   pointer-events: auto;
@@ -110,6 +110,7 @@ img {
 }
 
 .scene-depth-control-button {
+  width: 100%;
   min-width: 0;
   height: 28px;
   display: grid;
@@ -123,10 +124,22 @@ img {
   cursor: pointer;
 }
 
-.scene-depth-control-reset {
+.scene-depth-control-reset,
+.scene-depth-control-attach {
   height: 24px;
   font-size: 10px;
   text-transform: uppercase;
+}
+
+.scene-depth-reset-row {
+  display: grid;
+  grid-template-columns: 1fr 42px 1fr;
+  align-items: center;
+  gap: 3px;
+}
+
+.scene-depth-reset-row .scene-depth-control-reset {
+  width: 42px;
 }
 
 .scene-depth-control-value {
@@ -141,8 +154,28 @@ img {
   pointer-events: none;
 }
 
+.scene-depth-control-value-left {
+  text-align: right;
+}
+
+.scene-depth-control-value-right {
+  text-align: left;
+}
+
 body.ui-hidden .scene-depth-control-layer {
   display: none;
+}
+
+body:not(.build-mode) .scene-depth-control-layer {
+  display: none;
+}
+
+body.build-mode .scene-content {
+  cursor: grab;
+}
+
+body.build-mode .scene-content:active {
+  cursor: grabbing;
 }
 
 body.shop-open .scene-content {
@@ -475,14 +508,37 @@ body.night.camper-in-tent .tent-glow {
   pointer-events: none;
 }
 
-.gear-object.depth-adjustable-target {
-  pointer-events: auto;
+body.build-mode .gear-object.depth-adjustable-target,
+body.build-mode .gear-object.build-draggable-target {
+  cursor: grab;
+}
+
+body.build-mode .gear-object.build-dragging {
+  cursor: grabbing;
+}
+
+body.build-mode .gear-object.build-selected-target {
+  outline: none;
+}
+
+body.build-mode .gear-object.build-selected-target > .target-outline-image {
+  opacity: 1;
 }
 
 .interactive-action-target {
   pointer-events: auto;
   cursor: pointer;
   overflow: visible;
+}
+
+body.build-mode .interactive-action-target {
+  pointer-events: none;
+  cursor: grab;
+}
+
+body.build-mode .wood-item,
+body.build-mode .campfire-action-target {
+  pointer-events: none;
 }
 
 .interactive-action-target:not(.queued-action-target):focus-visible,
@@ -500,11 +556,6 @@ body.night.camper-in-tent .tent-glow {
 
 body.ui-hidden .target-outline-image {
   opacity: 0 !important;
-}
-
-.queued-action-target,
-.active-action-target {
-  z-index: 1902 !important;
 }
 
 .queue-order-badge {
@@ -528,7 +579,8 @@ body.ui-hidden .target-outline-image {
 }
 
 body.queue-numbers-hidden .queue-order-badge,
-body.ui-hidden .queue-order-badge {
+body.ui-hidden .queue-order-badge,
+body.build-mode .queue-order-badge {
   display: none;
 }
 
@@ -642,6 +694,13 @@ body.night .campfire.lit .fire-glow-img {
 
 body.camper-in-tent .camper {
   opacity: 0.08;
+}
+
+body.build-mode .camper,
+body.build-mode .camper-attachment,
+body.build-mode .camper-thought {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .camper-attachment {
@@ -1123,6 +1182,12 @@ body.shop-open .floating-controls {
 
 .floating-button:hover {
   filter: brightness(1.06);
+}
+
+.build-mode-toggle.active {
+  border-color: rgba(255, 209, 122, 0.82);
+  background-image: url("assets/ui/button_round_bg_active.png");
+  box-shadow: 0 0.45rem 0 rgba(81, 57, 25, 0.72), 0 0 0.78rem rgba(244, 175, 72, 0.28);
 }
 
 .floating-button:active {
