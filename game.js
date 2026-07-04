@@ -186,6 +186,9 @@ const defaultGameState = {
   userDepthOffsetY: {},
   userGearPositions: {},
   userGearMountOffsets: {},
+  camperProfileVersion: 0,
+  activeCamperIndex: 0,
+  campers: [],
   vehiclePlacementMigrated: true,
   onboardingSeen: false,
   interactionGuideSeen: false,
@@ -205,6 +208,11 @@ function createDefaultGameState() {
     userDepthOffsetY: { ...defaultGameState.userDepthOffsetY },
     userGearPositions: { ...defaultGameState.userGearPositions },
     userGearMountOffsets: { ...defaultGameState.userGearMountOffsets },
+    camperProfileVersion: defaultGameState.camperProfileVersion,
+    activeCamperIndex: defaultGameState.activeCamperIndex,
+    campers: defaultGameState.campers.map(function(camperProfile) {
+      return { ...camperProfile };
+    }),
     vehiclePlacementMigrated: defaultGameState.vehiclePlacementMigrated,
     onboardingSeen: defaultGameState.onboardingSeen,
     interactionGuideSeen: defaultGameState.interactionGuideSeen,
@@ -378,6 +386,7 @@ const buildModeLabel = document.getElementById("buildModeLabel");
 const uiDisplayToggle = document.getElementById("uiDisplayToggle");
 const uiDisplayLabel = document.getElementById("uiDisplayLabel");
 const onboardingHelpButton = document.getElementById("onboardingHelpButton");
+const camperProfileButton = document.getElementById("camperProfileButton");
 const onboardingLayer = document.getElementById("onboardingLayer");
 const onboardingPointer = document.getElementById("onboardingPointer");
 const onboardingPanel = document.getElementById("onboardingPanel");
@@ -386,6 +395,21 @@ const onboardingTitle = document.getElementById("onboardingTitle");
 const onboardingBody = document.getElementById("onboardingBody");
 const onboardingPrimaryButton = document.getElementById("onboardingPrimaryButton");
 const onboardingSkipButton = document.getElementById("onboardingSkipButton");
+const camperProfileLayer = document.getElementById("camperProfileLayer");
+const camperProfileStepLabel = document.getElementById("camperProfileStepLabel");
+const camperProfileTitle = document.getElementById("camperProfileTitle");
+const camperProfileBody = document.getElementById("camperProfileBody");
+const camperNameStep = document.getElementById("camperNameStep");
+const camperNameInput = document.getElementById("camperNameInput");
+const camperQuestionStep = document.getElementById("camperQuestionStep");
+const camperQuestionText = document.getElementById("camperQuestionText");
+const camperQuestionOptions = document.getElementById("camperQuestionOptions");
+const camperResultStep = document.getElementById("camperResultStep");
+const camperResultName = document.getElementById("camperResultName");
+const camperResultTitle = document.getElementById("camperResultTitle");
+const camperResultDescription = document.getElementById("camperResultDescription");
+const camperProfilePrimaryButton = document.getElementById("camperProfilePrimaryButton");
+const camperProfileSecondaryButton = document.getElementById("camperProfileSecondaryButton");
 const resetSaveButton = document.getElementById("resetSaveButton");
 const campfireLevelAmount = document.getElementById("campfireLevelAmount");
 const cozyRateAmount = document.getElementById("cozyRateAmount");
@@ -420,6 +444,7 @@ let activeShopFilter = "all";
 let statusToastTimer = null;
 let welcomeToastTimer = null;
 let saveWasResetFromUrl = false;
+let loadedExistingSaveWithoutCamperProfile = false;
 const ONBOARDING_FIRST_GEAR_ID = "sealChair";
 let onboardingActive = false;
 let onboardingManual = false;
@@ -428,6 +453,14 @@ let activeStandaloneGuideId = "";
 let onboardingStepIndex = 0;
 let onboardingHighlightedElement = null;
 let onboardingCardFocusElement = null;
+let camperProfileActive = false;
+let camperProfileMode = "required";
+let camperProfileStep = "name";
+let camperProfileQuestionIndex = 0;
+let camperProfileQuestions = [];
+let camperProfileAnswers = [];
+let camperProfileDraftName = "";
+let camperProfileDraftResult = null;
 
 const onboardingSteps = [
   {
@@ -489,6 +522,7 @@ const camperActionLabels = {
   sittingByFire: "Sitting by the campfire",
   sittingOnFurniture: "Settling into camp seating",
   sittingOnChair: "Settling into the camp chair",
+  observingGear: "Inspecting camp gear",
   tentRest: "Resting inside the tent"
 };
 
@@ -498,9 +532,254 @@ const camperThoughtLines = {
   sittingByFire: ["烤会儿火吧", "火苗真暖", "添点柴更好", "这里最舒服", "听木柴噼啪"],
   sittingOnFurniture: ["坐一会儿", "这椅子不错", "休息一下", "舒服多了", "营地越来越像样"],
   sittingOnChair: ["坐一会儿", "这椅子不错", "休息一下", "舒服多了", "看看火光"],
+  observingGear: ["看看这个", "这里好像不错", "检查一下小角落", "这个位置可以"],
   resting: ["小累一会儿", "闭眼休息", "草地很软", "先躺一下", "慢慢恢复"],
   tentRest: ["钻进帐篷", "帐篷里好安心", "小睡一会儿", "外面风声好轻", "今晚睡这里"]
 };
+
+const CAMPER_PROFILE_VERSION = 1;
+const CAMPER_PROFILE_QUESTION_COUNT = 5;
+const CAMPER_PERSONALITIES = {
+  slowMood: {
+    title: "慢半拍氛围型",
+    description: "总是比世界慢一点点，但刚好慢到能听见风声。这个 Camper 会把营地过成一段软软的留白。",
+    idleWeights: { wandering: 2, lookingAtLake: 5, sittingByFire: 3, resting: 4, tentRest: 2 },
+    bubbles: {
+      wandering: ["不急，路会自己出现", "先绕一下也不错"],
+      lookingAtLake: ["湖面替我想事情", "这里适合慢慢发呆"],
+      resting: ["暂停也算一种进度", "让我缓冲一下"],
+      sittingByFire: ["火苗慢慢跳就好"]
+    }
+  },
+  lampKeeper: {
+    title: "小灯守护型",
+    description: "会默默确认每个角落都有一点光。不是很大声，但营地一暗下来就会让人安心。",
+    idleWeights: { wandering: 2, lookingAtLake: 2, sittingByFire: 4, resting: 2, tentRest: 3 },
+    nightWeights: { tentRest: 3, sittingByFire: 2 },
+    bubbles: {
+      wandering: ["那边有点暗，我看看", "小灯应该够亮吧"],
+      sittingByFire: ["守一下这团光", "亮着就安心"],
+      tentRest: ["灯留一盏就好"],
+      lookingAtLake: ["水上有一点光"]
+    }
+  },
+  sitFirst: {
+    title: "坐下再说型",
+    description: "遇事先找一个能坐的地方。坐稳以后，连空气都会变得比较好商量。",
+    idleWeights: { sittingOnFurniture: 6, sittingByFire: 4, resting: 3, wandering: 1 },
+    bubbles: {
+      sittingOnFurniture: ["坐下再决定", "这个位置有前途", "先让膝盖同意"],
+      sittingByFire: ["这边也能坐", "坐着看火比较对"],
+      wandering: ["找找有没有能坐的"]
+    }
+  },
+  gearHoarder: {
+    title: "囤装备妖怪型",
+    description: "看到空地就想象那里能放点什么。营地不是乱，是很多小心思暂时住在一起。",
+    idleWeights: { observingGear: 5, wandering: 3, sittingByFire: 2, sittingOnFurniture: 2 },
+    bubbles: {
+      observingGear: ["这个放这儿有道理", "再多一点点就完美", "我只是看看库存"],
+      wandering: ["空地在召唤我", "那里好像还能摆点什么"],
+      sittingOnFurniture: ["装备多了，心就稳了"]
+    }
+  },
+  carefulArranger: {
+    title: "认真摆放型",
+    description: "会认真对齐看不见的线。别人看到的是营地，它看到的是刚刚好的位置。",
+    idleWeights: { observingGear: 6, wandering: 2, lookingAtLake: 2, sittingOnFurniture: 2 },
+    bubbles: {
+      observingGear: ["这里差半步", "角度好像可以更乖", "摆正一点点"],
+      wandering: ["从这边看比较顺", "我检查一下动线"],
+      lookingAtLake: ["湖边这条线很好"]
+    }
+  },
+  vanishSoftly: {
+    title: "消失一下型",
+    description: "不是离开，只是需要把自己收进安静里。过一会儿会带着一点点电量回来。",
+    idleWeights: { tentRest: 5, resting: 5, lookingAtLake: 3, wandering: 1 },
+    nightWeights: { tentRest: 4, resting: 2 },
+    bubbles: {
+      tentRest: ["我离线一下", "帐篷里信号比较软"],
+      resting: ["把自己放低一点", "安静充电中"],
+      lookingAtLake: ["我在，但先不说话"]
+    }
+  },
+  prettyFrame: {
+    title: "精致摆拍型",
+    description: "会在普通时刻里找到好看的角度。连一根树枝，都可能被它看成今日主角。",
+    idleWeights: { observingGear: 4, lookingAtLake: 4, wandering: 2, sittingOnFurniture: 3 },
+    bubbles: {
+      observingGear: ["这个角度很上镜", "先别动，画面刚好", "这里有点可爱"],
+      lookingAtLake: ["湖面像滤镜", "这光线很会"],
+      sittingOnFurniture: ["坐姿也要有构图"]
+    }
+  }
+};
+
+const CAMPER_PROFILE_QUESTIONS = [
+  {
+    text: "空出来的晚上突然很长，你通常会怎么浪费？",
+    options: [
+      { text: "开一盏小灯，假装自己在经营深夜小店", traits: { lampKeeper: 2, vanishSoftly: 1 } },
+      { text: "坐着不动，等脑袋自己变安静", traits: { sitFirst: 2, slowMood: 1 } },
+      { text: "把桌面上所有东西重新排一遍", traits: { carefulArranger: 2, prettyFrame: 1 } },
+      { text: "翻出一个很久没用的小东西，并觉得它马上会派上用场", traits: { gearHoarder: 2 } }
+    ]
+  },
+  {
+    text: "朋友迟到二十分钟，你比较像哪一种？",
+    options: [
+      { text: "找个地方坐下，顺便把这二十分钟过得很完整", traits: { sitFirst: 2, slowMood: 1 } },
+      { text: "沿着附近慢慢走一圈，像在检查地图边缘", traits: { slowMood: 2, prettyFrame: 1 } },
+      { text: "去便利店买一个本来不需要的小玩意", traits: { gearHoarder: 2, lampKeeper: 1 } },
+      { text: "回一句没事，然后短暂消失在自己的世界里", traits: { vanishSoftly: 2 } }
+    ]
+  },
+  {
+    text: "房间里最容易自己变多的东西是？",
+    options: [
+      { text: "收纳盒、袋子、备用袋子、备用备用袋子", traits: { gearHoarder: 2, carefulArranger: 1 } },
+      { text: "小灯、香薰、杯垫这种不太必要但很安心的东西", traits: { lampKeeper: 2, prettyFrame: 1 } },
+      { text: "椅子上临时放一下的衣服", traits: { sitFirst: 1, vanishSoftly: 2 } },
+      { text: "空白本子和没有写完的清单", traits: { carefulArranger: 2, slowMood: 1 } }
+    ]
+  },
+  {
+    text: "你今天最像哪种天气？",
+    options: [
+      { text: "阴天，但云很柔软", traits: { slowMood: 2, vanishSoftly: 1 } },
+      { text: "傍晚的小晴天，适合拍照", traits: { prettyFrame: 2, lampKeeper: 1 } },
+      { text: "小雨，正好适合躲起来", traits: { vanishSoftly: 2 } },
+      { text: "晴一阵忙一阵，还想整理阳台", traits: { carefulArranger: 2, gearHoarder: 1 } }
+    ]
+  },
+  {
+    text: "看到一个空角落，你第一反应是？",
+    options: [
+      { text: "这里可以放一张椅子", traits: { sitFirst: 2 } },
+      { text: "这里需要一点点光", traits: { lampKeeper: 2 } },
+      { text: "这里适合放一个不解释用途的箱子", traits: { gearHoarder: 2 } },
+      { text: "先别放，空着也有构图", traits: { prettyFrame: 2, slowMood: 1 } }
+    ]
+  },
+  {
+    text: "朋友说“随便弄点吃的”，你会？",
+    options: [
+      { text: "认真把随便变成三种选择", traits: { carefulArranger: 2 } },
+      { text: "先问能不能坐着等", traits: { sitFirst: 2 } },
+      { text: "拿出一个刚好能用上的小工具", traits: { gearHoarder: 2 } },
+      { text: "说好，然后做出一份很有氛围的简单东西", traits: { lampKeeper: 1, prettyFrame: 2 } }
+    ]
+  },
+  {
+    text: "哪句话最像你？",
+    options: [
+      { text: "等一下，我把这个角度摆好。", traits: { carefulArranger: 2, prettyFrame: 1 } },
+      { text: "我先坐下，坐下以后什么都能谈。", traits: { sitFirst: 2 } },
+      { text: "我有一个东西，虽然现在用不上。", traits: { gearHoarder: 2 } },
+      { text: "我在听，只是看起来像没开机。", traits: { vanishSoftly: 2, slowMood: 1 } }
+    ]
+  },
+  {
+    text: "一张很普通的桌子，你会先注意什么？",
+    options: [
+      { text: "有没有刚好放杯子的地方", traits: { sitFirst: 1, carefulArranger: 1 } },
+      { text: "桌面会不会反光，很适合拍东西", traits: { prettyFrame: 2 } },
+      { text: "下面还能不能塞个篮子", traits: { gearHoarder: 2 } },
+      { text: "旁边如果有小灯就好了", traits: { lampKeeper: 2 } }
+    ]
+  },
+  {
+    text: "突然有一小时没人找你，你会把它放在哪里？",
+    options: [
+      { text: "放在窗边，慢慢发呆", traits: { slowMood: 2, vanishSoftly: 1 } },
+      { text: "放进被窝或帐篷这种地方", traits: { vanishSoftly: 2 } },
+      { text: "放在要整理的小角落", traits: { carefulArranger: 2 } },
+      { text: "放在一个新买但没拆的小东西旁边", traits: { gearHoarder: 2 } }
+    ]
+  },
+  {
+    text: "你的包里最可能多带什么？",
+    options: [
+      { text: "一盏小灯或备用电池", traits: { lampKeeper: 2 } },
+      { text: "不一定用得上但很有安全感的工具", traits: { gearHoarder: 2 } },
+      { text: "小本子，写两行又合上", traits: { slowMood: 1, carefulArranger: 1 } },
+      { text: "一块布，因为也许能当背景", traits: { prettyFrame: 2 } }
+    ]
+  },
+  {
+    text: "别人来你房间前十分钟，你会？",
+    options: [
+      { text: "只整理他们看得到的那一面", traits: { prettyFrame: 2 } },
+      { text: "突然进入认真摆放模式", traits: { carefulArranger: 2 } },
+      { text: "把东西收到一个神秘袋子里", traits: { gearHoarder: 1, vanishSoftly: 1 } },
+      { text: "先坐下来冷静，房间会理解我的", traits: { sitFirst: 2, slowMood: 1 } }
+    ]
+  },
+  {
+    text: "如果要给今天加一个背景音，你选？",
+    options: [
+      { text: "很远的水声", traits: { slowMood: 2 } },
+      { text: "小灯泡轻轻亮起来的声音", traits: { lampKeeper: 2 } },
+      { text: "拉链打开、盒子扣上的声音", traits: { gearHoarder: 2 } },
+      { text: "椅子被拖到刚好位置的声音", traits: { sitFirst: 1, carefulArranger: 1 } }
+    ]
+  },
+  {
+    text: "走进一家很小的杂货店，你会先？",
+    options: [
+      { text: "看最角落那排奇怪但实用的东西", traits: { gearHoarder: 2 } },
+      { text: "看灯和杯子摆得好不好", traits: { lampKeeper: 1, prettyFrame: 1 } },
+      { text: "找店里有没有能坐一下的位置", traits: { sitFirst: 2 } },
+      { text: "慢慢逛，不急着买", traits: { slowMood: 2 } }
+    ]
+  },
+  {
+    text: "大家都在聊天，你忽然安静下来是因为？",
+    options: [
+      { text: "在看窗外一块很好看的光", traits: { prettyFrame: 2, slowMood: 1 } },
+      { text: "电量下降，需要藏一小会儿", traits: { vanishSoftly: 2 } },
+      { text: "想到一个东西应该换个位置", traits: { carefulArranger: 2 } },
+      { text: "椅子太舒服，语言系统暂停", traits: { sitFirst: 2 } }
+    ]
+  },
+  {
+    text: "如果周末只能完成一件小事，你选？",
+    options: [
+      { text: "把某个角落布置得像样一点", traits: { carefulArranger: 2, prettyFrame: 1 } },
+      { text: "补齐一个缺了很久的小装备", traits: { gearHoarder: 2 } },
+      { text: "找到一个新的固定休息点", traits: { sitFirst: 2 } },
+      { text: "什么也不完成，但认真休息", traits: { vanishSoftly: 2, slowMood: 1 } }
+    ]
+  },
+  {
+    text: "你最能接受哪种混乱？",
+    options: [
+      { text: "看起来乱，但每样东西都有故事", traits: { gearHoarder: 2 } },
+      { text: "桌面乱，但灯光必须温柔", traits: { lampKeeper: 2 } },
+      { text: "过程乱，最后画面好看就行", traits: { prettyFrame: 2 } },
+      { text: "外面乱，我躲一下就好了", traits: { vanishSoftly: 2 } }
+    ]
+  },
+  {
+    text: "有人问你想去哪儿，你脑中先出现的是？",
+    options: [
+      { text: "能看到水的地方", traits: { slowMood: 2 } },
+      { text: "有舒服座位的地方", traits: { sitFirst: 2 } },
+      { text: "有小灯和木头味道的地方", traits: { lampKeeper: 2 } },
+      { text: "可以拍到自然光的地方", traits: { prettyFrame: 2 } }
+    ]
+  },
+  {
+    text: "你对“以后可能会用到”的态度是？",
+    options: [
+      { text: "这是宇宙给我的合理借口", traits: { gearHoarder: 2 } },
+      { text: "可以，但要放在对的位置", traits: { carefulArranger: 2 } },
+      { text: "如果能让我更安心，就留下", traits: { lampKeeper: 1, vanishSoftly: 1 } },
+      { text: "先拍一张，之后再决定", traits: { prettyFrame: 2 } }
+    ]
+  }
+];
 
 function clamp(number, min, max) {
   return Math.min(Math.max(number, min), max);
@@ -2509,6 +2788,10 @@ function advanceOnboarding() {
 }
 
 function startOnboarding(isManual) {
+  if (!hasCamperProfile(gameState) || camperProfileActive) {
+    return;
+  }
+
   onboardingManual = Boolean(isManual);
   activeGuideType = "onboarding";
   activeStandaloneGuideId = "";
@@ -2518,7 +2801,7 @@ function startOnboarding(isManual) {
 }
 
 function startStandaloneGuide(guideId) {
-  if (onboardingActive || !standaloneGuides[guideId]) {
+  if (!hasCamperProfile(gameState) || camperProfileActive || onboardingActive || !standaloneGuides[guideId]) {
     return;
   }
 
@@ -2530,8 +2813,354 @@ function startStandaloneGuide(guideId) {
   showOnboardingStep();
 }
 
+function sanitizeCamperName(name) {
+  return String(name || "").trim().replace(/\s+/g, " ").slice(0, 18);
+}
+
+function getRandomCamperName() {
+  const names = ["Moss", "Juniper", "Pudding", "Nori", "Pebble", "Miso", "Bramble", "Sunny", "Pickle", "Maple", "Toast", "Kiki"];
+  return names[Math.floor(Math.random() * names.length)];
+}
+
+function getActiveCamperProfile(state) {
+  const campState = state || gameState;
+  const campers = Array.isArray(campState.campers) ? campState.campers : [];
+  const index = Number.isInteger(campState.activeCamperIndex) ? campState.activeCamperIndex : 0;
+
+  return campers[index] || campers[0] || null;
+}
+
+function hasCamperProfile(state) {
+  const profile = getActiveCamperProfile(state);
+  return Boolean(
+    state &&
+    Number(state.camperProfileVersion) >= CAMPER_PROFILE_VERSION &&
+    profile &&
+    sanitizeCamperName(profile.name) &&
+    CAMPER_PERSONALITIES[profile.personalityId]
+  );
+}
+
+function getActiveCamperPersonality() {
+  const profile = getActiveCamperProfile(gameState);
+  return profile && CAMPER_PERSONALITIES[profile.personalityId] ? CAMPER_PERSONALITIES[profile.personalityId] : null;
+}
+
+function sanitizeCamperProfile(profile) {
+  if (!profile || typeof profile !== "object") {
+    return null;
+  }
+
+  const personality = CAMPER_PERSONALITIES[profile.personalityId];
+  const name = sanitizeCamperName(profile.name);
+
+  if (!personality || !name) {
+    return null;
+  }
+
+  return {
+    id: profile.id || "camper-" + Date.now().toString(36),
+    name: name,
+    personalityId: profile.personalityId,
+    title: personality.title,
+    description: personality.description,
+    traits: profile.traits && typeof profile.traits === "object" ? { ...profile.traits } : {},
+    quiz: profile.quiz && typeof profile.quiz === "object" ? { ...profile.quiz } : {},
+    createdAt: Number(profile.createdAt) || Date.now(),
+    updatedAt: Number(profile.updatedAt) || Date.now()
+  };
+}
+
+function getShuffledCopy(items) {
+  const result = items.slice();
+
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    const item = result[index];
+    result[index] = result[swapIndex];
+    result[swapIndex] = item;
+  }
+
+  return result;
+}
+
+function pickCamperProfileQuestions() {
+  return getShuffledCopy(CAMPER_PROFILE_QUESTIONS).slice(0, CAMPER_PROFILE_QUESTION_COUNT);
+}
+
+function buildCamperProfileResult(name, questions, answers) {
+  const scores = {};
+
+  Object.keys(CAMPER_PERSONALITIES).forEach(function(personalityId) {
+    scores[personalityId] = 0;
+  });
+
+  answers.forEach(function(answer) {
+    const traits = answer && answer.traits ? answer.traits : {};
+
+    Object.keys(traits).forEach(function(personalityId) {
+      if (scores[personalityId] === undefined) {
+        scores[personalityId] = 0;
+      }
+
+      scores[personalityId] += Number(traits[personalityId]) || 0;
+    });
+  });
+
+  const personalityId = Object.keys(CAMPER_PERSONALITIES).sort(function(firstId, secondId) {
+    return scores[secondId] - scores[firstId];
+  })[0] || "slowMood";
+  const personality = CAMPER_PERSONALITIES[personalityId];
+  const existingProfile = getActiveCamperProfile(gameState);
+
+  return {
+    id: existingProfile && existingProfile.id || "camper-" + Date.now().toString(36),
+    name: sanitizeCamperName(name) || getRandomCamperName(),
+    personalityId: personalityId,
+    title: personality.title,
+    description: personality.description,
+    traits: scores,
+    quiz: {
+      questionCount: questions.length,
+      questions: questions.map(function(question) {
+        return question.text;
+      }),
+      answers: answers.map(function(answer) {
+        return answer && answer.text || "";
+      })
+    },
+    createdAt: existingProfile && existingProfile.createdAt || Date.now(),
+    updatedAt: Date.now()
+  };
+}
+
+function getCamperProfileIntroBody() {
+  if (camperProfileMode === "manual") {
+    return "重新认识一下这位 Camper。只会更新名字、称号和小气泡，不会重置营地进度。";
+  }
+
+  if (loadedExistingSaveWithoutCamperProfile) {
+    return "你的营地已经准备好了，现在来认识一下住在这里的 Camper 吧。原来的 Cozy Points、装备、摆放和引导进度都会保留。";
+  }
+
+  return "先认识一下住进营地的 Camper。答几个轻松的小问题，然后它就会带着自己的小性格开始生活。";
+}
+
+function setCamperProfileStep(step) {
+  camperProfileStep = step;
+  updateCamperProfileView();
+}
+
+function renderCamperQuestionOptions(question) {
+  camperQuestionOptions.innerHTML = "";
+
+  question.options.forEach(function(option, optionIndex) {
+    const optionButton = document.createElement("button");
+    const selectedAnswer = camperProfileAnswers[camperProfileQuestionIndex];
+
+    optionButton.className = "camper-question-option" + (selectedAnswer === option ? " selected" : "");
+    optionButton.type = "button";
+    optionButton.textContent = option.text;
+    optionButton.addEventListener("click", function() {
+      camperProfileAnswers[camperProfileQuestionIndex] = option;
+      renderCamperQuestionOptions(question);
+      updateCamperProfileView();
+    });
+
+    camperQuestionOptions.appendChild(optionButton);
+  });
+}
+
+function updateCamperProfileView() {
+  if (!camperProfileActive || !camperProfileLayer) {
+    return;
+  }
+
+  const isNameStep = camperProfileStep === "name";
+  const isQuestionStep = camperProfileStep === "question";
+  const isResultStep = camperProfileStep === "result";
+  const currentQuestion = camperProfileQuestions[camperProfileQuestionIndex];
+
+  camperNameStep.classList.toggle("hidden", !isNameStep);
+  camperQuestionStep.classList.toggle("hidden", !isQuestionStep);
+  camperResultStep.classList.toggle("hidden", !isResultStep);
+
+  if (isNameStep) {
+    camperProfileStepLabel.textContent = "Create Camper";
+    camperProfileTitle.textContent = "Who lives here?";
+    camperProfileBody.textContent = getCamperProfileIntroBody();
+    camperProfilePrimaryButton.textContent = "Start questions";
+    camperProfilePrimaryButton.disabled = !sanitizeCamperName(camperNameInput.value);
+    camperProfileSecondaryButton.textContent = camperProfileMode === "manual" ? "Close" : "Random camper";
+  } else if (isQuestionStep && currentQuestion) {
+    camperProfileStepLabel.textContent = "Question " + (camperProfileQuestionIndex + 1) + " / " + camperProfileQuestions.length;
+    camperProfileTitle.textContent = camperProfileDraftName;
+    camperProfileBody.textContent = "选一个最像它今天状态的答案。";
+    camperQuestionText.textContent = currentQuestion.text;
+    renderCamperQuestionOptions(currentQuestion);
+    camperProfilePrimaryButton.textContent = camperProfileQuestionIndex >= camperProfileQuestions.length - 1 ? "See result" : "Next";
+    camperProfilePrimaryButton.disabled = !camperProfileAnswers[camperProfileQuestionIndex];
+    camperProfileSecondaryButton.textContent = camperProfileMode === "manual" ? "Cancel" : "Random camper";
+  } else if (isResultStep && camperProfileDraftResult) {
+    camperProfileStepLabel.textContent = "Camper Ready";
+    camperProfileTitle.textContent = "Meet your Camper";
+    camperProfileBody.textContent = "之后可以从 Camper 按钮重新答题，不会重置任何营地进度。";
+    camperResultName.textContent = camperProfileDraftResult.name + " is";
+    camperResultTitle.textContent = camperProfileDraftResult.title;
+    camperResultDescription.textContent = camperProfileDraftResult.description;
+    camperProfilePrimaryButton.textContent = camperProfileMode === "manual" ? "Save profile" : "Move in";
+    camperProfilePrimaryButton.disabled = false;
+    camperProfileSecondaryButton.textContent = "Retake";
+  }
+}
+
+function startCamperProfileFlow(mode) {
+  if (!camperProfileLayer) {
+    return;
+  }
+
+  if (onboardingActive) {
+    completeOnboarding(false);
+  }
+
+  if (isShopOpen()) {
+    closeShop();
+  }
+
+  if (isBuildModeActive()) {
+    exitBuildMode();
+  }
+
+  const existingProfile = getActiveCamperProfile(gameState);
+
+  camperProfileActive = true;
+  camperProfileMode = mode || "required";
+  camperProfileStep = "name";
+  camperProfileQuestionIndex = 0;
+  camperProfileQuestions = pickCamperProfileQuestions();
+  camperProfileAnswers = [];
+  camperProfileDraftName = existingProfile && existingProfile.name || "";
+  camperProfileDraftResult = null;
+
+  camperNameInput.value = camperProfileDraftName;
+  camperProfileLayer.classList.remove("hidden");
+  camperProfileLayer.setAttribute("aria-hidden", "false");
+  document.body.classList.add("camper-profile-open");
+  updateCamperProfileView();
+
+  requestAnimationFrame(function() {
+    if (camperNameInput) {
+      camperNameInput.focus();
+      camperNameInput.select();
+    }
+  });
+}
+
+function closeCamperProfileFlow() {
+  camperProfileActive = false;
+  camperProfileLayer.classList.add("hidden");
+  camperProfileLayer.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("camper-profile-open");
+}
+
+function randomizeCamperProfileDraft() {
+  const name = sanitizeCamperName(camperNameInput.value) || getRandomCamperName();
+
+  camperProfileQuestions = pickCamperProfileQuestions();
+  camperProfileAnswers = camperProfileQuestions.map(function(question) {
+    return question.options[Math.floor(Math.random() * question.options.length)];
+  });
+  camperProfileDraftName = name;
+  camperProfileDraftResult = buildCamperProfileResult(name, camperProfileQuestions, camperProfileAnswers);
+  setCamperProfileStep("result");
+}
+
+function saveCamperProfileResult() {
+  if (!camperProfileDraftResult) {
+    return;
+  }
+
+  const campers = Array.isArray(gameState.campers) ? gameState.campers.slice() : [];
+
+  campers[0] = camperProfileDraftResult;
+  gameState.campers = campers;
+  gameState.activeCamperIndex = 0;
+  gameState.camperProfileVersion = CAMPER_PROFILE_VERSION;
+  saveGame();
+  closeCamperProfileFlow();
+  setStatus(camperProfileDraftResult.name + " is ready for camp.");
+  updateCamperProfileControls();
+  chooseNextCamperAction();
+  maybeStartOnboarding();
+}
+
+function advanceCamperProfileFlow() {
+  if (!camperProfileActive) {
+    return;
+  }
+
+  if (camperProfileStep === "name") {
+    const name = sanitizeCamperName(camperNameInput.value);
+
+    if (!name) {
+      setStatus("Give your Camper a name first.");
+      updateCamperProfileView();
+      return;
+    }
+
+    camperProfileDraftName = name;
+    setCamperProfileStep("question");
+    return;
+  }
+
+  if (camperProfileStep === "question") {
+    if (!camperProfileAnswers[camperProfileQuestionIndex]) {
+      updateCamperProfileView();
+      return;
+    }
+
+    if (camperProfileQuestionIndex >= camperProfileQuestions.length - 1) {
+      camperProfileDraftResult = buildCamperProfileResult(camperProfileDraftName, camperProfileQuestions, camperProfileAnswers);
+      setCamperProfileStep("result");
+    } else {
+      camperProfileQuestionIndex += 1;
+      setCamperProfileStep("question");
+    }
+
+    return;
+  }
+
+  if (camperProfileStep === "result") {
+    saveCamperProfileResult();
+  }
+}
+
+function handleCamperProfileSecondaryAction() {
+  if (camperProfileStep === "result") {
+    startCamperProfileFlow(camperProfileMode);
+    return;
+  }
+
+  if (camperProfileMode === "manual") {
+    closeCamperProfileFlow();
+    return;
+  }
+
+  randomizeCamperProfileDraft();
+}
+
+function updateCamperProfileControls() {
+  const profile = getActiveCamperProfile(gameState);
+
+  if (!camperProfileButton) {
+    return;
+  }
+
+  camperProfileButton.setAttribute("title", profile ? profile.name + ": " + profile.title : "Create camper");
+}
+
 function maybeStartInteractionGuide() {
-  if (!gameState.onboardingSeen || gameState.interactionGuideSeen || onboardingActive) {
+  if (!hasCamperProfile(gameState) || camperProfileActive || !gameState.onboardingSeen || gameState.interactionGuideSeen || onboardingActive) {
     return;
   }
 
@@ -2543,7 +3172,7 @@ function maybeStartInteractionGuide() {
 }
 
 function maybeStartBuildModeGuide() {
-  if (gameState.buildModeGuideSeen || onboardingActive) {
+  if (!hasCamperProfile(gameState) || camperProfileActive || gameState.buildModeGuideSeen || onboardingActive) {
     return;
   }
 
@@ -2562,6 +3191,15 @@ function maybeStartBuildModeGuide() {
 }
 
 function maybeStartOnboarding() {
+  if (!hasCamperProfile(gameState)) {
+    startCamperProfileFlow("required");
+    return;
+  }
+
+  if (camperProfileActive) {
+    return;
+  }
+
   if (!gameState.onboardingSeen) {
     startOnboarding(false);
     return;
@@ -2848,7 +3486,7 @@ function resetGameToFreshStart(message) {
   chooseNextCamperAction();
   saveGame();
   showWelcome(message || "Save reset. Camp starts fresh.");
-  startOnboarding(false);
+  maybeStartOnboarding();
 }
 
 function confirmResetSave() {
@@ -2901,6 +3539,26 @@ function sanitizeSave(savedGame) {
     if (savedGame.lastSaveTime !== undefined) {
       cleanState.lastSaveTime = savedGame.lastSaveTime;
     }
+  }
+
+  cleanState.camperProfileVersion = 0;
+  cleanState.activeCamperIndex = 0;
+  cleanState.campers = [];
+
+  if (savedGame && Array.isArray(savedGame.campers)) {
+    cleanState.campers = savedGame.campers.map(sanitizeCamperProfile).filter(Boolean);
+  }
+
+  if (savedGame && Number.isInteger(savedGame.activeCamperIndex)) {
+    cleanState.activeCamperIndex = clamp(savedGame.activeCamperIndex, 0, Math.max(0, cleanState.campers.length - 1));
+  }
+
+  if (cleanState.campers.length > 0 && hasCamperProfile({
+    camperProfileVersion: savedGame && Number(savedGame.camperProfileVersion) || CAMPER_PROFILE_VERSION,
+    activeCamperIndex: cleanState.activeCamperIndex,
+    campers: cleanState.campers
+  })) {
+    cleanState.camperProfileVersion = CAMPER_PROFILE_VERSION;
   }
 
   const ownedGear = getDefaultOwnedGearIds();
@@ -3087,6 +3745,7 @@ function sanitizeSave(savedGame) {
 
 function loadGame() {
   const savedText = localStorage.getItem(SAVE_KEY);
+  loadedExistingSaveWithoutCamperProfile = false;
 
   if (!savedText) {
     gameState.comfort = calculateComfort();
@@ -3100,11 +3759,13 @@ function loadGame() {
 
   try {
     gameState = sanitizeSave(JSON.parse(savedText));
+    loadedExistingSaveWithoutCamperProfile = !hasCamperProfile(gameState);
     applyOfflineEarnings();
     saveGame();
   } catch (error) {
     gameState = createDefaultGameState();
     gameState.comfort = calculateComfort();
+    loadedExistingSaveWithoutCamperProfile = false;
     showWelcome("The save was reset, so camp starts fresh.");
   }
 }
@@ -3147,6 +3808,7 @@ function updateScreen() {
 
   dayNightToggle.classList.toggle("hidden", !gameState.nightUnlocked);
   dayNightLabel.textContent = gameState.isNight ? "Day" : "Night";
+  updateCamperProfileControls();
   updateBuildModeControls();
 
   updateShopCards();
@@ -5874,6 +6536,10 @@ function getFacingForAction(action, target) {
     return getFacingTowardPoint(campSpots.fire);
   }
 
+  if (action === "observingGear") {
+    return getFacingTowardPoint(target);
+  }
+
   if (action === "lookingAtLake" || action === "resting") {
     return getRandomFacing();
   }
@@ -6066,7 +6732,11 @@ function updateCamperView() {
 }
 
 function getRandomCamperThought(action) {
-  const thoughts = camperThoughtLines[action];
+  const personality = getActiveCamperPersonality();
+  const genericThoughts = camperThoughtLines[action] || [];
+  const personalityThoughts = personality && personality.bubbles ? personality.bubbles[action] || [] : [];
+  const shouldUsePersonalityThought = personalityThoughts.length > 0 && Math.random() < 0.65;
+  const thoughts = shouldUsePersonalityThought ? personalityThoughts : genericThoughts;
 
   if (!Array.isArray(thoughts) || thoughts.length === 0) {
     return "";
@@ -6163,7 +6833,7 @@ function updateCamperSprite() {
 }
 
 function chooseNextCamperAction() {
-  if (isBuildModeActive()) {
+  if (isBuildModeActive() || camperProfileActive || !hasCamperProfile(gameState)) {
     return;
   }
 
@@ -6187,14 +6857,81 @@ function chooseNextCamperAction() {
   chooseRelaxingAction();
 }
 
-function chooseRelaxingAction() {
-  const actions = ["wandering", "lookingAtLake", "sittingByFire", "resting", "tentRest"];
+function chooseWeightedAction(actionEntries) {
+  const totalWeight = actionEntries.reduce(function(total, entry) {
+    return total + Math.max(0, Number(entry.weight) || 0);
+  }, 0);
+  let roll = Math.random() * Math.max(totalWeight, 1);
 
-  if (getAvailableSeatableFurnitureEntries().length > 0) {
-    actions.push("sittingOnFurniture");
+  for (let index = 0; index < actionEntries.length; index += 1) {
+    roll -= Math.max(0, Number(actionEntries[index].weight) || 0);
+
+    if (roll <= 0) {
+      return actionEntries[index].id;
+    }
   }
 
-  const action = actions[Math.floor(Math.random() * actions.length)];
+  return actionEntries.length > 0 ? actionEntries[actionEntries.length - 1].id : "wandering";
+}
+
+function getRandomObservableGearTarget() {
+  const candidates = getGearItems().filter(function(item) {
+    return item &&
+      item.scene &&
+      item.id !== "campfire" &&
+      isGearVisibleInScene(item) &&
+      (isGearPlaced(item.id) || isEquippableGear(item) && getEquippedGearId(item.category) === item.id);
+  });
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  const item = candidates[Math.floor(Math.random() * candidates.length)];
+  const position = getDisplayedGearScenePosition(item);
+
+  if (!position) {
+    return null;
+  }
+
+  return {
+    x: clamp(sceneXToPercent(position.x) + randomBetween(-4, 4), 16, 76),
+    y: clamp(sceneYToPercent(position.y) + 2, 62, 86),
+    interactionTargetId: item.id,
+    ignoreObstacleId: item.id
+  };
+}
+
+function getRelaxingActionEntries() {
+  const personality = getActiveCamperPersonality();
+  const bonuses = personality && personality.idleWeights ? personality.idleWeights : {};
+  const nightBonuses = gameState.isNight && personality && personality.nightWeights ? personality.nightWeights : {};
+  const entries = [
+    { id: "wandering", weight: 4 },
+    { id: "lookingAtLake", weight: 4 },
+    { id: "sittingByFire", weight: 4 },
+    { id: "resting", weight: 3 },
+    { id: "tentRest", weight: 3 }
+  ];
+
+  if (getAvailableSeatableFurnitureEntries().length > 0) {
+    entries.push({ id: "sittingOnFurniture", weight: 4 });
+  }
+
+  if (getRandomObservableGearTarget()) {
+    entries.push({ id: "observingGear", weight: 2 });
+  }
+
+  return entries.map(function(entry) {
+    return {
+      id: entry.id,
+      weight: entry.weight + (Number(bonuses[entry.id]) || 0) + (Number(nightBonuses[entry.id]) || 0)
+    };
+  });
+}
+
+function chooseRelaxingAction() {
+  const action = chooseWeightedAction(getRelaxingActionEntries());
 
   if (action === "lookingAtLake") {
     startMovingTo(campSpots.lake, "lookingAtLake");
@@ -6205,6 +6942,14 @@ function chooseRelaxingAction() {
 
     if (seatTarget) {
       startMovingTo(seatTarget, "sittingOnFurniture");
+    } else {
+      startMovingTo(getRandomWanderPoint(), "wandering", { labelAction: "wandering" });
+    }
+  } else if (action === "observingGear") {
+    const gearTarget = getRandomObservableGearTarget();
+
+    if (gearTarget) {
+      startMovingTo(gearTarget, "observingGear");
     } else {
       startMovingTo(getRandomWanderPoint(), "wandering", { labelAction: "wandering" });
     }
@@ -6294,6 +7039,11 @@ function executeQueuedFireAction() {
 }
 
 function updateCamperAI() {
+  if (camperProfileActive || !hasCamperProfile(gameState)) {
+    campfireFlameImage.src = getCurrentFlameImage();
+    return;
+  }
+
   if (isBuildModeActive()) {
     campfireFlameImage.src = getCurrentFlameImage();
     return;
@@ -6356,6 +7106,11 @@ function arriveAtTarget() {
 
   if (action === "sittingOnFurniture" || action === "sittingOnChair") {
     startActing(action, 5);
+    return;
+  }
+
+  if (action === "observingGear") {
+    startActing("observingGear", 3.4);
     return;
   }
 
@@ -6437,6 +7192,11 @@ function pickupTargetWood() {
 }
 
 function gameTick() {
+  if (camperProfileActive || !hasCamperProfile(gameState)) {
+    updateScreen();
+    return;
+  }
+
   if (gameState.warmthSeconds > 0) {
     const cozyGain = getCozyPointsPerSecond();
     gameState.cozyPoints += cozyGain;
@@ -6508,6 +7268,11 @@ if (buildModeToggle) {
   buildModeToggle.addEventListener("click", toggleBuildMode);
 }
 uiDisplayToggle.addEventListener("click", toggleUiDisplayMode);
+if (camperProfileButton) {
+  camperProfileButton.addEventListener("click", function() {
+    startCamperProfileFlow("manual");
+  });
+}
 onboardingHelpButton.addEventListener("click", function() {
   startOnboarding(true);
 });
@@ -6515,6 +7280,21 @@ onboardingPrimaryButton.addEventListener("click", advanceOnboarding);
 onboardingSkipButton.addEventListener("click", function() {
   completeOnboarding(true);
 });
+if (camperNameInput) {
+  camperNameInput.addEventListener("input", updateCamperProfileView);
+  camperNameInput.addEventListener("keydown", function(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      advanceCamperProfileFlow();
+    }
+  });
+}
+if (camperProfilePrimaryButton) {
+  camperProfilePrimaryButton.addEventListener("click", advanceCamperProfileFlow);
+}
+if (camperProfileSecondaryButton) {
+  camperProfileSecondaryButton.addEventListener("click", handleCamperProfileSecondaryAction);
+}
 resetSaveButton.addEventListener("click", confirmResetSave);
 
 if (typeof window !== "undefined") {

@@ -86,6 +86,10 @@
           <span>Help</span>
         </button>
 
+        <button id="camperProfileButton" class="utility-button camper-profile-toggle" type="button" aria-label="Edit camper profile">
+          <span>Camper</span>
+        </button>
+
         <button id="resetSaveButton" class="utility-button" type="button">
           <img class="button-icon" src="assets/ui/icon_tools.png?v=2.6" alt="">
           <span>Reset</span>
@@ -143,6 +147,35 @@
             <div class="onboarding-actions">
               <button id="onboardingSkipButton" class="onboarding-button secondary" type="button">Skip</button>
               <button id="onboardingPrimaryButton" class="onboarding-button primary" type="button">Next</button>
+            </div>
+          </section>
+        </div>
+
+        <div id="camperProfileLayer" class="camper-profile-layer hidden" aria-hidden="true" aria-live="polite">
+          <section class="camper-profile-panel" aria-label="Create camper">
+            <p id="camperProfileStepLabel" class="camper-profile-step-label"></p>
+            <h2 id="camperProfileTitle"></h2>
+            <p id="camperProfileBody"></p>
+
+            <div id="camperNameStep" class="camper-profile-name-step">
+              <label for="camperNameInput">Camper name</label>
+              <input id="camperNameInput" class="camper-name-input" type="text" maxlength="18" autocomplete="off" placeholder="Moss" />
+            </div>
+
+            <div id="camperQuestionStep" class="camper-question-step hidden">
+              <p id="camperQuestionText" class="camper-question-text"></p>
+              <div id="camperQuestionOptions" class="camper-question-options"></div>
+            </div>
+
+            <div id="camperResultStep" class="camper-result-step hidden">
+              <p id="camperResultName" class="camper-result-name"></p>
+              <h3 id="camperResultTitle"></h3>
+              <p id="camperResultDescription"></p>
+            </div>
+
+            <div class="camper-profile-actions">
+              <button id="camperProfileSecondaryButton" class="camper-profile-button secondary" type="button">Random camper</button>
+              <button id="camperProfilePrimaryButton" class="camper-profile-button primary" type="button">Start</button>
             </div>
           </section>
         </div>
