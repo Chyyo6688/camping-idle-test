@@ -73,6 +73,16 @@ const CAMPER_BODY_RECTS = {
   tentRest: { ratioX: 0.16, ratioY: 0.45, ratioWidth: 0.68, ratioHeight: 0.38 },
   lookingLakeBack: { ratioX: 0.3, ratioY: 0.14, ratioWidth: 0.4, ratioHeight: 0.78 }
 };
+const CAMPER_THOUGHT_RECTS = {
+  default: { ratioX: 0.5, ratioY: 0.06 },
+  walking: { ratioX: 0.5, ratioY: 0.04 },
+  carryingWood: { ratioX: 0.5, ratioY: 0.04 },
+  sittingGround: { ratioX: 0.5, ratioY: 0.28 },
+  sittingChair: { ratioX: 0.5, ratioY: 0.24 },
+  resting: { ratioX: 0.5, ratioY: 0.4 },
+  tentRest: { ratioX: 0.5, ratioY: 0.4 },
+  lookingLakeBack: { ratioX: 0.5, ratioY: 0.06 }
+};
 const DEFAULT_COLLISION_FOOTPRINTS = {
   vehicle: { ratioX: 0.14, ratioY: 0.62, ratioWidth: 0.72, ratioHeight: 0.28 },
   tent: { ratioX: 0.2, ratioY: 0.68, ratioWidth: 0.6, ratioHeight: 0.26 },
@@ -311,6 +321,8 @@ let uiDisplayMode = 0;
 let selectedActionTargetElement = null;
 let selectedActionTargetKey = "";
 let selectedBuildItemKey = "";
+let camperThoughtAction = "";
+let camperThoughtText = "";
 let camperMotionFrameId = null;
 let sceneDepthControlLayer = null;
 let sceneDepthControlPanel = null;
@@ -398,6 +410,7 @@ function syncSceneScale() {
 const campSpots = {
   fire: { x: 39, y: 79 },
   fireSeat: { x: 33, y: 80 },
+  fireSeatRight: { x: 46, y: 80.5 },
   lake: { x: 50, y: 54 },
   tent: { x: 54, y: 69.5 },
   rest: { x: 24, y: 81 }
@@ -457,10 +470,10 @@ const standaloneGuides = {
   },
   buildMode: {
     id: "buildMode",
-    title: "Build Mode",
+    title: "Build Mode Unlocked",
     stepLabel: "Build",
     primaryLabel: "Got it",
-    body: "Build Mode can move camp items. Drag items to adjust position, use depth buttons to change front/back layering, and tap Done to return the camper beside the fire."
+    body: "Tap the Build button to rearrange your camp. Drag items to move them, use the ↑ ↓ buttons to change front/back layering, then tap Done when you're finished."
   }
 };
 
@@ -480,13 +493,13 @@ const camperActionLabels = {
 };
 
 const camperThoughtLines = {
-  wandering: "\u968f\u4fbf\u8d70\u8d70--",
-  lookingAtLake: "\u770b\u770b\u6e56\u5427",
-  sittingByFire: "\u70e4\u4f1a\u513f\u706b\u5427",
-  sittingOnFurniture: "\u5750\u4e00\u4f1a\u513f",
-  sittingOnChair: "\u5750\u4e00\u4f1a\u513f",
-  resting: "\u5c0f\u772f\u4e00\u4f1a\u513f",
-  tentRest: "\u94bb\u8fdb\u5e10\u7bf7--"
+  wandering: ["随便走走", "看看营地", "今天风不错", "找个舒服角落", "慢慢来就好"],
+  lookingAtLake: ["看看湖吧", "水面好安静", "那边有光", "发会儿呆", "湖风刚刚好"],
+  sittingByFire: ["烤会儿火吧", "火苗真暖", "添点柴更好", "这里最舒服", "听木柴噼啪"],
+  sittingOnFurniture: ["坐一会儿", "这椅子不错", "休息一下", "舒服多了", "营地越来越像样"],
+  sittingOnChair: ["坐一会儿", "这椅子不错", "休息一下", "舒服多了", "看看火光"],
+  resting: ["小累一会儿", "闭眼休息", "草地很软", "先躺一下", "慢慢恢复"],
+  tentRest: ["钻进帐篷", "帐篷里好安心", "小睡一会儿", "外面风声好轻", "今晚睡这里"]
 };
 
 function clamp(number, min, max) {
@@ -592,7 +605,7 @@ function getPurchasedNonCampfireGearCount(state) {
 }
 
 function isBuildModeUnlocked(state) {
-  return getPurchasedNonCampfireGearCount(state || gameState) > BUILD_MODE_UNLOCK_PURCHASE_COUNT;
+  return getPurchasedNonCampfireGearCount(state || gameState) >= BUILD_MODE_UNLOCK_PURCHASE_COUNT;
 }
 
 function isBuildModeActive() {
@@ -1045,8 +1058,12 @@ function syncSceneDepthControls() {
     positiveOffsetValue.textContent = depthOffsetY >= 0 ? formatDepthOffsetValue(depthOffsetY) : "";
   }
 
-  const panelWidth = panel.offsetWidth || 92;
-  const panelHeight = panel.offsetHeight || (shouldShowAttach ? 136 : 106);
+  const sceneScale = parseFloat(sceneContent && sceneContent.style.getPropertyValue("--scene-scale")) || 1;
+  const controlScale = clamp(1 / sceneScale, 1, 2.4);
+  panel.style.setProperty("--depth-control-scale", String(controlScale));
+
+  const panelWidth = (panel.offsetWidth || 50) * controlScale;
+  const panelHeight = (panel.offsetHeight || (shouldShowAttach ? 120 : 93)) * controlScale;
   const left = clamp(bounds.left + bounds.width + 10, 8, BASE_SCENE_WIDTH - panelWidth - 8);
   const top = clamp(bounds.top + bounds.height * 0.34, 8, BASE_SCENE_HEIGHT - panelHeight - 8);
 
@@ -2530,6 +2547,17 @@ function maybeStartBuildModeGuide() {
     return;
   }
 
+  // Prompt the player toward the Build button once it is unlocked and visible.
+  // The button lives in the floating controls, which are hidden while the shop
+  // is open, so wait until the shop is closed before pointing at it.
+  if (!gameState.onboardingSeen || !isBuildModeUnlocked() || buildModeActive) {
+    return;
+  }
+
+  if (document.body.classList.contains("shop-open")) {
+    return;
+  }
+
   startStandaloneGuide("buildMode");
 }
 
@@ -3124,6 +3152,7 @@ function updateScreen() {
   updateShopCards();
   updateSceneEquipment();
   updateOnboardingView();
+  maybeStartBuildModeGuide();
 }
 
 function getShopGroupsInOrder() {
@@ -3341,12 +3370,16 @@ function updateGearShopCard(item) {
   const isEquipped = isEquippableGear(item) && getEquippedGearId(item.category) === item.id;
   const isPlaceable = isGearPlaceable(item);
   const isPlaced = isPlaceable && isGearPlaced(item.id);
+  const isTarpInScene = isTarpItem(item) && isEquipped;
   const missingRequirements = getMissingGearRequirements(item);
   const isLocked = missingRequirements.length > 0;
 
+  // Tarps use the equip slot internally, but should carry the same visual
+  // classes as placeable gear (placed, not equipped) so the PACK/PLACE button
+  // colours match the rest of the shop.
   card.button.classList.toggle("owned", isOwned);
-  card.button.classList.toggle("equipped", isEquipped);
-  card.button.classList.toggle("placed", isPlaced);
+  card.button.classList.toggle("equipped", isEquipped && !isTarpItem(item));
+  card.button.classList.toggle("placed", isPlaced || isTarpInScene);
   card.button.classList.toggle("locked", isLocked && !isOwned);
   card.button.classList.remove("action-buy", "action-place", "action-pack", "action-equip", "action-equipped", "action-locked");
   card.detailLabel.textContent = isLocked && !isOwned ? missingRequirements.join(", ") : item.detail;
@@ -3355,7 +3388,20 @@ function updateGearShopCard(item) {
     return;
   }
 
-  if (isEquipped) {
+  if (isTarpItem(item) && isOwned) {
+    // Tarps reuse the same PLACE / PACK button styling as other placeable gear.
+    card.button.disabled = false;
+
+    if (isEquipped) {
+      card.button.classList.add("action-pack");
+      card.actionLabel.textContent = "PACK";
+      card.button.setAttribute("data-price", "PLACED");
+    } else {
+      card.button.classList.add("action-place");
+      card.actionLabel.textContent = "PLACE";
+      card.button.setAttribute("data-price", "OWNED");
+    }
+  } else if (isEquipped) {
     card.button.disabled = true;
     card.button.classList.add("action-equipped");
     card.actionLabel.textContent = "EQUIPPED";
@@ -4260,6 +4306,7 @@ function applyGearSceneLayout(element, item, zIndex, depthOffset) {
   element.style.setProperty("--object-anchor-x", -groundAnchor.x / logicalSize.width * 100 + "%");
   element.style.setProperty("--object-anchor-y", -groundAnchor.y / logicalSize.height * 100 + "%");
   element.style.setProperty("--object-scale-x", mirrored ? "-1" : "1");
+  element.classList.toggle("gear-mirrored", Boolean(mirrored));
   element.dataset.sceneSizeSource = logicalSize.source;
   element.dataset.scenePlacementLayer = getScenePlacementLayer(item, layoutOverride);
 }
@@ -4504,8 +4551,21 @@ function getCamperAttachmentFacingKey() {
 
 function getCamperAttachmentOffset(attachment, offsetGroupName, facingKey) {
   const group = attachment[offsetGroupName] || {};
+  const poseOffsetGroupName = offsetGroupName === "coneOffsets" ? "conePoseOffsets" : "poseOffsets";
+  const poseGroup = attachment[poseOffsetGroupName] && attachment[poseOffsetGroupName][camper.pose] ?
+    attachment[poseOffsetGroupName][camper.pose] :
+    null;
+
+  if (poseGroup) {
+    return poseGroup[facingKey] || poseGroup.right || group[facingKey] || group.right || { x: 0, y: 0, rotate: 0 };
+  }
 
   return group[facingKey] || group.right || { x: 0, y: 0, rotate: 0 };
+}
+
+function isCamperAttachmentHiddenForPose(attachment) {
+  const hiddenPoses = attachment.hiddenPoses || [];
+  return hiddenPoses.indexOf(camper.pose) !== -1 || hiddenPoses.indexOf(camper.currentAction) !== -1;
 }
 
 function applyCamperAttachmentLayout(element, item, layerName, options) {
@@ -4547,7 +4607,7 @@ function updateCamperAttachmentElement(item) {
   const attachment = item.attachment || {};
   const layers = attachment.layers || { front: item.image };
   const facingKey = getCamperAttachmentFacingKey();
-  const shouldShow = ownsGear(item.id) && isGearPlaced(item.id);
+  const shouldShow = ownsGear(item.id) && isGearPlaced(item.id) && !isCamperAttachmentHiddenForPose(attachment);
   const frontElement = getOrCreateCamperAttachmentElement(item, "front");
   const backElement = getOrCreateCamperAttachmentElement(item, "back");
   const coneElement = getOrCreateCamperAttachmentElement(item, "cone");
@@ -4772,6 +4832,15 @@ function packGear(item) {
   return true;
 }
 
+function packTarp(item) {
+  if (!isTarpItem(item) || getEquippedGearId(item.category) !== item.id) {
+    return false;
+  }
+
+  delete gameState.equippedGear[item.category];
+  return true;
+}
+
 function unlockGearRewards(item) {
   if (item.unlocks && item.unlocks.nightMode) {
     gameState.nightUnlocked = true;
@@ -4841,6 +4910,23 @@ function handleGearAction(id) {
   }
 
   if (isVehicleItem(item) && handleVehicleAction(item)) {
+    return;
+  }
+
+  if (ownsGear(item.id) && isTarpItem(item)) {
+    // Tarps keep the single-slot equip behaviour, but present the same
+    // place / pack flow (and button styling) as other placeable gear.
+    if (getEquippedGearId(item.category) === item.id) {
+      if (packTarp(item)) {
+        setStatus(item.displayName + " is packed away.");
+        updateScreen();
+        saveGame();
+      }
+    } else if (equipGear(item)) {
+      setStatus(item.displayName + " is placed in camp.");
+      updateScreen();
+      saveGame();
+    }
     return;
   }
 
@@ -5063,7 +5149,6 @@ function enterBuildMode() {
   updateBuildModeControls();
   updateSceneEquipment();
   setStatus("Build Mode: drag placed items, then tap Done.");
-  maybeStartBuildModeGuide();
 }
 
 function exitBuildMode() {
@@ -5531,6 +5616,35 @@ function getCamperMovePath(target, options) {
   return findPathOnGrid(startPoint, targetPoint, obstacles);
 }
 
+const FIRE_APPROACH_SPOTS = [campSpots.fireSeat, campSpots.fireSeatRight];
+
+function startMovingToFire(actionAfterArrival, moveOptions) {
+  // Walk around the campfire to a spot beside it rather than straight through
+  // the flames. Try each side approach (nearest first) with the fire treated
+  // as a real obstacle; only if the fire is fully boxed in do we fall back to
+  // a direct approach that ignores it.
+  const orderedSpots = FIRE_APPROACH_SPOTS.slice().sort(function(firstSpot, secondSpot) {
+    const firstDistance = Math.abs(firstSpot.x - camper.x) + Math.abs(firstSpot.y - camper.y);
+    const secondDistance = Math.abs(secondSpot.x - camper.x) + Math.abs(secondSpot.y - camper.y);
+    return firstDistance - secondDistance;
+  });
+
+  for (let index = 0; index < orderedSpots.length; index += 1) {
+    const target = Object.assign({}, orderedSpots[index], { interactionTargetId: "campfire" });
+    const path = getCamperMovePath(target);
+
+    if (path && path.reachedTarget) {
+      return startMovingTo(target, actionAfterArrival, moveOptions);
+    }
+  }
+
+  return startMovingTo(
+    Object.assign({}, campSpots.fireSeat, { interactionTargetId: "campfire", ignoreObstacleId: "campfire" }),
+    actionAfterArrival,
+    moveOptions
+  );
+}
+
 function normalizeFacing(facing) {
   return facing === "left" || facing === "right" ? facing : "right";
 }
@@ -5934,13 +6048,58 @@ function updateCamperView() {
   updateSceneOcclusion();
 }
 
+function getRandomCamperThought(action) {
+  const thoughts = camperThoughtLines[action];
+
+  if (!Array.isArray(thoughts) || thoughts.length === 0) {
+    return "";
+  }
+
+  return thoughts[Math.floor(Math.random() * thoughts.length)];
+}
+
+function getCamperThoughtText(action) {
+  if (camperThoughtAction !== action) {
+    camperThoughtAction = action;
+    camperThoughtText = getRandomCamperThought(action);
+  }
+
+  return camperThoughtText;
+}
+
+function updateCamperThoughtPosition() {
+  if (!sceneContent || !camperThoughtBubble) {
+    return;
+  }
+
+  const contentRect = sceneContent.getBoundingClientRect();
+  const camperRect = camperElement.getBoundingClientRect();
+  const scaleX = contentRect.width / BASE_SCENE_WIDTH;
+  const scaleY = contentRect.height / BASE_SCENE_HEIGHT;
+  const thoughtAnchor = CAMPER_THOUGHT_RECTS[camper.pose] || CAMPER_THOUGHT_RECTS.default;
+
+  if (scaleX <= 0 || scaleY <= 0 || camperRect.width <= 0 || camperRect.height <= 0) {
+    camperThoughtBubble.style.left = sceneXFromPercent(camper.x) + "px";
+    camperThoughtBubble.style.top = sceneYFromPercent(Math.max(8, camper.y - 8)) + "px";
+    return;
+  }
+
+  const bubbleGapPx = 14;
+  const anchorClientX = camperRect.left + camperRect.width * thoughtAnchor.ratioX;
+  const anchorClientY = camperRect.top + camperRect.height * thoughtAnchor.ratioY - bubbleGapPx;
+  const sceneX = clamp((anchorClientX - contentRect.left) / scaleX, 24, BASE_SCENE_WIDTH - 24);
+  const sceneY = clamp((anchorClientY - contentRect.top) / scaleY, 24, BASE_SCENE_HEIGHT - 24);
+
+  camperThoughtBubble.style.left = sceneX + "px";
+  camperThoughtBubble.style.top = sceneY + "px";
+}
+
 function updateCamperThought() {
-  const thought = camperThoughtLines[camper.currentAction] || "";
+  const thought = getCamperThoughtText(camper.currentAction);
   const shouldShowThought = !isBuildModeActive() && !gameState.gatherWoodMode && thought;
 
   camperThoughtBubble.textContent = shouldShowThought ? thought : "";
-  camperThoughtBubble.style.left = sceneXFromPercent(camper.x) + "px";
-  camperThoughtBubble.style.top = sceneYFromPercent(Math.max(8, camper.y - 10.5)) + "px";
+  updateCamperThoughtPosition();
   camperThoughtBubble.classList.toggle("show", Boolean(shouldShowThought));
 }
 
@@ -6023,7 +6182,7 @@ function chooseRelaxingAction() {
   if (action === "lookingAtLake") {
     startMovingTo(campSpots.lake, "lookingAtLake");
   } else if (action === "sittingByFire") {
-    startMovingTo(Object.assign({}, campSpots.fireSeat, { interactionTargetId: "campfire", ignoreObstacleId: "campfire" }), "sittingByFire");
+    startMovingToFire("sittingByFire");
   } else if (action === "sittingOnFurniture") {
     const seatTarget = getRandomSeatableSeatTarget();
 
@@ -6108,7 +6267,7 @@ function executeQueuedTentAction(action) {
 }
 
 function executeQueuedFireAction() {
-  if (!startMovingTo(Object.assign({}, campSpots.fireSeat, { interactionTargetId: "campfire", ignoreObstacleId: "campfire" }), "sittingByFire")) {
+  if (!startMovingToFire("sittingByFire")) {
     setStatus("No clear path to the campfire.");
     completeActiveQueuedAction();
     return;
@@ -6198,8 +6357,7 @@ function arriveAtTarget() {
 
 function finishCurrentAction() {
   if (camper.currentAction === "pickupWood") {
-    if (!startMovingTo(
-      Object.assign({}, campSpots.fire, { interactionTargetId: "campfire", ignoreObstacleId: "campfire" }),
+    if (!startMovingToFire(
       "addingWoodToFire",
       { carryingWood: true, labelAction: "carryingWoodToFire" }
     )) {

@@ -1,132 +1,65 @@
 # Test Build Instructions
 
-Current test build: V2.5.
+当前源码版本：V2.6。
 
-## Cache Busting Workflow
+## 包状态
 
-The current release version is controlled by `window.APP_VERSION` in `index.html`.
+- 纯静态 app；没有 npm package、安装步骤、build command 或后端。
+- 运行文件：`index.html`、`style.css`、`gearCatalog.js`、`game.js`、`assets/`。
+- `index.html` 里的 `window.APP_VERSION` 控制 CSS、JS 和 asset URL 的 cache busting。
+- 发布时直接上传当前根目录静态包到 GitHub。
 
-`game.js` reads that value as `APP_VERSION`, and all runtime `assetPaths` go through `withVersion(...)`.
+## 本地测试
 
-For each new release:
+从 repo root 启动静态服务器：
 
-- Update only `window.APP_VERSION` to the new version number, for example `"2.6"`.
-- `index.html` will load `style.css?v=<APP_VERSION>` and `game.js?v=<APP_VERSION>`.
-- `game.js` will load PNG assets as `assets/...png?v=<APP_VERSION>`.
-- Sync the updated files into `share-build/`.
-- Do not use `?reset=1` for normal releases; old player saves remain in `localStorage`.
-- Use `?reset=1` only when intentionally testing a fresh save.
+```text
+python3 -m http.server 8000
+```
 
-## What To Share
+打开：
 
-Use the `share-build/` folder for friend testing.
+```text
+http://localhost:8000/index.html?reset=1
+```
 
-It should contain only the files needed to run the static game:
+`?reset=1` 只用于 fresh save 测试，因为会清掉这个游戏的 localStorage 存档。
+
+## GitHub 上传包
+
+上传时保留这些 runtime 文件：
 
 - `index.html`
 - `style.css`
+- `gearCatalog.js`
 - `game.js`
 - `assets/`
 
-It should not contain development-only files such as:
+排除：
 
 - `assets/reference/`
 - `assets/generated_sources/`
-- generated preview images
-- hidden files
-- `.env`
-- API keys
-- tokens
+- `tmp/`
+- `.git/`、隐藏文件、`.env`
+- review sheet、preview image、office 临时文件
 
-## Local Test
+如果使用 GitHub Pages，发布源应指向包含 `index.html` 的根目录。
 
-Open `share-build/index.html` in a browser.
+## 快速验收
 
-For a fresh save test, open:
+- Fresh save 显示熄灭 Level 1 campfire、starter tent、散落树枝、基础装饰。
+- Gather 能切换自动捡树枝。
+- 手动点击能 queue 树枝、椅子、帐篷、篝火。
+- Shop 打开/关闭时不挡住核心场景。
+- 已购买装备能显示，支持 pack/place 的继续可用，依赖规则正常。
+- Build Mode 解锁后可拖动、调层级，并在刷新后保持。
+- Light gear 解锁 Day/Night。
+- Reset 清档前有确认。
+- 刷新保留进度；只有 `?reset=1` 会清进度。
 
-```text
-share-build/index.html?reset=1
-```
+## Mobile Viewports
 
-The `?reset=1` query clears only this game's browser `localStorage` save.
-
-## Web Link Sharing
-
-To let friends play from a phone without downloading files, upload the contents of `share-build/` to a static hosting platform.
-
-Good options:
-
-- GitHub Pages
-- Netlify drag-and-drop deploy
-- Cloudflare Pages
-- Vercel static project
-- itch.io HTML5 game page
-
-Important: upload the contents inside `share-build/`, not the whole development folder.
-
-V2.5 `share-build/` should contain only:
-
-- `index.html`
-- `style.css`
-- `game.js`
-- `assets/`
-
-Do not upload root-level review sheets such as `character_review_sheet.png` or `tent_review_sheet.png`.
-
-After upload, the host will give you a URL. Send that URL to friends and they can open it directly in a mobile browser.
-
-## Privacy Note
-
-This is a pure frontend static webpage.
-
-It has:
-
-- no backend
-- no login
-- no cloud save
-- no API key
-- no ads
-- no analytics
-- no tracking
-- no third-party scripts
-
-This test build stores only local game progress in browser localStorage and does not collect personal data.
-
-## Quick Acceptance Test
-
-New save:
-
-- Open with `?reset=1`.
-- New game starts with Backpacking Tent, unlit Level 1 campfire, scattered wood, and base environment decor.
-- Table, Kettle, Axe, Stove, String Lights, Chair, and Lantern do not appear before purchase.
-
-Shop:
-
-- Shop bottom sheet opens and closes.
-- Shop still shows unpurchased items.
-- Table can be purchased.
-- Kettle and Stove are locked until Table is owned.
-- Purchased equipment appears in the campsite.
-
-UI:
-
-- Status bar is not covered by safe area.
-- Welcome/status text appears as a short toast and fades out.
-- Toast does not block campfire, tent, table, chair, or camper for long.
-- Reset button asks for confirmation before clearing save.
-
-Systems:
-
-- Gather Wood toggle works.
-- Day / Night appears only after Lantern is bought.
-- Refreshing the browser keeps local progress.
-- Opening with `?reset=1` clears the local progress again.
-
-Mobile viewport checks:
-
-- iPhone 12 Pro: 390 x 844
-- iPhone 15 Pro: 393 x 852
-- iPhone 16 / 17 Pro: 402 x 874
-- Pro Max-ish: 430-440 x 932-956
-
-Check that the main campsite objects remain visible when the shop is open.
+- 390 x 844
+- 393 x 852
+- 402 x 874
+- 430-440 x 932-956

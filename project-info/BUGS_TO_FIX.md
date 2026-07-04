@@ -1,146 +1,33 @@
-# Cozy Camping Idle - Bugs / Known Issues
+# Cozy Camping Idle - Known Issues
 
-## 透明素材和红边
+## 最高优先级
 
-当前部分第一轮生成素材来自 chroma-key 去背景，边缘可能有红边或不干净 alpha。
+- 仍需真实手机浏览器测试，重点是 shop 打开状态、safe area、Build Mode touch drag。
+- 最新 `game.js` / `style.css` 改动后，manual action queue 需要完整 smoke test。
+- 发布检查以根目录静态包为准。
 
-V2.4 已按参考图再次使用 `$imagegen` 尝试生成透明 sprite sheet，并要求 true transparent background。检查结果显示输出是 RGB、没有 alpha 通道，棋盘格被画进图像中。因此没有导入该生成图，也没有继续使用 chroma-key 抠图。
+## 视觉资源
 
-仍需处理：
+- 部分旧生成 PNG 可能仍有边缘不干净或风格不统一。
+- 最终 gameplay asset 只接受真正透明 PNG。
+- 不要把棋盘格、白/黑底、chroma-key 边缘图当正式资源。
+- `assets/campfire/*` 视为稳定资源，除非用户确认新的 review sheet，否则不要覆盖。
+- Camper walk / sit / look / rest 动作资源先冻结，等最终图确认后再替换。
 
-- 使用真正原生透明 PNG 资源替换 camper、chair、lantern、table、campfire、小道具和 UI icons。
-- 替换时保持同名文件和相近画布尺寸。
-- 不要使用带棋盘格、白底、黑底或 chroma-key 红/绿边的图片作为最终 gameplay asset。
+## Camper / Interaction
 
-## Camper 动画
+- `addingWoodToFire` 仍复用 carrying wood 图，没有专门投柴动作。
+- Camper 动画仍偏简单。
+- 需要复测 queue 编号、mobile gear 二次点击、Gather On 自动逻辑。
 
-已修复的语义：
+## Gear / Build Mode
 
-- 移动中只使用 `walking` 或 `carryingWood`。
-- `lookingAtLake` 使用 `camper_look_lake_back.png`。
-- `sittingByFire` 使用 `camper_sit_ground.png`。
-- `sittingOnChair` 使用 `camper_sit_chair.png`。
+- Packed gear 目前仍计入 Comfort；是否改为“放置才生效”以后再定。
+- Build Mode 会保存位置、层级、挂载 offset；旧存档兼容需要继续观察。
+- Vehicle、vehicle awning、rooftop tent 的贴合度可能还要按车型微调。
 
-仍需观察：
+## Release 风险
 
-- 最终角色动作帧仍需替换，尤其是 `camper_walk_01.png` / `camper_walk_02.png` 的左右腿交替。
-- V2.5 后角色 walk / sit / look lake 动作资源暂时冻结，等待用户准备最终 PNG 后再替换。
-- `addingWoodToFire` 仍复用 carrying wood 图，没有专门投柴 pose。
-- 动画整体仍比较僵硬，后续可增加更多帧，但不要引入复杂动画系统。
-
-## Equipment 显示和解锁
-
-历史版本普通购买装备使用 `ownedEquipment`，当前代码已迁移为 `gearCatalog.js` + `ownedGear`，并在本轮加入轻量 `placedGear`：
-
-- `chair`
-- `table`
-- `kettle`
-- `axe`
-- `stove`
-- `lantern`
-- `stringLights`
-
-这些装备默认不显示，购买后才显示。`crate`、`woodpile`、`stump` 是基础环境装饰，可以开局显示。
-
-仍需观察：
-
-- table / kettle / stove 的视觉摆放是否足够自然。
-- bottom sheet 打开时，购买后的桌面小物是否仍清晰可见。
-- 新增装备必须走 `gearCatalog.js`，不要新增大量 `hasX` 主字段。
-- 当前 `placedGear` 只负责固定点显示/隐藏；没有拖动、碰撞、自动避让或通用 replacement。
-- Packed gear 仍按 owned 计入 Comfort，是否改成“放置才生效”留给下一轮设计决定。
-
-## String Lights
-
-V2.4 已将 `string_lights` 移到当前 tent 上方并缩小，只有购买后才显示。
-
-未来建议：
-
-- 增加 tarp，string lights 可以挂在 tarp 或树间。
-- 增加可拖动装饰摆放系统，让玩家自己调整灯串位置。
-- 这些都属于未来玩法/摆放系统，不属于 V2.4 修复范围。
-
-## Toast / Safe Area
-
-V2.4 将 welcome/status 文本改为 toast，避免长期遮挡底部营地。
-
-仍需真实设备测试：
-
-- iPhone 12 Pro: 390 x 844
-- iPhone 15 Pro: 393 x 852
-- iPhone 16 / 17 Pro: 402 x 874
-- Pro Max-ish: 430-440 x 932-956
-
-重点检查：
-
-- toast 不与 status bar、刘海或 Dynamic Island 重叠。
-- Shop bottom sheet 打开时不会完全遮住 campfire、camper、tent、table、chair。
-- Reset 小按钮不干扰主要游玩。
-
-## Resize / Mobile 风险
-
-当前使用固定 9:16 `game-viewport`，对象按统一百分比坐标定位。窗口缩放后对象不应跑到湖或天空上。
-
-仍需观察：
-
-- 横屏或极矮浏览器窗口中的裁切情况。
-- 真实手机浏览器地址栏展开/收起时的高度变化。
-- day/night 切换后背景和对象是否仍保持一致。
-
-## V2.5 Handoff Notes
-
-- 部分非核心 asset 仍可能需要后续统一风格。
-- Campfire asset 已手动恢复为稳定旧版本，不要在后续自动生图流程中覆盖。
-- 后续资源替换前需要先生成并确认 review sheet，不要直接覆盖正式 `assets/` 文件。
-- Shop UI 已做 V2.5 收尾，后续除非用户明确要求，不要继续改 Shop UI 或购买逻辑。
-
-## WIP Handoff Notes - 2026-06-16
-
-- Campfire scene 已通过 CSS 缩小并对 Level 3 做轻 tuning；shop upgrade icon 改为动态下一等级图标。
-- 普通 gear shop 状态为 `BUY` / `PLACE` / `PACK`，购买后会自动 place；Campfire 仍特殊，不参与收纳。
-- Tarp 已改为 replacement，使用 `equippedGear.tarp`，同一时间只显示当前 equipped tarp。
-- Vehicle 支持当前车 `STOW` / `PLACE`，但 rooftop tent 装备中时当前车被锁为 `MOUNTED`，只能通过切换 tent 或 replace vehicle 解除。
-- Rooftop tent 已改为读取当前 vehicle 的 `scene.roofMount`；每辆车的 anchor / width 仍可能需要真实视觉微调。
-- `starterHeadlamp` 已改为 camper head attachment 的 front/back 两层，并新增 flashlight cone；购买后自动放置并解锁 night mode，pack 后隐藏头灯和光锥。
-- `lanternPoleLight` 已按 80/120 比例和底部 anchor 调整，视觉上比普通营地灯更高。
-- `share-build/` 已同步本轮 `game.js`、`gearCatalog.js`、`style.css` 和新增头灯 asset，但没有 deploy。
-
-## WIP Handoff Notes - 2026-06-19
-
-- 新玩家 onboarding 已接入 `onboardingSeen`，存于 `cozyCampfireSave`；新存档默认 `gatherWoodMode: false`，旧存档保留已有 Gather 状态。
-- 新增轻量手动 action queue：树枝、椅子、当前帐篷、火堆点击都进入同一个内存队列，不写入存档。
-- Queue 目标描边已切到通用 gear 逻辑：所有 `assets/gear/**/icon.png` 旁边都有同尺寸 `icon_base.png`。Scene 仍渲染原 `icon.png`，未来任意 gear 接入互动后会自动用同目录 `icon_base.png` 作为下层 alpha source 生成 0.5px 白色描边，不替换物品本体。白色描边只用于 hover / focus / touch 选中提示；目标加入 queue 后描边消失，只保留右下角淡白色圆形编号，camper 到达当前目标交互点后编号消失，后续编号立即前移。
-- Mobile touch 指引：树枝 tap 一下直接加入 queue；gear tap 第一下选中并显示白色描边 + status 提示，第二下加入 queue；点场景空白处取消选中。新手引导 Gather 步骤加入 “Tap objects to interact.”。
-- 新增右上 `UI` 显示切换按钮：第一次隐藏 queue 序号，第二次隐藏大部分 UI 只保留场景和恢复按钮，第三次恢复全部 UI。
-- 手动点击树枝不再立即加 Warmth：camper 会走到树枝、捡起、回到篝火后增加 Warmth。Gather On 自动收集不进入手动 queue，也不会显示树枝 queued 高亮或编号。
-- 当前接入的物品交互：椅子 -> `sittingOnFurniture`，帐篷 -> `tentRest`，火堆 -> `sittingByFire`。这还是轻量行为队列，不是复杂任务系统。
-- 语法检查和 `git diff --check` 已通过；本轮 headless Chrome 行为验证因 Codex 额度限制未能完成，后续交接时需要再跑一次真实浏览器 smoke：自动 Gather 无 queued 高亮、手动 1/2/3/4 编号、mobile touch 二次确认、树枝 Warmth 延迟生效、队列完成后编号清空。
-
-## 本轮需要人工复测
-
-- 在真实手机浏览器看 rooftop tent 与所有 vehicle 的贴合度，尤其是 SUV / van / pickup 的车顶高度。
-- 看 tent / tarp / rooftopTent 在不同 shop scroll / scene 位置下是否仍符合 cozy isometric 视角。
-- 看 headlamp 在 walk、rest、look lake back 等 pose 上是否自然；当前是轻量 offset，不是逐帧手绘适配。
-
-## localStorage 兼容
-
-`sanitizeSave()` 已迁移：
-
-- `warmth` -> `warmthSeconds`
-- `lastSavedTime` -> `lastSaveTime`
-- `tentType` -> `currentTentType`
-- old `dome` -> `lowDome`
-- `hasChair/hasLantern/hasTable/hasKettle/hasAxe/hasStove/hasStringLights` -> `ownedEquipment`
-
-V2.4 新增：
-
-- `Reset` 按钮清空本地存档。
-- `?reset=1` 自动清空本地存档，方便测试新玩家开局。
-
-本轮新增：
-
-- `placedGear`: 普通 gear 的固定点放置/收纳状态。旧存档没有该字段时，会把已 owned 的可放置 gear 视作已放置，避免刷新后旧营地突然清空。
-- `equippedGear.tarp`: 当前显示的 tarp replacement。
-- `vehiclePlacementMigrated`: 旧存档兼容标记，确保已有 equipped vehicle 在新 stow/place 规则下首次打开仍默认显示。
-
-后续新增存档字段时，必须同步更新 `defaultGameState` 和 `sanitizeSave()`。
+- 没有 package manager，所以没有 install/build 检查步骤。
+- 上传 GitHub 前排除 `assets/reference/`、`assets/generated_sources/`、`tmp/`、隐藏文件和 office 临时文件。
+- 根目录 runtime 必须包含 `gearCatalog.js`；`index.html` 会先加载它再加载 `game.js`。

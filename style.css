@@ -99,10 +99,12 @@ img {
 
 .scene-depth-controls {
   position: absolute;
-  width: 92px;
+  width: 50px;
   display: grid;
   gap: 4px;
   pointer-events: auto;
+  transform: scale(var(--depth-control-scale, 1));
+  transform-origin: top left;
 }
 
 .scene-depth-controls.hidden {
@@ -112,41 +114,53 @@ img {
 .scene-depth-control-button {
   width: 100%;
   min-width: 0;
-  height: 28px;
+  height: 24px;
   display: grid;
   place-items: center;
+  padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.76);
-  border-radius: 8px;
+  border-radius: 6px;
   color: #182016;
   background: rgba(255, 255, 255, 0.7);
   box-shadow: 0 0.18rem 0.42rem rgba(8, 12, 8, 0.22);
-  font: 800 16px / 1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: 400 16px / 1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   cursor: pointer;
 }
 
 .scene-depth-control-reset,
 .scene-depth-control-attach {
+  width: 100%;
   height: 24px;
-  font-size: 10px;
+  padding: 0 2px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0;
+  white-space: nowrap;
+  text-align: center;
   text-transform: uppercase;
 }
 
 .scene-depth-reset-row {
   display: grid;
-  grid-template-columns: 1fr 42px 1fr;
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas:
+    "reset reset"
+    "neg pos";
   align-items: center;
-  gap: 3px;
+  column-gap: 3px;
+  row-gap: 2px;
 }
 
 .scene-depth-reset-row .scene-depth-control-reset {
-  width: 42px;
+  grid-area: reset;
+  width: 100%;
 }
 
 .scene-depth-control-value {
-  min-height: 14px;
+  min-height: 11px;
   display: block;
-  color: rgba(255, 255, 255, 0.86);
-  font-size: 10px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 8px;
   font-weight: 800;
   line-height: 1;
   text-align: center;
@@ -155,10 +169,12 @@ img {
 }
 
 .scene-depth-control-value-left {
+  grid-area: neg;
   text-align: right;
 }
 
 .scene-depth-control-value-right {
+  grid-area: pos;
   text-align: left;
 }
 
@@ -587,6 +603,16 @@ body.ui-hidden .target-outline-image {
   pointer-events: none;
 }
 
+/* When the host gear is mirrored (scaleX(-1)), the badge would otherwise land
+   on the visual left with a mirrored digit. Anchor it to the element's local
+   left (which maps to the visual right after the flip) and flip the badge back
+   so the number reads normally. */
+.gear-mirrored > .queue-order-badge {
+  right: auto;
+  left: -4px;
+  transform: scaleX(-1);
+}
+
 body.queue-numbers-hidden .queue-order-badge,
 body.ui-hidden .queue-order-badge,
 body.build-mode .queue-order-badge {
@@ -751,16 +777,16 @@ body.camper-in-tent .camper-attachment {
   z-index: 1906;
   left: 34%;
   top: 64%;
-  max-width: 28%;
-  padding: 0.28rem 0.44rem;
+  max-width: 36%;
+  padding: 0.54rem 0.76rem;
   border: 1px solid rgba(238, 214, 162, 0.42);
-  border-radius: 10px;
+  border-radius: 14px;
   color: #f8e7bd;
   background: rgba(28, 34, 25, 0.72);
   box-shadow: 0 0.35rem 0.8rem rgba(9, 13, 8, 0.24);
-  font-size: clamp(0.54rem, 1.55vw, 0.68rem);
+  font-size: clamp(1rem, 2.3vw, 1.4rem);
   font-weight: 900;
-  line-height: 1.12;
+  line-height: 1.16;
   text-align: center;
   transform: translate(-50%, -100%);
   opacity: 0;
@@ -772,9 +798,9 @@ body.camper-in-tent .camper-attachment {
   content: "";
   position: absolute;
   left: 50%;
-  bottom: -0.3rem;
-  width: 0.5rem;
-  height: 0.5rem;
+  bottom: -0.42rem;
+  width: 0.72rem;
+  height: 0.72rem;
   border-right: 1px solid rgba(238, 214, 162, 0.42);
   border-bottom: 1px solid rgba(238, 214, 162, 0.42);
   background: rgba(28, 34, 25, 0.72);
@@ -1032,6 +1058,16 @@ body.ui-hidden .ui-toggle-button {
   opacity: 0.55;
 }
 
+@keyframes onboarding-pointer-pulse {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.32);
+  }
+}
+
 .onboarding-pointer {
   width: 0;
   height: 0;
@@ -1039,6 +1075,13 @@ body.ui-hidden .ui-toggle-button {
   z-index: 97;
   transform: translate(-50%, -50%);
   filter: drop-shadow(0 0.22rem 0.28rem rgba(7, 10, 7, 0.36));
+  animation: onboarding-pointer-pulse 1.05s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-pointer {
+    animation: none;
+  }
 }
 
 .onboarding-pointer::before {
