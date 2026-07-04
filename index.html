@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cozy Camping Idle V2.6</title>
+  <title>Cozy Camping Idle V2.7</title>
   <script>
-    window.APP_VERSION = "2.6";
+    window.APP_VERSION = "2.7";
   </script>
-  <link id="appStylesheet" rel="stylesheet" href="style.css?v=2.6">
+  <link id="appStylesheet" rel="stylesheet" href="style.css?v=2.7">
   <script>
     document.getElementById("appStylesheet").href = "style.css?v=" + window.APP_VERSION;
   </script>
@@ -18,27 +18,27 @@
       <div class="game-viewport">
         <section id="campScene" class="camp-scene game-world" aria-label="Cozy camping scene">
       <div id="sceneContent" class="scene-content">
-      <img id="sceneBackground" class="scene-asset scene-background" src="assets/backgrounds/campsite_day.png?v=2.6" alt="">
-      <img id="treelineImage" class="scene-asset treeline-image" src="assets/backgrounds/treeline_day.png?v=2.6" alt="">
-      <img id="lakeImage" class="scene-asset lake-image" src="assets/backgrounds/lake_day.png?v=2.6" alt="">
+      <img id="sceneBackground" class="scene-asset scene-background" src="assets/backgrounds/campsite_day.png?v=2.7" alt="">
+      <img id="treelineImage" class="scene-asset treeline-image" src="assets/backgrounds/treeline_day.png?v=2.7" alt="">
+      <img id="lakeImage" class="scene-asset lake-image" src="assets/backgrounds/lake_day.png?v=2.7" alt="">
 
       <div id="woodLayer" class="wood-layer" aria-label="Fallen branches on the ground"></div>
       <div id="sparkLayer" class="spark-layer" aria-hidden="true"></div>
       <div id="gearLayer" class="gear-layer-root" aria-label="Camp gear"></div>
 
       <div id="campfire" class="campfire asset-object level-1" aria-label="Campfire">
-        <img id="fireGlowImage" class="object-image fire-glow-img" src="assets/campfire/glow_fire.png?v=2.6" alt="">
-        <img id="campfireBaseImage" class="object-image" src="assets/campfire/campfire_lv1_base.png?v=2.6" alt="">
-        <img id="campfireFlameImage" class="object-image campfire-flame-img" src="assets/campfire/campfire_lv1_flame_01.png?v=2.6" alt="">
+        <img id="fireGlowImage" class="object-image fire-glow-img" src="assets/campfire/glow_fire.png?v=2.7" alt="">
+        <img id="campfireBaseImage" class="object-image" src="assets/campfire/campfire_lv1_base.png?v=2.7" alt="">
+        <img id="campfireFlameImage" class="object-image campfire-flame-img" src="assets/campfire/campfire_lv1_flame_01.png?v=2.7" alt="">
       </div>
 
-      <img id="camper" class="camper asset-object" src="assets/characters/camper_idle.png?v=2.6" alt="Camper">
+      <img id="camper" class="camper asset-object" src="assets/characters/polished/frames/camper_idle.png?v=2.7" alt="Camper">
       <div id="camperThoughtBubble" class="camper-thought" aria-live="polite"></div>
       </div>
 
       <header class="top-bar" aria-label="Camp resources">
         <div id="cozyPointStatus" class="resource-pill cozy-chip">
-          <img class="resource-icon" src="assets/ui/icon_cozy.png?v=2.6" alt="">
+          <img class="resource-icon" src="assets/ui/icon_cozy.png?v=2.7" alt="">
           <span class="resource-copy">
             <span class="resource-label">Cozy Points</span>
             <strong id="cozyPointsAmount">0</strong>
@@ -47,7 +47,7 @@
         </div>
 
         <div class="resource-pill comfort-chip">
-          <img class="resource-icon" src="assets/ui/icon_comfort.png?v=2.6" alt="">
+          <img class="resource-icon" src="assets/ui/icon_comfort.png?v=2.7" alt="">
           <span class="resource-copy">
             <span class="resource-label">Comfort</span>
             <strong id="comfortAmount">0</strong>
@@ -55,7 +55,7 @@
         </div>
 
         <div class="resource-pill warmth-chip">
-          <img class="resource-icon" src="assets/ui/icon_warmth.png?v=2.6" alt="">
+          <img class="resource-icon" src="assets/ui/icon_warmth.png?v=2.7" alt="">
           <span class="resource-copy">
             <span class="resource-label">Warmth</span>
             <strong><span id="warmthSecondsAmount">0</span>s</strong>
@@ -65,13 +65,13 @@
 
       <nav class="mode-controls" aria-label="Camp mode controls">
         <button id="gatherWoodToggle" class="mode-button gather-button active" type="button">
-          <img class="button-icon" src="assets/ui/icon_gather_wood.png?v=2.6" alt="">
+          <img class="button-icon" src="assets/ui/icon_gather_wood.png?v=2.7" alt="">
           <span>Gather</span>
           <strong id="gatherModeLabel">On</strong>
         </button>
 
         <button id="dayNightToggle" class="mode-button hidden" type="button">
-          <img id="dayNightIcon" class="button-icon" src="assets/ui/icon_night.png?v=2.6" alt="">
+          <img id="dayNightIcon" class="button-icon" src="assets/ui/icon_night.png?v=2.7" alt="">
           <span id="dayNightLabel">Night</span>
         </button>
       </nav>
@@ -91,7 +91,7 @@
         </button>
 
         <button id="resetSaveButton" class="utility-button" type="button">
-          <img class="button-icon" src="assets/ui/icon_tools.png?v=2.6" alt="">
+          <img class="button-icon" src="assets/ui/icon_tools.png?v=2.7" alt="">
           <span>Reset</span>
         </button>
       </nav>
@@ -104,11 +104,11 @@
 
       <nav class="floating-controls" aria-label="Camp controls">
         <button id="buildModeToggle" class="floating-button build-mode-toggle hidden" type="button" aria-pressed="false" aria-label="Enter Build Mode">
-          <img class="button-icon" src="assets/ui/icon_tools.png?v=2.6" alt="">
+          <img class="button-icon" src="assets/ui/icon_tools.png?v=2.7" alt="">
           <span id="buildModeLabel">Build</span>
         </button>
         <button id="shopToggle" class="floating-button" type="button">
-          <img class="button-icon" src="assets/ui/icon_shop.png?v=2.6" alt="">
+          <img class="button-icon" src="assets/ui/icon_shop.png?v=2.7" alt="">
           <span>Shop</span>
         </button>
       </nav>
@@ -123,7 +123,7 @@
           <h1>Shop</h1>
         </div>
         <button id="closeShopButton" class="close-button" type="button" aria-label="Close shop">
-          <img src="assets/ui/icon_close.png?v=2.6" alt="">
+          <img src="assets/ui/icon_close.png?v=2.7" alt="">
         </button>
       </div>
 

@@ -1,5 +1,5 @@
 const SAVE_KEY = "cozyCampfireSave";
-const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "2.6";
+const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "2.7";
 
 function withVersion(path) {
   const separator = path.includes("?") ? "&" : "?";
@@ -240,7 +240,7 @@ const campfireBurnRates = {
 
 const baseOfflineSeconds = 1800;
 const maxWoodItems = 5;
-const camperFrameDurationMs = 200;
+const camperFrameDurationMs = 120;
 const camperSpriteRefreshMs = 100;
 const DEV_SCENE_PLACEHOLDER_SIZE = 64;
 
@@ -256,16 +256,28 @@ const assetPaths = versionAssetPaths({
     treelineNight: "assets/backgrounds/treeline_night.png"
   },
   characters: {
-    idle: "assets/characters/camper_idle.png",
-    walk1: "assets/characters/camper_walk_01.png",
-    walk2: "assets/characters/camper_walk_02.png",
-    carry1: "assets/characters/camper_carry_wood _01.png",
-    carry2: "assets/characters/camper_carry_wood _02.png",
-    carry: "assets/characters/camper_carry_wood.png",
-    sitGround: "assets/characters/camper_sit_ground.png",
-    sitChair: "assets/characters/camper_sit_chair.png",
-    lookLakeBack: "assets/characters/camper_look_lake_back.png",
-    rest: "assets/characters/camper_rest.png"
+    idle: "assets/characters/polished/frames/camper_idle.png",
+    walkFrames: [
+      "assets/characters/polished/frames/camper_walk_01.png",
+      "assets/characters/polished/frames/camper_walk_02.png",
+      "assets/characters/polished/frames/camper_walk_03.png",
+      "assets/characters/polished/frames/camper_walk_04.png",
+      "assets/characters/polished/frames/camper_walk_05.png",
+      "assets/characters/polished/frames/camper_walk_06.png"
+    ],
+    carryFrames: [
+      "assets/characters/polished/frames/camper_carry_wood _01.png",
+      "assets/characters/polished/frames/camper_carry_wood _02.png",
+      "assets/characters/polished/frames/camper_carry_wood _03.png",
+      "assets/characters/polished/frames/camper_carry_wood _04.png",
+      "assets/characters/polished/frames/camper_carry_wood _05.png",
+      "assets/characters/polished/frames/camper_carry_wood _06.png"
+    ],
+    carry: "assets/characters/polished/frames/camper_carry_wood.png",
+    sitGround: "assets/characters/polished/frames/camper_sit_ground.png",
+    sitChair: "assets/characters/polished/frames/camper_sit_chair.png",
+    lookLakeBack: "assets/characters/polished/frames/camper_look_lake_back.png",
+    rest: "assets/characters/polished/frames/camper_rest.png"
   },
   campfire: {
     glow: "assets/campfire/glow_fire.png",
@@ -6547,18 +6559,19 @@ function getFacingForAction(action, target) {
   return "right";
 }
 
-function getCamperAnimationFrameIndex() {
+function getCamperAnimationFrameIndex(frameCount) {
   const animationStartedAt = camper.animationStartedAt || Date.now();
+  const safeFrameCount = Math.max(1, frameCount || 1);
 
-  return Math.floor((Date.now() - animationStartedAt) / camperFrameDurationMs) % 2;
+  return Math.floor((Date.now() - animationStartedAt) / camperFrameDurationMs) % safeFrameCount;
 }
 
-function getAlternatingCamperImage(firstFrame, secondFrame, fallbackFrame) {
-  if (!firstFrame || !secondFrame) {
-    return fallbackFrame || firstFrame || secondFrame;
+function getCamperAnimationFrame(frames, fallbackFrame) {
+  if (!Array.isArray(frames) || frames.length === 0) {
+    return fallbackFrame || "";
   }
 
-  return getCamperAnimationFrameIndex() === 0 ? firstFrame : secondFrame;
+  return frames[getCamperAnimationFrameIndex(frames.length)] || fallbackFrame || frames[0];
 }
 
 function updateCamperPathMotion(now) {
@@ -6792,11 +6805,11 @@ function updateCamperThought() {
 
 function getCamperImageForPose() {
   if (camper.pose === "walking") {
-    return getAlternatingCamperImage(assetPaths.characters.walk1, assetPaths.characters.walk2, assetPaths.characters.walk1);
+    return getCamperAnimationFrame(assetPaths.characters.walkFrames, assetPaths.characters.idle);
   }
 
   if (camper.pose === "carryingWood" || camper.pose === "addingWoodToFire") {
-    return getAlternatingCamperImage(assetPaths.characters.carry1, assetPaths.characters.carry2, assetPaths.characters.carry);
+    return getCamperAnimationFrame(assetPaths.characters.carryFrames, assetPaths.characters.carry);
   }
 
   if (camper.pose === "sittingGround") {

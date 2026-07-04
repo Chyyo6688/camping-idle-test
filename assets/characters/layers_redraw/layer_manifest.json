@@ -1,0 +1,25 @@
+{
+  "reference": "assets\\characters\\polished\\camper_sprite_sheet_polished_all.png",
+  "frameWidth": 128,
+  "frameHeight": 144,
+  "columns": 7,
+  "rows": 3,
+  "layerOrder": [
+    "body_base",
+    "eyes",
+    "nose",
+    "mouth",
+    "hair",
+    "bottoms",
+    "top"
+  ],
+  "sheets": {
+    "body_base": "assets\\characters\\layers_redraw\\sheets\\camper_body_base.png",
+    "eyes": "assets\\characters\\layers_redraw\\sheets\\camper_eyes.png",
+    "nose": "assets\\characters\\layers_redraw\\sheets\\camper_nose.png",
+    "mouth": "assets\\characters\\layers_redraw\\sheets\\camper_mouth.png",
+    "hair": "assets\\characters\\layers_redraw\\sheets\\camper_hair.png",
+    "bottoms": "assets\\characters\\layers_redraw\\sheets\\camper_bottoms.png",
+    "top": "assets\\characters\\layers_redraw\\sheets\\camper_top.png"
+  }
+}

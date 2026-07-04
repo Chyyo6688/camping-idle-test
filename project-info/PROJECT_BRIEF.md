@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-- 当前入口版本：V2.6，见 `index.html` 里的 `window.APP_VERSION = "2.6"`。
+- 当前入口版本：V2.7，见 `index.html` 里的 `window.APP_VERSION = "2.7"`。
 - 项目形态：纯静态浏览器游戏；没有 `package.json`、lockfile、bundler 配置、后端或安装步骤。
 - 运行文件：`index.html`、`style.css`、`gearCatalog.js`、`game.js`、`assets/`。
 - 发布时直接把当前根目录静态包上传到 GitHub。
@@ -45,6 +45,7 @@ Wood 是场景物，不是顶部货币。
 - Build Mode 在购买足够非 campfire 装备后解锁，可拖动物品并调整前后层级。
 - 手动 action queue 支持树枝和可互动 gear；Gather On 仍走自动收集。
 - Night Mode 由 light gear 解锁，只改变氛围，不改变布局。
+- Camper 运行素材已切到 `assets/characters/polished/frames/`，原始角色帧仍保留在 `assets/characters/`。
 
 ## 约束
 
