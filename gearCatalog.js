@@ -25,22 +25,10 @@
       categories: ["fire"],
       visible: true
     },
-    shelter: {
-      label: "Shelter",
-      icon: "assets/ui/icon_tent.png",
-      categories: ["vehicle", "tent", "tarp"],
-      visible: true
-    },
     living: {
       label: "Living",
       icon: "assets/ui/icon_furniture.png",
       categories: ["chair", "table", "storage"],
-      visible: true
-    },
-    kitchen: {
-      label: "Kitchen",
-      icon: "assets/ui/icon_tools.png",
-      categories: ["stove", "cooler"],
       visible: true
     },
     light: {
@@ -49,10 +37,22 @@
       categories: ["light"],
       visible: true
     },
+    kitchen: {
+      label: "Kitchen",
+      icon: "assets/ui/icon_tools.png",
+      categories: ["stove", "cooler"],
+      visible: true
+    },
     activity: {
       label: "Activity",
       icon: "assets/ui/icon_tools.png",
       categories: ["activity"],
+      visible: true
+    },
+    shelter: {
+      label: "Shelter",
+      icon: "assets/ui/icon_tent.png",
+      categories: ["tent", "tarp", "vehicle"],
       visible: true
     },
     sleepingGear: {
