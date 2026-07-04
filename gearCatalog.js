@@ -662,19 +662,40 @@
           back: headlampPath("headlamp-back"), 
           cone: headlampPath("flashlight-cone") 
         }, 
+        hiddenPoses: ["resting", "tentRest"],
         offsets: { 
           right: { x: 0.3, y: -6, rotate: -0, scaleX: -1 }, 
           left: { x: -0.3, y: -6, rotate: 0, scaleX: 1 }, 
           back: { x: 0, y: -6.35, rotate: 0 } 
         }, 
-          coneOffsets: { 
-            right: { x: 9.8, y: -5.8, rotate: 0 }, 
-            left: { x: -9.8, y: -5.8, rotate: 0 }, 
-            back: { x: 0, y: -11.2, rotate: -90 } 
-          } 
-        } 
+        poseOffsets: {
+          sittingGround: {
+            right: { x: -0.65, y: -5.15, rotate: -2, scaleX: -1 },
+            left: { x: 0.65, y: -5.15, rotate: 2, scaleX: 1 }
+          },
+          sittingChair: {
+            right: { x: -0.65, y: -6.35, rotate: -1, scaleX: -1 },
+            left: { x: 0.65, y: -6.35, rotate: 1, scaleX: 1 }
+          }
+        },
+        coneOffsets: {
+          right: { x: 9.8, y: -5.8, rotate: 0 },
+          left: { x: -9.8, y: -5.8, rotate: 0 },
+          back: { x: 0, y: -11.2, rotate: -90 }
+        },
+        conePoseOffsets: {
+          sittingGround: {
+            right: { x: 8.7, y: -5.05, rotate: 0 },
+            left: { x: -8.7, y: -5.05, rotate: 0 }
+          },
+          sittingChair: {
+            right: { x: 9.45, y: -6.15, rotate: 0 },
+            left: { x: -9.45, y: -6.15, rotate: 0 }
+          }
+        }
       }
-    ),
+    }
+  ),
     gear({ id: "warmStringLights", 
       category: "light", 
       shopGroup: "light", 

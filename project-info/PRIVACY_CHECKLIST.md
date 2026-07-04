@@ -1,61 +1,27 @@
-# Privacy Checklist - Cozy Camping Idle Test Build
+# Privacy Checklist
 
-## Summary
+## 当前运行行为
 
-This test build stores only local game progress in browser localStorage and does not collect personal data.
+- 纯前端静态网页。
+- 无 backend、login、cloud save、ads、analytics、tracking pixel 或第三方 script。
+- 无 npm 依赖或外部 runtime package。
+- 游戏不需要 API key 或 token。
+- 进度只保存在浏览器 `localStorage`，key 是 `cozyCampfireSave`。
 
-## Runtime Behavior
+## 已检查
 
-- No backend server.
-- No login.
-- No cloud save.
-- No ads.
-- No analytics.
-- No tracking pixels.
-- No third-party scripts.
-- No external packages loaded by the game.
-- No API key or token required by the static game.
-- No personal identity data is stored.
-- Game progress is stored only in browser `localStorage` under the key `cozyCampfireSave`.
+- 入口只加载本地 `style.css`、`gearCatalog.js`、`game.js` 和本地 `assets/`。
+- 源码中没有发现 `http://` 或 `https://` 的 runtime script/style import。
+- 以后上传 GitHub 前按根目录静态包重新检查。
 
-## V2.5 Checks
+## 分享规则
 
-Checked runtime files and handoff documentation for:
-
-- `api_key`
-- `apikey`
-- `token`
-- `.env`
-- `analytics`
-- `tracking`
-- `gtag`
-- `segment`
-- `mixpanel`
-- `amplitude`
-- third-party script URLs
-- local absolute paths in runtime files
-
-## Share Build Rules
-
-`share-build/` should include only:
+上传/分享静态运行包：
 
 - `index.html`
 - `style.css`
+- `gearCatalog.js`
 - `game.js`
 - `assets/`
 
-Development-only files should be excluded:
-
-- `assets/reference/`
-- `assets/generated_sources/`
-- preview images
-- hidden files
-- temporary files
-
-## Notes
-
-Reset Save clears only local browser progress for this game.
-
-The static test build can be uploaded to a static host and shared by URL. It does not send gameplay data anywhere.
-
-V2.5 share-build has been refreshed as a static-only test build. It contains runtime files only and excludes reference images, generated source images, review sheets, preview images, hidden files, API keys, tokens, and `.env` files.
+不要分享开发文件、隐藏文件、`.env`、token、generated sources、reference images、preview images 或 tmp folders。
