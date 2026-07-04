@@ -3163,9 +3163,26 @@ function getShopGroupsInOrder() {
 }
 
 function getShopItemsForGroup(groupId) {
-  return getGearItems().filter(function(item) {
-    return isGearVisibleInShop(item) && item.shopGroup === groupId;
-  });
+  const group = shopGroupData[groupId];
+  const categoryOrder = group && Array.isArray(group.categories) ? group.categories : [];
+
+  return getGearItems()
+    .filter(function(item) {
+      return isGearVisibleInShop(item) && item.shopGroup === groupId;
+    })
+    .sort(function(a, b) {
+      const categoryA = categoryOrder.indexOf(a.category);
+      const categoryB = categoryOrder.indexOf(b.category);
+
+      const orderA = categoryA === -1 ? 999 : categoryA;
+      const orderB = categoryB === -1 ? 999 : categoryB;
+
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+
+      return (Number(a.cost) || 0) - (Number(b.cost) || 0);
+    });
 }
 
 function createShopIcon(src) {
