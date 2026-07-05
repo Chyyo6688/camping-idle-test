@@ -1,5 +1,5 @@
 const SAVE_KEY = "cozyCampfireSave";
-const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "2.7";
+const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "2.7.12";
 
 function withVersion(path) {
   const separator = path.includes("?") ? "&" : "?";
@@ -256,28 +256,31 @@ const assetPaths = versionAssetPaths({
     treelineNight: "assets/backgrounds/treeline_night.png"
   },
   characters: {
-    idle: "assets/characters/polished/frames/camper_idle.png",
-    walkFrames: [
-      "assets/characters/polished/frames/camper_walk_01.png",
-      "assets/characters/polished/frames/camper_walk_02.png",
-      "assets/characters/polished/frames/camper_walk_03.png",
-      "assets/characters/polished/frames/camper_walk_04.png",
-      "assets/characters/polished/frames/camper_walk_05.png",
-      "assets/characters/polished/frames/camper_walk_06.png"
-    ],
-    carryFrames: [
-      "assets/characters/polished/frames/camper_carry_wood _01.png",
-      "assets/characters/polished/frames/camper_carry_wood _02.png",
-      "assets/characters/polished/frames/camper_carry_wood _03.png",
-      "assets/characters/polished/frames/camper_carry_wood _04.png",
-      "assets/characters/polished/frames/camper_carry_wood _05.png",
-      "assets/characters/polished/frames/camper_carry_wood _06.png"
-    ],
-    carry: "assets/characters/polished/frames/camper_carry_wood.png",
-    sitGround: "assets/characters/polished/frames/camper_sit_ground.png",
-    sitChair: "assets/characters/polished/frames/camper_sit_chair.png",
-    lookLakeBack: "assets/characters/polished/frames/camper_look_lake_back.png",
-    rest: "assets/characters/polished/frames/camper_rest.png"
+    frameNames: {
+      idle: "camper_idle.png",
+      walkFrames: [
+        "camper_walk_01.png",
+        "camper_walk_02.png",
+        "camper_walk_03.png",
+        "camper_walk_04.png",
+        "camper_walk_05.png",
+        "camper_walk_06.png"
+      ],
+      carryFrames: [
+        "camper_carry_wood _01.png",
+        "camper_carry_wood _02.png",
+        "camper_carry_wood _03.png",
+        "camper_carry_wood _04.png",
+        "camper_carry_wood _05.png",
+        "camper_carry_wood _06.png"
+      ],
+      carry: "camper_carry_wood.png",
+      sit: "camper_sit.png",
+      sitGround: "camper_sit_ground.png",
+      sitChair: "camper_sit_chair.png",
+      lookLakeBack: "camper_look_lake_back.png",
+      rest: "camper_rest.png"
+    }
   },
   campfire: {
     glow: "assets/campfire/glow_fire.png",
@@ -413,6 +416,9 @@ const camperProfileTitle = document.getElementById("camperProfileTitle");
 const camperProfileBody = document.getElementById("camperProfileBody");
 const camperNameStep = document.getElementById("camperNameStep");
 const camperNameInput = document.getElementById("camperNameInput");
+const camperAppearanceStep = document.getElementById("camperAppearanceStep");
+const camperAppearancePreview = document.getElementById("camperAppearancePreview");
+const camperAppearanceControls = document.getElementById("camperAppearanceControls");
 const camperQuestionStep = document.getElementById("camperQuestionStep");
 const camperQuestionText = document.getElementById("camperQuestionText");
 const camperQuestionOptions = document.getElementById("camperQuestionOptions");
@@ -428,6 +434,48 @@ const cozyRateAmount = document.getElementById("cozyRateAmount");
 const offlineCapAmount = document.getElementById("offlineCapAmount");
 const statusLine = document.getElementById("statusLine");
 
+function setStyleValue(element, property, value) {
+  if (!element) {
+    return;
+  }
+
+  const nextValue = String(value);
+
+  if (element.style[property] !== nextValue) {
+    element.style[property] = nextValue;
+  }
+}
+
+function setStyleProperty(element, property, value) {
+  if (!element) {
+    return;
+  }
+
+  const nextValue = String(value);
+
+  if (element.style.getPropertyValue(property) !== nextValue) {
+    element.style.setProperty(property, nextValue);
+  }
+}
+
+function setDatasetValue(element, key, value) {
+  if (!element || !element.dataset) {
+    return;
+  }
+
+  const nextValue = String(value);
+
+  if (element.dataset[key] !== nextValue) {
+    element.dataset[key] = nextValue;
+  }
+}
+
+function setElementClassName(element, className) {
+  if (element && element.className !== className) {
+    element.className = className;
+  }
+}
+
 function syncSceneScale() {
   if (!campScene || !sceneContent) {
     return;
@@ -439,7 +487,7 @@ function syncSceneScale() {
     sceneRect.height / BASE_SCENE_HEIGHT
   );
 
-  sceneContent.style.setProperty("--scene-scale", Number.isFinite(scale) && scale > 0 ? scale : 1);
+  setStyleProperty(sceneContent, "--scene-scale", Number.isFinite(scale) && scale > 0 ? scale : 1);
 }
 
 // These are points in the scene. The camper walks between them.
@@ -473,6 +521,94 @@ let camperProfileQuestions = [];
 let camperProfileAnswers = [];
 let camperProfileDraftName = "";
 let camperProfileDraftResult = null;
+let camperProfileDraftAppearance = null;
+
+const CAMPER_LAYER_SHEET_ROOT = "assets/characters";
+const CAMPER_SHEET_COLUMNS = 7;
+const CAMPER_SHEET_ROWS = 3;
+const CAMPER_IDLE_FRAME_NAME = "camper_idle.png";
+const CAMPER_SHEET_FRAME_NAMES = [
+  "camper_idle.png",
+  "camper_walk_01.png",
+  "camper_walk_02.png",
+  "camper_walk_03.png",
+  "camper_walk_04.png",
+  "camper_walk_05.png",
+  "camper_walk_06.png",
+  "camper_carry_wood _01.png",
+  "camper_carry_wood _02.png",
+  "camper_carry_wood _03.png",
+  "camper_carry_wood _04.png",
+  "camper_carry_wood _05.png",
+  "camper_carry_wood _06.png",
+  "camper_carry_wood.png",
+  "camper_sit.png",
+  "camper_sit_ground.png",
+  "camper_sit_chair.png",
+  "camper_look_lake_back.png",
+  "camper_rest.png"
+];
+const CAMPER_LAYER_RENDER_ORDER = [
+  { id: "bodyBase", sheet: "camper_body_base.png", appearanceCategory: "body" },
+  { id: "eyes", sheet: "camper_eye_bright.png", appearanceCategory: "eyes" },
+  { id: "nose", sheet: "camper_nose_tiny.png", appearanceCategory: "nose" },
+  { id: "mouth", sheet: "camper_mouth_smallsmile.png", appearanceCategory: "mouth" },
+  { id: "hair", sheet: "camper_hair_short.png", appearanceCategory: "hair" },
+  { id: "bottoms", sheet: "camper_bottoms_denim.png", appearanceCategory: "bottoms" },
+  { id: "top", sheet: "camper_top.png", appearanceCategory: "top" }
+];
+const CAMPER_APPEARANCE_CATEGORIES = [
+  { id: "body", label: "体型", renderLayerId: "bodyBase" },
+  { id: "skin", label: "肤色", renderLayerId: "bodyBase" },
+  { id: "hair", label: "发型", renderLayerId: "hair" },
+  { id: "eyes", label: "眼睛", renderLayerId: "eyes" },
+  { id: "nose", label: "鼻子", renderLayerId: "nose" },
+  { id: "mouth", label: "嘴巴", renderLayerId: "mouth" },
+  { id: "top", label: "上衣", renderLayerId: "top" },
+  { id: "bottoms", label: "下装", renderLayerId: "bottoms" }
+];
+const CAMPER_APPEARANCE_OPTIONS = {
+  body: [
+    { id: "base", label: "标准体型", assetSheet: "camper_body_base.png" },
+    { id: "strong", label: "强壮体型", assetSheet: "camper_body_strong.png" },
+    { id: "thin", label: "纤细体型", assetSheet: "camper_body_thin.png" }
+  ],
+  skin: [
+    { id: "warm", label: "Warm Skin", assetSheet: "camper_body_base.png" },
+    { id: "sunny", label: "Sunny Skin", assetSheet: "camper_body_base.png" },
+    { id: "rose", label: "Rose Skin", assetSheet: "camper_body_base.png" }
+  ],
+  hair: [
+    { id: "short", label: "短发", assetSheet: "camper_hair_short.png" },
+    { id: "short-curl", label: "短卷发", assetSheet: "camper_hair_shortcurl.png" },
+    { id: "long-straight", label: "长直发", assetSheet: "camper_hair_long straight.png" }
+  ],
+  eyes: [
+    { id: "bright", label: "明亮眼睛", assetSheet: "camper_eye_bright.png" },
+    { id: "sleepy", label: "困倦眼睛", assetSheet: "camper_eye_sleepy.png" },
+    { id: "determined", label: "坚毅眼神", assetSheet: "camper_eye_determined.png" }
+  ],
+  nose: [
+    { id: "tiny", label: "小鼻子", assetSheet: "camper_nose_tiny.png" },
+    { id: "button", label: "圆鼻子", assetSheet: "camper_nose_button.png" },
+    { id: "determined", label: "利落鼻子", assetSheet: "camper_nose_determined.png" }
+  ],
+  mouth: [
+    { id: "small-smile", label: "小微笑", assetSheet: "camper_mouth_smallsmile.png" },
+    { id: "rabbit", label: "兔牙嘴", assetSheet: "camper_mouth_rabbit.png" },
+    { id: "determined", label: "坚定嘴型", assetSheet: "camper_mouth_determined.png" }
+  ],
+  top: [
+    { id: "top-1", label: "上衣 1", assetSheet: "camper_top_1.png" },
+    { id: "top-2", label: "上衣 2", assetSheet: "camper_top_2.png" },
+    { id: "top-3", label: "上衣 3", assetSheet: "camper_top_3.png" }
+  ],
+  bottoms: [
+    { id: "denim", label: "牛仔裤", assetSheet: "camper_bottoms_denim.png" },
+    { id: "shorts", label: "短裤", assetSheet: "camper_bottoms_shorts.png" },
+    { id: "skirt", label: "裙装", assetSheet: "camper_bottoms_skirt.png" }
+  ]
+};
 
 const onboardingSteps = [
   {
@@ -1080,7 +1216,11 @@ function updateTargetOutline(target, sourceImage) {
   }
 
   if (outlineBaseAssetPath) {
-    outlineImage.src = withVersion(outlineBaseAssetPath);
+    const nextSrc = withVersion(outlineBaseAssetPath);
+
+    if (outlineImage.getAttribute("src") !== nextSrc) {
+      outlineImage.src = nextSrc;
+    }
   } else {
     outlineImage.removeAttribute("src");
   }
@@ -2834,6 +2974,255 @@ function getRandomCamperName() {
   return names[Math.floor(Math.random() * names.length)];
 }
 
+function getCamperAppearanceOptions(categoryId) {
+  return CAMPER_APPEARANCE_OPTIONS[categoryId] || [];
+}
+
+function getDefaultCamperAppearance() {
+  return CAMPER_APPEARANCE_CATEGORIES.reduce(function(appearance, category) {
+    const options = getCamperAppearanceOptions(category.id);
+    appearance[category.id] = options[0] ? options[0].id : "";
+    return appearance;
+  }, {});
+}
+
+function normalizeCamperAppearance(appearance) {
+  const input = appearance && typeof appearance === "object" ? appearance : {};
+  const fallback = getDefaultCamperAppearance();
+
+  CAMPER_APPEARANCE_CATEGORIES.forEach(function(category) {
+    const options = getCamperAppearanceOptions(category.id);
+    const requestedId = input[category.id];
+    const validOption = options.find(function(option) {
+      return option.id === requestedId;
+    });
+
+    fallback[category.id] = validOption ? validOption.id : fallback[category.id];
+  });
+
+  return fallback;
+}
+
+function getRandomCamperAppearance() {
+  return CAMPER_APPEARANCE_CATEGORIES.reduce(function(appearance, category) {
+    const options = getCamperAppearanceOptions(category.id);
+    const option = options[Math.floor(Math.random() * options.length)] || options[0];
+    appearance[category.id] = option ? option.id : "";
+    return appearance;
+  }, {});
+}
+
+function getCamperAppearanceOption(categoryId, appearance) {
+  const options = getCamperAppearanceOptions(categoryId);
+  const normalizedAppearance = normalizeCamperAppearance(appearance);
+  return options.find(function(option) {
+    return option.id === normalizedAppearance[categoryId];
+  }) || options[0] || null;
+}
+
+function getCamperAppearanceOptionIndex(categoryId, appearance) {
+  const options = getCamperAppearanceOptions(categoryId);
+  const normalizedAppearance = normalizeCamperAppearance(appearance);
+  const index = options.findIndex(function(option) {
+    return option.id === normalizedAppearance[categoryId];
+  });
+
+  return index === -1 ? 0 : index;
+}
+
+function getActiveCamperAppearance() {
+  const profile = getActiveCamperProfile(gameState);
+  return normalizeCamperAppearance(profile && profile.appearance);
+}
+
+function getCamperLayerAssetSheet(layer, appearance) {
+  if (layer.id === "bodyBase") {
+    const bodyOption = getCamperAppearanceOption("body", appearance);
+    return bodyOption && bodyOption.assetSheet || layer.sheet;
+  }
+
+  const option = getCamperAppearanceOption(layer.appearanceCategory, appearance);
+  return option && option.assetSheet || layer.sheet;
+}
+
+function getCamperLayerSheetPath(layer, appearance) {
+  const assetSheet = getCamperLayerAssetSheet(layer, appearance);
+  return withVersion(CAMPER_LAYER_SHEET_ROOT + "/" + assetSheet);
+}
+
+function getCamperSheetFrameIndex(frameName) {
+  const index = CAMPER_SHEET_FRAME_NAMES.indexOf(frameName);
+  return index === -1 ? 0 : index;
+}
+
+function getCamperSheetPosition(frameName) {
+  const frameIndex = getCamperSheetFrameIndex(frameName);
+  const column = frameIndex % CAMPER_SHEET_COLUMNS;
+  const row = Math.floor(frameIndex / CAMPER_SHEET_COLUMNS);
+  const x = CAMPER_SHEET_COLUMNS <= 1 ? 0 : column / (CAMPER_SHEET_COLUMNS - 1) * 100;
+  const y = CAMPER_SHEET_ROWS <= 1 ? 0 : row / (CAMPER_SHEET_ROWS - 1) * 100;
+
+  return {
+    x,
+    y
+  };
+}
+
+function ensureCamperLayerElement(container, layer) {
+  if (!container) {
+    return null;
+  }
+
+  let element = container.querySelector('[data-camper-layer="' + layer.id + '"]');
+
+  if (element && element.tagName !== "DIV") {
+    element.remove();
+    element = null;
+  }
+
+  if (!element) {
+    element = document.createElement("div");
+    element.className = "camper-layer camper-layer-" + layer.id;
+    element.dataset.camperLayer = layer.id;
+    container.appendChild(element);
+  }
+
+  return element;
+}
+
+function renderCamperLayerStack(container, appearance, frameName) {
+  if (!container) {
+    return;
+  }
+
+  const normalizedAppearance = normalizeCamperAppearance(appearance);
+  const activeFrameName = frameName || CAMPER_IDLE_FRAME_NAME;
+  const sheetPosition = getCamperSheetPosition(activeFrameName);
+  const backgroundPosition = sheetPosition.x + "% " + sheetPosition.y + "%";
+
+  CAMPER_LAYER_RENDER_ORDER.forEach(function(layer) {
+    const element = ensureCamperLayerElement(container, layer);
+    const nextPath = getCamperLayerSheetPath(layer, normalizedAppearance);
+
+    if (!element) {
+      return;
+    }
+
+    if (element.dataset.camperLayerSrc !== nextPath) {
+      element.style.backgroundImage = 'url("' + nextPath + '")';
+      element.dataset.camperLayerSrc = nextPath;
+    }
+
+    if (element.dataset.camperFramePosition !== backgroundPosition) {
+      element.style.backgroundPosition = backgroundPosition;
+      element.dataset.camperFramePosition = backgroundPosition;
+    }
+  });
+}
+
+function getCamperFrameNameForPose() {
+  const frameNames = assetPaths.characters.frameNames;
+
+  if (camper.pose === "walking") {
+    return getCamperAnimationFrame(frameNames.walkFrames, frameNames.idle);
+  }
+
+  if (camper.pose === "carryingWood" || camper.pose === "addingWoodToFire") {
+    return getCamperAnimationFrame(frameNames.carryFrames, frameNames.carry);
+  }
+
+  if (camper.pose === "sittingGround") {
+    return frameNames.sitGround;
+  }
+
+  if (camper.pose === "sittingChair") {
+    return frameNames.sitChair;
+  }
+
+  if (camper.pose === "lookingLakeBack") {
+    return frameNames.lookLakeBack;
+  }
+
+  if (camper.pose === "resting" || camper.pose === "tentRest") {
+    return frameNames.rest;
+  }
+
+  return frameNames.idle;
+}
+
+function renderCamperAppearanceControls() {
+  if (!camperAppearanceControls) {
+    return;
+  }
+
+  const appearance = normalizeCamperAppearance(camperProfileDraftAppearance);
+  camperAppearanceControls.innerHTML = "";
+
+  CAMPER_APPEARANCE_CATEGORIES.forEach(function(category) {
+    const options = getCamperAppearanceOptions(category.id);
+    const optionIndex = getCamperAppearanceOptionIndex(category.id, appearance);
+    const option = options[optionIndex] || options[0];
+    const row = document.createElement("div");
+    const label = document.createElement("span");
+    const previousButton = document.createElement("button");
+    const value = document.createElement("strong");
+    const nextButton = document.createElement("button");
+
+    row.className = "camper-appearance-row";
+    label.className = "camper-appearance-label";
+    label.textContent = category.label;
+
+    previousButton.className = "camper-appearance-arrow";
+    previousButton.type = "button";
+    previousButton.textContent = "‹";
+    previousButton.setAttribute("aria-label", "Previous " + category.label);
+    previousButton.title = "Previous " + category.label;
+    previousButton.addEventListener("click", function() {
+      changeCamperAppearanceOption(category.id, -1);
+    });
+
+    value.className = "camper-appearance-value";
+    value.textContent = option ? option.label : "Default";
+
+    nextButton.className = "camper-appearance-arrow";
+    nextButton.type = "button";
+    nextButton.textContent = "›";
+    nextButton.setAttribute("aria-label", "Next " + category.label);
+    nextButton.title = "Next " + category.label;
+    nextButton.addEventListener("click", function() {
+      changeCamperAppearanceOption(category.id, 1);
+    });
+
+    row.appendChild(label);
+    row.appendChild(previousButton);
+    row.appendChild(value);
+    row.appendChild(nextButton);
+    camperAppearanceControls.appendChild(row);
+  });
+}
+
+function updateCamperAppearancePreview() {
+  renderCamperLayerStack(camperAppearancePreview, camperProfileDraftAppearance, CAMPER_IDLE_FRAME_NAME);
+}
+
+function changeCamperAppearanceOption(categoryId, direction) {
+  const options = getCamperAppearanceOptions(categoryId);
+
+  if (!options.length) {
+    return;
+  }
+
+  const currentAppearance = normalizeCamperAppearance(camperProfileDraftAppearance);
+  const currentIndex = getCamperAppearanceOptionIndex(categoryId, currentAppearance);
+  const nextIndex = (currentIndex + direction + options.length) % options.length;
+
+  currentAppearance[categoryId] = options[nextIndex].id;
+  camperProfileDraftAppearance = currentAppearance;
+  renderCamperAppearanceControls();
+  updateCamperAppearancePreview();
+  updateCamperSprite();
+}
+
 function getActiveCamperProfile(state) {
   const campState = state || gameState;
   const campers = Array.isArray(campState.campers) ? campState.campers : [];
@@ -2876,6 +3265,7 @@ function sanitizeCamperProfile(profile) {
     personalityId: profile.personalityId,
     title: personality.title,
     description: personality.description,
+    appearance: normalizeCamperAppearance(profile.appearance),
     traits: profile.traits && typeof profile.traits === "object" ? { ...profile.traits } : {},
     quiz: profile.quiz && typeof profile.quiz === "object" ? { ...profile.quiz } : {},
     createdAt: Number(profile.createdAt) || Date.now(),
@@ -2900,7 +3290,7 @@ function pickCamperProfileQuestions() {
   return getShuffledCopy(CAMPER_PROFILE_QUESTIONS).slice(0, CAMPER_PROFILE_QUESTION_COUNT);
 }
 
-function buildCamperProfileResult(name, questions, answers) {
+function buildCamperProfileResult(name, questions, answers, appearance) {
   const scores = {};
 
   Object.keys(CAMPER_PERSONALITIES).forEach(function(personalityId) {
@@ -2931,6 +3321,7 @@ function buildCamperProfileResult(name, questions, answers) {
     personalityId: personalityId,
     title: personality.title,
     description: personality.description,
+    appearance: normalizeCamperAppearance(appearance),
     traits: scores,
     quiz: {
       questionCount: questions.length,
@@ -2989,11 +3380,13 @@ function updateCamperProfileView() {
   }
 
   const isNameStep = camperProfileStep === "name";
+  const isAppearanceStep = camperProfileStep === "appearance";
   const isQuestionStep = camperProfileStep === "question";
   const isResultStep = camperProfileStep === "result";
   const currentQuestion = camperProfileQuestions[camperProfileQuestionIndex];
 
   camperNameStep.classList.toggle("hidden", !isNameStep);
+  camperAppearanceStep.classList.toggle("hidden", !isAppearanceStep);
   camperQuestionStep.classList.toggle("hidden", !isQuestionStep);
   camperResultStep.classList.toggle("hidden", !isResultStep);
 
@@ -3001,9 +3394,18 @@ function updateCamperProfileView() {
     camperProfileStepLabel.textContent = "Create Camper";
     camperProfileTitle.textContent = "Who lives here?";
     camperProfileBody.textContent = getCamperProfileIntroBody();
-    camperProfilePrimaryButton.textContent = "Start questions";
+    camperProfilePrimaryButton.textContent = "Next: look";
     camperProfilePrimaryButton.disabled = !sanitizeCamperName(camperNameInput.value);
     camperProfileSecondaryButton.textContent = camperProfileMode === "manual" ? "Close" : "Random camper";
+  } else if (isAppearanceStep) {
+    camperProfileStepLabel.textContent = "Customize Camper";
+    camperProfileTitle.textContent = camperProfileDraftName;
+    camperProfileBody.textContent = "先捏一下小人，再答几个轻松的小问题。";
+    camperProfilePrimaryButton.textContent = "Start questions";
+    camperProfilePrimaryButton.disabled = false;
+    camperProfileSecondaryButton.textContent = "Random look";
+    renderCamperAppearanceControls();
+    updateCamperAppearancePreview();
   } else if (isQuestionStep && currentQuestion) {
     camperProfileStepLabel.textContent = "Question " + (camperProfileQuestionIndex + 1) + " / " + camperProfileQuestions.length;
     camperProfileTitle.textContent = camperProfileDraftName;
@@ -3053,6 +3455,7 @@ function startCamperProfileFlow(mode) {
   camperProfileAnswers = [];
   camperProfileDraftName = existingProfile && existingProfile.name || "";
   camperProfileDraftResult = null;
+  camperProfileDraftAppearance = normalizeCamperAppearance(existingProfile && existingProfile.appearance);
 
   camperNameInput.value = camperProfileDraftName;
   camperProfileLayer.classList.remove("hidden");
@@ -3073,6 +3476,7 @@ function closeCamperProfileFlow() {
   camperProfileLayer.classList.add("hidden");
   camperProfileLayer.setAttribute("aria-hidden", "true");
   document.body.classList.remove("camper-profile-open");
+  updateCamperSprite();
 }
 
 function randomizeCamperProfileDraft() {
@@ -3083,7 +3487,8 @@ function randomizeCamperProfileDraft() {
     return question.options[Math.floor(Math.random() * question.options.length)];
   });
   camperProfileDraftName = name;
-  camperProfileDraftResult = buildCamperProfileResult(name, camperProfileQuestions, camperProfileAnswers);
+  camperProfileDraftAppearance = getRandomCamperAppearance();
+  camperProfileDraftResult = buildCamperProfileResult(name, camperProfileQuestions, camperProfileAnswers, camperProfileDraftAppearance);
   setCamperProfileStep("result");
 }
 
@@ -3102,6 +3507,7 @@ function saveCamperProfileResult() {
   closeCamperProfileFlow();
   setStatus(camperProfileDraftResult.name + " is ready for camp.");
   updateCamperProfileControls();
+  updateCamperSprite();
   chooseNextCamperAction();
   maybeStartOnboarding();
 }
@@ -3121,6 +3527,12 @@ function advanceCamperProfileFlow() {
     }
 
     camperProfileDraftName = name;
+    setCamperProfileStep("appearance");
+    return;
+  }
+
+  if (camperProfileStep === "appearance") {
+    camperProfileDraftAppearance = normalizeCamperAppearance(camperProfileDraftAppearance);
     setCamperProfileStep("question");
     return;
   }
@@ -3132,7 +3544,7 @@ function advanceCamperProfileFlow() {
     }
 
     if (camperProfileQuestionIndex >= camperProfileQuestions.length - 1) {
-      camperProfileDraftResult = buildCamperProfileResult(camperProfileDraftName, camperProfileQuestions, camperProfileAnswers);
+      camperProfileDraftResult = buildCamperProfileResult(camperProfileDraftName, camperProfileQuestions, camperProfileAnswers, camperProfileDraftAppearance);
       setCamperProfileStep("result");
     } else {
       camperProfileQuestionIndex += 1;
@@ -3150,6 +3562,14 @@ function advanceCamperProfileFlow() {
 function handleCamperProfileSecondaryAction() {
   if (camperProfileStep === "result") {
     startCamperProfileFlow(camperProfileMode);
+    return;
+  }
+
+  if (camperProfileStep === "appearance") {
+    camperProfileDraftAppearance = getRandomCamperAppearance();
+    renderCamperAppearanceControls();
+    updateCamperAppearancePreview();
+    updateCamperSprite();
     return;
   }
 
@@ -4138,10 +4558,10 @@ function setVersionedLayerSource(image, path) {
   if (image && path) {
     const nextSrc = withVersion(path);
 
-    image.dataset.assetPath = path;
+    setDatasetValue(image, "assetPath", path);
 
     if (image.getAttribute("src") !== nextSrc) {
-      image.dataset.imageLoadError = "";
+      setDatasetValue(image, "imageLoadError", "");
       image.src = nextSrc;
     }
 
@@ -4667,10 +5087,10 @@ function setSceneElementDepth(element, depthY, offset) {
   const depthOffset = Number.isFinite(offset) ? offset : 0;
   const displayDepthY = safeDepthY + depthOffset;
 
-  element.style.zIndex = getDepthZ(displayDepthY, 0);
-  element.dataset.sceneDepthY = String(depthY);
-  element.dataset.sceneDisplayDepthY = String(displayDepthY);
-  element.dataset.sceneDepthOffsetY = String(depthOffset);
+  setStyleValue(element, "zIndex", getDepthZ(displayDepthY, 0));
+  setDatasetValue(element, "sceneDepthY", depthY);
+  setDatasetValue(element, "sceneDisplayDepthY", displayDepthY);
+  setDatasetValue(element, "sceneDepthOffsetY", depthOffset);
 }
 
 function getSceneMirrored(item, layoutOverride) {
@@ -4988,18 +5408,18 @@ function applyGearSceneLayout(element, item, zIndex, depthOffset) {
   const depthY = getSceneDepthY(item, layoutOverride);
   const sceneDepthOffsetY = getSceneDepthOffsetY(item, layoutOverride, depthOffset);
 
-  element.style.left = position.x + "px";
-  element.style.top = position.y + "px";
-  element.style.width = logicalSize.width + "px";
-  element.style.height = logicalSize.height + "px";
-  element.style.aspectRatio = logicalSize.width + " / " + logicalSize.height;
+  setStyleValue(element, "left", position.x + "px");
+  setStyleValue(element, "top", position.y + "px");
+  setStyleValue(element, "width", logicalSize.width + "px");
+  setStyleValue(element, "height", logicalSize.height + "px");
+  setStyleValue(element, "aspectRatio", logicalSize.width + " / " + logicalSize.height);
   setSceneElementDepth(element, depthY, sceneDepthOffsetY);
-  element.style.setProperty("--object-anchor-x", -groundAnchor.x / logicalSize.width * 100 + "%");
-  element.style.setProperty("--object-anchor-y", -groundAnchor.y / logicalSize.height * 100 + "%");
-  element.style.setProperty("--object-scale-x", mirrored ? "-1" : "1");
+  setStyleProperty(element, "--object-anchor-x", -groundAnchor.x / logicalSize.width * 100 + "%");
+  setStyleProperty(element, "--object-anchor-y", -groundAnchor.y / logicalSize.height * 100 + "%");
+  setStyleProperty(element, "--object-scale-x", mirrored ? "-1" : "1");
   element.classList.toggle("gear-mirrored", Boolean(mirrored));
-  element.dataset.sceneSizeSource = logicalSize.source;
-  element.dataset.scenePlacementLayer = getScenePlacementLayer(item, layoutOverride);
+  setDatasetValue(element, "sceneSizeSource", logicalSize.source);
+  setDatasetValue(element, "scenePlacementLayer", getScenePlacementLayer(item, layoutOverride));
 }
 
 function updateGearSceneElement(item) {
@@ -5015,7 +5435,10 @@ function updateGearSceneElement(item) {
     return;
   }
 
-  element.className = "gear-object asset-object category-" + item.category + " hidden";
+  setElementClassName(
+    element,
+    "gear-object asset-object category-" + item.category + (element.classList.contains("hidden") ? " hidden" : "")
+  );
   configureGearDepthAdjustTarget(element, item);
   configureGearBuildDragTarget(element, item);
 
@@ -5267,18 +5690,18 @@ function applyCamperAttachmentLayout(element, item, layerName, options) {
   const facing = normalizeFacing(camper.facing);
   const logicalSize = getSceneAssetLogicalSize(item, element, element);
 
-  element.style.left = sceneXFromPercent(camper.x + offset.x) + "px";
-  element.style.top = sceneYFromPercent(camper.y + offset.y) + "px";
-  element.style.width = logicalSize.width + "px";
-  element.style.height = logicalSize.height + "px";
-  element.style.aspectRatio = logicalSize.width + " / " + logicalSize.height;
-  element.style.zIndex = getDepthZ(getCamperDepthY(), layerOptions.depthOffset || 3);
-  element.style.setProperty("--attachment-scale-x", layerOptions.mirrorWithFacing === false ? "1" : facing === "left" ? "-1" : "1");
-  element.style.setProperty("--attachment-rotate", (offset.rotate || 0) + "deg");
+  setStyleValue(element, "left", sceneXFromPercent(camper.x + offset.x) + "px");
+  setStyleValue(element, "top", sceneYFromPercent(camper.y + offset.y) + "px");
+  setStyleValue(element, "width", logicalSize.width + "px");
+  setStyleValue(element, "height", logicalSize.height + "px");
+  setStyleValue(element, "aspectRatio", logicalSize.width + " / " + logicalSize.height);
+  setStyleValue(element, "zIndex", getDepthZ(getCamperDepthY(), layerOptions.depthOffset || 3));
+  setStyleProperty(element, "--attachment-scale-x", layerOptions.mirrorWithFacing === false ? "1" : facing === "left" ? "-1" : "1");
+  setStyleProperty(element, "--attachment-rotate", (offset.rotate || 0) + "deg");
   element.classList.toggle("camper-attachment-back-pose", facingKey === "back");
   element.classList.toggle("camper-attachment-" + item.id, true);
   element.classList.toggle("camper-attachment-layer-" + layerName, true);
-  element.dataset.sceneSizeSource = logicalSize.source;
+  setDatasetValue(element, "sceneSizeSource", logicalSize.source);
 
   if (!element.naturalWidth || !element.naturalHeight) {
     const relayout = function() {
@@ -5305,7 +5728,7 @@ function updateCamperAttachmentElement(item) {
 
   if (frontElement && layers.front) {
     setVersionedLayerSource(frontElement, layers.front);
-    frontElement.className = "camper-attachment camper-attachment-front camper-attachment-" + item.id + (shouldShow && facingKey !== "back" ? "" : " hidden");
+    setElementClassName(frontElement, "camper-attachment camper-attachment-front camper-attachment-" + item.id + (shouldShow && facingKey !== "back" ? "" : " hidden"));
     applyCamperAttachmentLayout(frontElement, item, "front", {
       depthOffset: 3
     });
@@ -5313,7 +5736,7 @@ function updateCamperAttachmentElement(item) {
 
   if (backElement && layers.back) {
     setVersionedLayerSource(backElement, layers.back);
-    backElement.className = "camper-attachment camper-attachment-back camper-attachment-" + item.id + (shouldShow && facingKey === "back" ? "" : " hidden");
+    setElementClassName(backElement, "camper-attachment camper-attachment-back camper-attachment-" + item.id + (shouldShow && facingKey === "back" ? "" : " hidden"));
     applyCamperAttachmentLayout(backElement, item, "back", {
       depthOffset: 1
     });
@@ -5323,7 +5746,7 @@ function updateCamperAttachmentElement(item) {
     const coneOffset = getCamperAttachmentOffset(attachment, "coneOffsets", facingKey);
 
     setVersionedLayerSource(coneElement, layers.cone);
-    coneElement.className = "camper-attachment camper-attachment-cone camper-attachment-" + item.id + (shouldShow ? "" : " hidden");
+    setElementClassName(coneElement, "camper-attachment camper-attachment-cone camper-attachment-" + item.id + (shouldShow ? "" : " hidden"));
     applyCamperAttachmentLayout(coneElement, item, "cone", {
       offset: coneOffset,
       depthOffset: facingKey === "back" ? 0 : 4
@@ -6732,8 +7155,8 @@ function getPoseForAction(action) {
 }
 
 function updateCamperView() {
-  camperElement.style.left = sceneXFromPercent(camper.x) + "px";
-  camperElement.style.top = sceneYFromPercent(camper.y) + "px";
+  setStyleValue(camperElement, "left", sceneXFromPercent(camper.x) + "px");
+  setStyleValue(camperElement, "top", sceneYFromPercent(camper.y) + "px");
   updateCamperDepth();
   updateCamperSprite();
   updateCamperAttachments();
@@ -6803,46 +7226,15 @@ function updateCamperThought() {
   camperThoughtBubble.classList.toggle("show", Boolean(shouldShowThought));
 }
 
-function getCamperImageForPose() {
-  if (camper.pose === "walking") {
-    return getCamperAnimationFrame(assetPaths.characters.walkFrames, assetPaths.characters.idle);
-  }
-
-  if (camper.pose === "carryingWood" || camper.pose === "addingWoodToFire") {
-    return getCamperAnimationFrame(assetPaths.characters.carryFrames, assetPaths.characters.carry);
-  }
-
-  if (camper.pose === "sittingGround") {
-    return assetPaths.characters.sitGround;
-  }
-
-  if (camper.pose === "sittingChair") {
-    return assetPaths.characters.sitChair;
-  }
-
-  if (camper.pose === "lookingLakeBack") {
-    return assetPaths.characters.lookLakeBack;
-  }
-
-  if (camper.pose === "resting" || camper.pose === "tentRest") {
-    return assetPaths.characters.rest;
-  }
-
-  return assetPaths.characters.idle;
-}
-
 function updateCamperSprite() {
-  const image = getCamperImageForPose();
+  const frameName = getCamperFrameNameForPose();
+  const appearance = camperProfileActive && camperProfileDraftAppearance ? camperProfileDraftAppearance : getActiveCamperAppearance();
   const className = "camper asset-object " + camper.state + " " + camper.pose;
-  camperElement.style.setProperty("--object-scale-x", normalizeFacing(camper.facing) === "left" ? "-1" : "1");
+  setStyleProperty(camperElement, "--object-scale-x", normalizeFacing(camper.facing) === "left" ? "-1" : "1");
 
-  if (camperElement.getAttribute("src") !== image) {
-    camperElement.src = image;
-  }
+  renderCamperLayerStack(camperElement, appearance, frameName);
 
-  if (camperElement.className !== className) {
-    camperElement.className = className;
-  }
+  setElementClassName(camperElement, className);
 }
 
 function chooseNextCamperAction() {

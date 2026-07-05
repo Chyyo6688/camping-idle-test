@@ -84,10 +84,13 @@ img {
   position: absolute;
   left: 0;
   top: 0;
-  transform: scale(var(--scene-scale)) translateY(var(--scene-shift-y));
+  transform: translate3d(0, 0, 0) scale(var(--scene-scale)) translateY(var(--scene-shift-y));
   transform-origin: 0 0;
   transition: transform 0.32s ease;
   will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  isolation: isolate;
 }
 
 .scene-depth-control-layer {
@@ -207,6 +210,8 @@ body.shop-open .scene-content {
 .object-image {
   position: absolute;
   pointer-events: none;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .scene-background {
@@ -241,8 +246,8 @@ body.shop-open .scene-content {
   left: 54%;
   top: 62.8%;
   z-index: 21;
-  transform: translate(-50%, -100%);
-  filter: drop-shadow(0 0.55vw 0.4vw rgba(10, 14, 9, 0.2));
+  transform: translate3d(-50%, -100%, 0);
+  filter: drop-shadow(0 3px 2px rgba(10, 14, 9, 0.2));
 }
 
 .string-lights-glow {
@@ -367,10 +372,13 @@ body.night .string-lights-glow {
   padding: 0;
   border: 0;
   background: transparent;
-  transform: translate(-50%, -50%) rotate(var(--wood-rotate)) scale(var(--wood-scale));
+  transform: translate3d(-50%, -50%, 0) rotate(var(--wood-rotate)) scale(var(--wood-scale));
   pointer-events: auto;
   cursor: pointer;
   transition: transform 0.16s ease;
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .wood-image {
@@ -379,7 +387,7 @@ body.night .string-lights-glow {
   display: block;
   position: relative;
   z-index: 2;
-  filter: drop-shadow(0 0.35vw 0.3vw rgba(12, 17, 10, 0.28));
+  filter: drop-shadow(0 2px 2px rgba(12, 17, 10, 0.28));
 }
 
 .target-outline-image {
@@ -435,8 +443,8 @@ body.night .string-lights-glow {
   --object-scale-x: 1;
   --object-anchor-x: -50%;
   --object-anchor-y: -100%;
-  transform: translate(var(--object-anchor-x), var(--object-anchor-y)) scaleX(var(--object-scale-x));
-  filter: drop-shadow(0 0.75vw 0.45vw rgba(10, 14, 9, 0.26));
+  transform: translate3d(var(--object-anchor-x), var(--object-anchor-y), 0) scaleX(var(--object-scale-x));
+  filter: drop-shadow(0 4px 3px rgba(10, 14, 9, 0.26));
 }
 
 .gear-object > .object-image,
@@ -709,13 +717,27 @@ body.night .campfire.lit .fire-glow-img {
 .camper {
   width: 11.85%;
   height: auto;
+  aspect-ratio: 128 / 144;
   left: 34%;
   top: 75%;
   z-index: 30;
-  object-fit: contain;
   transform-origin: 50% 100%;
   transition: opacity 0.35s ease;
-  filter: drop-shadow(0 0.7vw 0.35vw rgba(8, 12, 8, 0.32));
+  filter: drop-shadow(0 4px 2px rgba(8, 12, 8, 0.32));
+  will-change: transform, opacity;
+}
+
+.camper-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-repeat: no-repeat;
+  background-size: 700% 300%;
+  image-rendering: auto;
+  pointer-events: none;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .camper.walking,
@@ -743,10 +765,13 @@ body.build-mode .camper-thought {
   --attachment-rotate: 0deg;
   position: absolute;
   pointer-events: none;
-  transform: translate(-50%, -50%) scaleX(var(--attachment-scale-x)) rotate(var(--attachment-rotate));
+  transform: translate3d(-50%, -50%, 0) scaleX(var(--attachment-scale-x)) rotate(var(--attachment-rotate));
   transform-origin: 50% 50%;
   transition: opacity 0.35s ease;
-  filter: drop-shadow(0 0.18vw 0.14vw rgba(8, 12, 8, 0.28));
+  filter: drop-shadow(0 1px 1px rgba(8, 12, 8, 0.28));
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .camper-attachment-starterHeadlamp {
@@ -755,7 +780,7 @@ body.build-mode .camper-thought {
 
 .camper-attachment-front,
 .camper-attachment-back {
-  filter: drop-shadow(0 0.18vw 0.14vw rgba(8, 12, 8, 0.28));
+  filter: drop-shadow(0 1px 1px rgba(8, 12, 8, 0.28));
 }
 
 .camper-attachment-cone {
@@ -1214,6 +1239,81 @@ body.ui-hidden .ui-toggle-button {
 .camper-name-input:focus {
   border-color: rgba(255, 209, 122, 0.96);
   box-shadow: 0 0 0 3px rgba(255, 209, 122, 0.18);
+}
+
+.camper-appearance-step {
+  display: grid;
+  gap: 0.72rem;
+  margin-top: 0.74rem;
+}
+
+.camper-appearance-preview {
+  position: relative;
+  justify-self: center;
+  width: min(48vw, 190px);
+  min-width: 142px;
+  aspect-ratio: 128 / 144;
+  filter: drop-shadow(0 0.42rem 0.22rem rgba(8, 12, 8, 0.35));
+}
+
+.camper-appearance-preview .camper-layer {
+  image-rendering: auto;
+}
+
+.camper-appearance-controls {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.camper-appearance-row {
+  display: grid;
+  grid-template-columns: minmax(42px, 0.72fr) 32px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 0.34rem;
+  min-height: 38px;
+  padding: 0.28rem;
+  border: 1px solid rgba(230, 188, 107, 0.3);
+  border-radius: 8px;
+  background: rgba(18, 24, 17, 0.46);
+}
+
+.camper-appearance-label {
+  color: #d9b477;
+  font-size: clamp(0.58rem, 1.58vw, 0.72rem);
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.camper-appearance-value {
+  min-width: 0;
+  color: #fff0c8;
+  font-size: clamp(0.62rem, 1.76vw, 0.78rem);
+  font-weight: 900;
+  line-height: 1.08;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.camper-appearance-arrow {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(230, 188, 107, 0.5);
+  border-radius: 8px;
+  color: #fff4d3;
+  background: rgba(67, 82, 49, 0.86);
+  box-shadow: inset 0 1px 0 rgba(255, 238, 186, 0.12);
+  font-size: 1.1rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.camper-appearance-arrow:active {
+  transform: translateY(1px);
 }
 
 .camper-question-text {
@@ -1964,11 +2064,17 @@ h2 {
 
 @keyframes camperBob {
   from {
-    margin-top: 0;
+    transform: translate3d(var(--object-anchor-x), var(--object-anchor-y), 0) scaleX(var(--object-scale-x));
   }
 
   to {
-    margin-top: -3px;
+    transform: translate3d(var(--object-anchor-x), calc(var(--object-anchor-y) - 3px), 0) scaleX(var(--object-scale-x));
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .scene-content {
+    transition: none;
   }
 }
 
