@@ -411,6 +411,7 @@ const onboardingBody = document.getElementById("onboardingBody");
 const onboardingPrimaryButton = document.getElementById("onboardingPrimaryButton");
 const onboardingSkipButton = document.getElementById("onboardingSkipButton");
 const camperProfileLayer = document.getElementById("camperProfileLayer");
+const camperProfilePanel = document.getElementById("camperProfilePanel");
 const camperProfileStepLabel = document.getElementById("camperProfileStepLabel");
 const camperProfileTitle = document.getElementById("camperProfileTitle");
 const camperProfileBody = document.getElementById("camperProfileBody");
@@ -423,9 +424,20 @@ const camperQuestionStep = document.getElementById("camperQuestionStep");
 const camperQuestionText = document.getElementById("camperQuestionText");
 const camperQuestionOptions = document.getElementById("camperQuestionOptions");
 const camperResultStep = document.getElementById("camperResultStep");
+const camperCardPortrait = document.getElementById("camperCardPortrait");
+const camperCardBackground = document.getElementById("camperCardBackground");
+const camperCardCamper = document.getElementById("camperCardCamper");
+const camperCardCloseButton = document.getElementById("camperCardCloseButton");
 const camperResultName = document.getElementById("camperResultName");
 const camperResultTitle = document.getElementById("camperResultTitle");
 const camperResultDescription = document.getElementById("camperResultDescription");
+const camperCatchphraseText = document.getElementById("camperCatchphraseText");
+const camperNameEditInput = document.getElementById("camperNameEditInput");
+const camperNameEditButton = document.getElementById("camperNameEditButton");
+const camperCatchphraseEditInput = document.getElementById("camperCatchphraseEditInput");
+const camperCatchphraseEditButton = document.getElementById("camperCatchphraseEditButton");
+const camperRetakeQuizButton = document.getElementById("camperRetakeQuizButton");
+const camperRecustomizeButton = document.getElementById("camperRecustomizeButton");
 const camperProfilePrimaryButton = document.getElementById("camperProfilePrimaryButton");
 const camperProfileSecondaryButton = document.getElementById("camperProfileSecondaryButton");
 const resetSaveButton = document.getElementById("resetSaveButton");
@@ -522,6 +534,7 @@ let camperProfileAnswers = [];
 let camperProfileDraftName = "";
 let camperProfileDraftResult = null;
 let camperProfileDraftAppearance = null;
+let camperCardEditingField = "";
 
 const CAMPER_LAYER_SHEET_ROOT = "assets/characters";
 const CAMPER_SHEET_COLUMNS = 7;
@@ -691,6 +704,8 @@ const CAMPER_PERSONALITIES = {
   slowMood: {
     title: "慢半拍氛围型",
     description: "总是比世界慢一点点，但刚好慢到能听见风声。这个 Camper 会把营地过成一段软软的留白。",
+    catchphrase: "不急，风会替我计时。",
+    cardBackground: "assets/backgrounds/camper-card/slowMood.png",
     idleWeights: { wandering: 2, lookingAtLake: 5, sittingByFire: 3, resting: 4, tentRest: 2 },
     bubbles: {
       wandering: ["不急，路会自己出现", "先绕一下也不错"],
@@ -702,6 +717,8 @@ const CAMPER_PERSONALITIES = {
   lampKeeper: {
     title: "小灯守护型",
     description: "会默默确认每个角落都有一点光。不是很大声，但营地一暗下来就会让人安心。",
+    catchphrase: "亮一点，心就稳一点。",
+    cardBackground: "assets/backgrounds/camper-card/lampKeeper.png",
     idleWeights: { wandering: 2, lookingAtLake: 2, sittingByFire: 4, resting: 2, tentRest: 3 },
     nightWeights: { tentRest: 3, sittingByFire: 2 },
     bubbles: {
@@ -714,6 +731,8 @@ const CAMPER_PERSONALITIES = {
   sitFirst: {
     title: "坐下再说型",
     description: "遇事先找一个能坐的地方。坐稳以后，连空气都会变得比较好商量。",
+    catchphrase: "先坐下，其他事等会儿说。",
+    cardBackground: "assets/backgrounds/camper-card/sitFirst.png",
     idleWeights: { sittingOnFurniture: 6, sittingByFire: 4, resting: 3, wandering: 1 },
     bubbles: {
       sittingOnFurniture: ["坐下再决定", "这个位置有前途", "先让膝盖同意"],
@@ -724,6 +743,8 @@ const CAMPER_PERSONALITIES = {
   gearHoarder: {
     title: "囤装备妖怪型",
     description: "看到空地就想象那里能放点什么。营地不是乱，是很多小心思暂时住在一起。",
+    catchphrase: "这个以后肯定用得上。",
+    cardBackground: "assets/backgrounds/camper-card/gearHoarder.png",
     idleWeights: { observingGear: 5, wandering: 3, sittingByFire: 2, sittingOnFurniture: 2 },
     bubbles: {
       observingGear: ["这个放这儿有道理", "再多一点点就完美", "我只是看看库存"],
@@ -734,6 +755,8 @@ const CAMPER_PERSONALITIES = {
   carefulArranger: {
     title: "认真摆放型",
     description: "会认真对齐看不见的线。别人看到的是营地，它看到的是刚刚好的位置。",
+    catchphrase: "再挪一点点就刚好。",
+    cardBackground: "assets/backgrounds/camper-card/carefulArranger.png",
     idleWeights: { observingGear: 6, wandering: 2, lookingAtLake: 2, sittingOnFurniture: 2 },
     bubbles: {
       observingGear: ["这里差半步", "角度好像可以更乖", "摆正一点点"],
@@ -744,6 +767,8 @@ const CAMPER_PERSONALITIES = {
   vanishSoftly: {
     title: "消失一下型",
     description: "不是离开，只是需要把自己收进安静里。过一会儿会带着一点点电量回来。",
+    catchphrase: "我在，只是先安静一下。",
+    cardBackground: "assets/backgrounds/camper-card/vanishSoftly.png",
     idleWeights: { tentRest: 5, resting: 5, lookingAtLake: 3, wandering: 1 },
     nightWeights: { tentRest: 4, resting: 2 },
     bubbles: {
@@ -755,6 +780,8 @@ const CAMPER_PERSONALITIES = {
   prettyFrame: {
     title: "精致摆拍型",
     description: "会在普通时刻里找到好看的角度。连一根树枝，都可能被它看成今日主角。",
+    catchphrase: "等一下，这个角度很会。",
+    cardBackground: "assets/backgrounds/camper-card/prettyFrame.png",
     idleWeights: { observingGear: 4, lookingAtLake: 4, wandering: 2, sittingOnFurniture: 3 },
     bubbles: {
       observingGear: ["这个角度很上镜", "先别动，画面刚好", "这里有点可爱"],
@@ -2969,6 +2996,24 @@ function sanitizeCamperName(name) {
   return String(name || "").trim().replace(/\s+/g, " ").slice(0, 18);
 }
 
+function sanitizeCamperCatchphrase(catchphrase) {
+  return String(catchphrase || "").trim().replace(/\s+/g, " ").slice(0, 42);
+}
+
+function getCamperPersonality(personalityId) {
+  return CAMPER_PERSONALITIES[personalityId] || CAMPER_PERSONALITIES.slowMood;
+}
+
+function getDefaultCamperCatchphrase(personalityId) {
+  const personality = getCamperPersonality(personalityId);
+  return personality && personality.catchphrase || "慢慢来，营地会等我。";
+}
+
+function getCamperCardBackgroundPath(personalityId) {
+  const personality = getCamperPersonality(personalityId);
+  return personality && personality.cardBackground || CAMPER_PERSONALITIES.slowMood.cardBackground;
+}
+
 function getRandomCamperName() {
   const names = ["Moss", "Juniper", "Pudding", "Nori", "Pebble", "Miso", "Bramble", "Sunny", "Pickle", "Maple", "Toast", "Kiki"];
   return names[Math.floor(Math.random() * names.length)];
@@ -3259,12 +3304,17 @@ function sanitizeCamperProfile(profile) {
     return null;
   }
 
+  const catchphrase = sanitizeCamperCatchphrase(profile.catchphrase) || getDefaultCamperCatchphrase(profile.personalityId);
+  const catchphraseEdited = Boolean(profile.catchphraseEdited && sanitizeCamperCatchphrase(profile.catchphrase));
+
   return {
     id: profile.id || "camper-" + Date.now().toString(36),
     name: name,
     personalityId: profile.personalityId,
     title: personality.title,
     description: personality.description,
+    catchphrase: catchphrase,
+    catchphraseEdited: catchphraseEdited,
     appearance: normalizeCamperAppearance(profile.appearance),
     traits: profile.traits && typeof profile.traits === "object" ? { ...profile.traits } : {},
     quiz: profile.quiz && typeof profile.quiz === "object" ? { ...profile.quiz } : {},
@@ -3314,6 +3364,8 @@ function buildCamperProfileResult(name, questions, answers, appearance) {
   })[0] || "slowMood";
   const personality = CAMPER_PERSONALITIES[personalityId];
   const existingProfile = getActiveCamperProfile(gameState);
+  const existingCatchphrase = existingProfile && sanitizeCamperCatchphrase(existingProfile.catchphrase);
+  const catchphraseEdited = Boolean(existingProfile && existingProfile.catchphraseEdited && existingCatchphrase);
 
   return {
     id: existingProfile && existingProfile.id || "camper-" + Date.now().toString(36),
@@ -3321,6 +3373,8 @@ function buildCamperProfileResult(name, questions, answers, appearance) {
     personalityId: personalityId,
     title: personality.title,
     description: personality.description,
+    catchphrase: catchphraseEdited ? existingCatchphrase : getDefaultCamperCatchphrase(personalityId),
+    catchphraseEdited: catchphraseEdited,
     appearance: normalizeCamperAppearance(appearance),
     traits: scores,
     quiz: {
@@ -3374,6 +3428,109 @@ function renderCamperQuestionOptions(question) {
   });
 }
 
+function getCamperProfileForCard() {
+  return camperProfileDraftResult || getActiveCamperProfile(gameState);
+}
+
+function syncCamperCardEditingUi(profile) {
+  const cardProfile = profile || getCamperProfileForCard();
+  const catchphrase = cardProfile ? sanitizeCamperCatchphrase(cardProfile.catchphrase) || getDefaultCamperCatchphrase(cardProfile.personalityId) : "";
+  const editingName = camperCardEditingField === "name";
+  const editingCatchphrase = camperCardEditingField === "catchphrase";
+
+  if (camperResultName) {
+    camperResultName.classList.toggle("hidden", editingName);
+  }
+
+  if (camperCatchphraseText) {
+    camperCatchphraseText.classList.toggle("hidden", editingCatchphrase);
+  }
+
+  if (camperNameEditInput) {
+    camperNameEditInput.classList.toggle("hidden", !editingName);
+    if (!editingName && cardProfile) {
+      camperNameEditInput.value = cardProfile.name;
+    }
+  }
+
+  if (camperCatchphraseEditInput) {
+    camperCatchphraseEditInput.classList.toggle("hidden", !editingCatchphrase);
+    if (!editingCatchphrase) {
+      camperCatchphraseEditInput.value = catchphrase;
+    }
+  }
+
+  if (camperNameEditButton) {
+    camperNameEditButton.textContent = editingName ? "✓" : "✎";
+    camperNameEditButton.setAttribute("aria-label", editingName ? "Save nickname" : "Edit nickname");
+    camperNameEditButton.title = editingName ? "Save nickname" : "Edit nickname";
+  }
+
+  if (camperCatchphraseEditButton) {
+    camperCatchphraseEditButton.textContent = editingCatchphrase ? "✓" : "✎";
+    camperCatchphraseEditButton.setAttribute("aria-label", editingCatchphrase ? "Save catchphrase" : "Edit catchphrase");
+    camperCatchphraseEditButton.title = editingCatchphrase ? "Save catchphrase" : "Edit catchphrase";
+  }
+}
+
+function setCamperCardEditingField(field) {
+  camperCardEditingField = field || "";
+  renderCamperCard();
+
+  if (camperCardEditingField === "name" && camperNameEditInput) {
+    requestAnimationFrame(function() {
+      camperNameEditInput.focus();
+      camperNameEditInput.select();
+    });
+  } else if (camperCardEditingField === "catchphrase" && camperCatchphraseEditInput) {
+    requestAnimationFrame(function() {
+      camperCatchphraseEditInput.focus();
+      camperCatchphraseEditInput.select();
+    });
+  }
+}
+
+function renderCamperCard(profile) {
+  const cardProfile = profile || getCamperProfileForCard();
+
+  if (!cardProfile) {
+    return;
+  }
+
+  const personality = getCamperPersonality(cardProfile.personalityId);
+  const catchphrase = sanitizeCamperCatchphrase(cardProfile.catchphrase) || getDefaultCamperCatchphrase(cardProfile.personalityId);
+
+  if (camperCardBackground) {
+    camperCardBackground.src = withVersion(getCamperCardBackgroundPath(cardProfile.personalityId));
+  }
+
+  if (camperCardPortrait) {
+    camperCardPortrait.setAttribute("aria-label", cardProfile.name + " camper portrait");
+  }
+
+  if (camperCardCamper) {
+    renderCamperLayerStack(camperCardCamper, cardProfile.appearance, CAMPER_IDLE_FRAME_NAME);
+  }
+
+  if (camperResultName) {
+    camperResultName.textContent = cardProfile.name;
+  }
+
+  if (camperResultTitle) {
+    camperResultTitle.textContent = personality.title;
+  }
+
+  if (camperResultDescription) {
+    camperResultDescription.textContent = personality.description;
+  }
+
+  if (camperCatchphraseText) {
+    camperCatchphraseText.textContent = "“" + catchphrase + "”";
+  }
+
+  syncCamperCardEditingUi(cardProfile);
+}
+
 function updateCamperProfileView() {
   if (!camperProfileActive || !camperProfileLayer) {
     return;
@@ -3384,6 +3541,10 @@ function updateCamperProfileView() {
   const isQuestionStep = camperProfileStep === "question";
   const isResultStep = camperProfileStep === "result";
   const currentQuestion = camperProfileQuestions[camperProfileQuestionIndex];
+
+  if (camperProfilePanel) {
+    camperProfilePanel.classList.toggle("camper-card-panel", isResultStep);
+  }
 
   camperNameStep.classList.toggle("hidden", !isNameStep);
   camperAppearanceStep.classList.toggle("hidden", !isAppearanceStep);
@@ -3396,12 +3557,12 @@ function updateCamperProfileView() {
     camperProfileBody.textContent = getCamperProfileIntroBody();
     camperProfilePrimaryButton.textContent = "Next: look";
     camperProfilePrimaryButton.disabled = !sanitizeCamperName(camperNameInput.value);
-    camperProfileSecondaryButton.textContent = camperProfileMode === "manual" ? "Close" : "Random camper";
+    camperProfileSecondaryButton.textContent = hasCamperProfile(gameState) ? "Close" : "Random camper";
   } else if (isAppearanceStep) {
-    camperProfileStepLabel.textContent = "Customize Camper";
+    camperProfileStepLabel.textContent = camperProfileMode === "appearanceOnly" ? "Re-customize Camper" : "Customize Camper";
     camperProfileTitle.textContent = camperProfileDraftName;
-    camperProfileBody.textContent = "先捏一下小人，再答几个轻松的小问题。";
-    camperProfilePrimaryButton.textContent = "Start questions";
+    camperProfileBody.textContent = camperProfileMode === "appearanceOnly" ? "只会更新小人外观，昵称、性格、口头禅和背景都会保留。" : "先捏一下小人，再答几个轻松的小问题。";
+    camperProfilePrimaryButton.textContent = camperProfileMode === "appearanceOnly" ? "保存外观" : "Start questions";
     camperProfilePrimaryButton.disabled = false;
     camperProfileSecondaryButton.textContent = "Random look";
     renderCamperAppearanceControls();
@@ -3409,20 +3570,18 @@ function updateCamperProfileView() {
   } else if (isQuestionStep && currentQuestion) {
     camperProfileStepLabel.textContent = "Question " + (camperProfileQuestionIndex + 1) + " / " + camperProfileQuestions.length;
     camperProfileTitle.textContent = camperProfileDraftName;
-    camperProfileBody.textContent = "选一个最像它今天状态的答案。";
+    camperProfileBody.textContent = camperProfileMode === "retakeQuiz" ? "只会更新性格、描述和名片背景，不会重置昵称或外观。" : "选一个最像它今天状态的答案。";
     camperQuestionText.textContent = currentQuestion.text;
     renderCamperQuestionOptions(currentQuestion);
-    camperProfilePrimaryButton.textContent = camperProfileQuestionIndex >= camperProfileQuestions.length - 1 ? "See result" : "Next";
+    camperProfilePrimaryButton.textContent = camperProfileQuestionIndex >= camperProfileQuestions.length - 1 ? "See card" : "Next";
     camperProfilePrimaryButton.disabled = !camperProfileAnswers[camperProfileQuestionIndex];
-    camperProfileSecondaryButton.textContent = camperProfileMode === "manual" ? "Cancel" : "Random camper";
+    camperProfileSecondaryButton.textContent = hasCamperProfile(gameState) ? "Cancel" : "Random camper";
   } else if (isResultStep && camperProfileDraftResult) {
-    camperProfileStepLabel.textContent = "Camper Ready";
-    camperProfileTitle.textContent = "Meet your Camper";
-    camperProfileBody.textContent = "之后可以从 Camper 按钮重新答题，不会重置任何营地进度。";
-    camperResultName.textContent = camperProfileDraftResult.name + " is";
-    camperResultTitle.textContent = camperProfileDraftResult.title;
-    camperResultDescription.textContent = camperProfileDraftResult.description;
-    camperProfilePrimaryButton.textContent = camperProfileMode === "manual" ? "Save profile" : "Move in";
+    camperProfileStepLabel.textContent = "Camper Card";
+    camperProfileTitle.textContent = "Camper Card";
+    camperProfileBody.textContent = "";
+    renderCamperCard(camperProfileDraftResult);
+    camperProfilePrimaryButton.textContent = "Close";
     camperProfilePrimaryButton.disabled = false;
     camperProfileSecondaryButton.textContent = "Retake";
   }
@@ -3446,6 +3605,7 @@ function startCamperProfileFlow(mode) {
   }
 
   const existingProfile = getActiveCamperProfile(gameState);
+  const hasExistingProfile = hasCamperProfile(gameState);
 
   camperProfileActive = true;
   camperProfileMode = mode || "required";
@@ -3457,25 +3617,40 @@ function startCamperProfileFlow(mode) {
   camperProfileDraftResult = null;
   camperProfileDraftAppearance = normalizeCamperAppearance(existingProfile && existingProfile.appearance);
 
+  if (camperProfileMode === "card" && hasExistingProfile) {
+    camperProfileStep = "result";
+    camperProfileDraftResult = sanitizeCamperProfile(existingProfile);
+  } else if (camperProfileMode === "retakeQuiz" && hasExistingProfile) {
+    camperProfileStep = "question";
+  } else if (camperProfileMode === "appearanceOnly" && hasExistingProfile) {
+    camperProfileStep = "appearance";
+  }
+
   camperNameInput.value = camperProfileDraftName;
   camperProfileLayer.classList.remove("hidden");
   camperProfileLayer.setAttribute("aria-hidden", "false");
   document.body.classList.add("camper-profile-open");
   updateCamperProfileView();
 
-  requestAnimationFrame(function() {
-    if (camperNameInput) {
-      camperNameInput.focus();
-      camperNameInput.select();
-    }
-  });
+  if (camperProfileStep === "name") {
+    requestAnimationFrame(function() {
+      if (camperNameInput) {
+        camperNameInput.focus();
+        camperNameInput.select();
+      }
+    });
+  }
 }
 
 function closeCamperProfileFlow() {
   camperProfileActive = false;
+  camperCardEditingField = "";
   camperProfileLayer.classList.add("hidden");
   camperProfileLayer.setAttribute("aria-hidden", "true");
   document.body.classList.remove("camper-profile-open");
+  if (camperProfilePanel) {
+    camperProfilePanel.classList.remove("camper-card-panel");
+  }
   updateCamperSprite();
 }
 
@@ -3489,27 +3664,52 @@ function randomizeCamperProfileDraft() {
   camperProfileDraftName = name;
   camperProfileDraftAppearance = getRandomCamperAppearance();
   camperProfileDraftResult = buildCamperProfileResult(name, camperProfileQuestions, camperProfileAnswers, camperProfileDraftAppearance);
+  saveCamperProfileResult(true);
   setCamperProfileStep("result");
 }
 
-function saveCamperProfileResult() {
-  if (!camperProfileDraftResult) {
-    return;
+function setActiveCamperProfile(profile) {
+  const cleanProfile = sanitizeCamperProfile(profile);
+
+  if (!cleanProfile) {
+    return null;
   }
 
   const campers = Array.isArray(gameState.campers) ? gameState.campers.slice() : [];
 
-  campers[0] = camperProfileDraftResult;
+  campers[0] = cleanProfile;
   gameState.campers = campers;
   gameState.activeCamperIndex = 0;
   gameState.camperProfileVersion = CAMPER_PROFILE_VERSION;
   saveGame();
-  closeCamperProfileFlow();
-  setStatus(camperProfileDraftResult.name + " is ready for camp.");
+  return cleanProfile;
+}
+
+function saveCamperProfileResult(keepOpen) {
+  if (!camperProfileDraftResult) {
+    return null;
+  }
+
+  const savedProfile = setActiveCamperProfile(camperProfileDraftResult);
+
+  if (!savedProfile) {
+    return null;
+  }
+
+  camperProfileDraftResult = savedProfile;
+  renderCamperCard(savedProfile);
+  setStatus(savedProfile.name + " is ready for camp.");
   updateCamperProfileControls();
   updateCamperSprite();
   chooseNextCamperAction();
+
+  if (keepOpen) {
+    return savedProfile;
+  }
+
+  closeCamperProfileFlow();
   maybeStartOnboarding();
+  return savedProfile;
 }
 
 function advanceCamperProfileFlow() {
@@ -3533,6 +3733,25 @@ function advanceCamperProfileFlow() {
 
   if (camperProfileStep === "appearance") {
     camperProfileDraftAppearance = normalizeCamperAppearance(camperProfileDraftAppearance);
+
+    if (camperProfileMode === "appearanceOnly") {
+      const existingProfile = getActiveCamperProfile(gameState);
+
+      if (!existingProfile) {
+        closeCamperProfileFlow();
+        return;
+      }
+
+      camperProfileDraftResult = {
+        ...existingProfile,
+        appearance: camperProfileDraftAppearance,
+        updatedAt: Date.now()
+      };
+      saveCamperProfileResult(true);
+      setCamperProfileStep("result");
+      return;
+    }
+
     setCamperProfileStep("question");
     return;
   }
@@ -3545,6 +3764,7 @@ function advanceCamperProfileFlow() {
 
     if (camperProfileQuestionIndex >= camperProfileQuestions.length - 1) {
       camperProfileDraftResult = buildCamperProfileResult(camperProfileDraftName, camperProfileQuestions, camperProfileAnswers, camperProfileDraftAppearance);
+      saveCamperProfileResult(true);
       setCamperProfileStep("result");
     } else {
       camperProfileQuestionIndex += 1;
@@ -3555,13 +3775,14 @@ function advanceCamperProfileFlow() {
   }
 
   if (camperProfileStep === "result") {
-    saveCamperProfileResult();
+    closeCamperProfileFlow();
+    maybeStartOnboarding();
   }
 }
 
 function handleCamperProfileSecondaryAction() {
   if (camperProfileStep === "result") {
-    startCamperProfileFlow(camperProfileMode);
+    startCamperProfileFlow("retakeQuiz");
     return;
   }
 
@@ -3573,12 +3794,104 @@ function handleCamperProfileSecondaryAction() {
     return;
   }
 
-  if (camperProfileMode === "manual") {
+  if (hasCamperProfile(gameState)) {
+    if (camperProfileMode === "retakeQuiz" || camperProfileMode === "appearanceOnly") {
+      startCamperProfileFlow("card");
+      return;
+    }
+
     closeCamperProfileFlow();
     return;
   }
 
   randomizeCamperProfileDraft();
+}
+
+function closeCamperCardAndResume() {
+  closeCamperProfileFlow();
+  maybeStartOnboarding();
+}
+
+function editActiveCamperName() {
+  const profile = getActiveCamperProfile(gameState);
+
+  if (!profile) {
+    return;
+  }
+
+  if (camperCardEditingField !== "name") {
+    setCamperCardEditingField("name");
+    return;
+  }
+
+  const nextName = sanitizeCamperName(camperNameEditInput && camperNameEditInput.value);
+
+  if (!nextName) {
+    setStatus("Give your Camper a name first.");
+    return;
+  }
+
+  const savedProfile = setActiveCamperProfile({
+    ...profile,
+    name: nextName,
+    updatedAt: Date.now()
+  });
+
+  if (savedProfile) {
+    camperProfileDraftResult = savedProfile;
+    camperCardEditingField = "";
+    renderCamperCard(savedProfile);
+    updateCamperProfileControls();
+    setStatus("Camper name updated.");
+  }
+}
+
+function editActiveCamperCatchphrase() {
+  const profile = getActiveCamperProfile(gameState);
+
+  if (!profile) {
+    return;
+  }
+
+  if (camperCardEditingField !== "catchphrase") {
+    setCamperCardEditingField("catchphrase");
+    return;
+  }
+
+  const nextCatchphrase = sanitizeCamperCatchphrase(camperCatchphraseEditInput && camperCatchphraseEditInput.value);
+
+  if (!nextCatchphrase) {
+    setStatus("Catchphrase cannot be empty.");
+    return;
+  }
+
+  const savedProfile = setActiveCamperProfile({
+    ...profile,
+    catchphrase: nextCatchphrase,
+    catchphraseEdited: true,
+    updatedAt: Date.now()
+  });
+
+  if (savedProfile) {
+    camperProfileDraftResult = savedProfile;
+    camperCardEditingField = "";
+    renderCamperCard(savedProfile);
+    setStatus("Catchphrase updated.");
+  }
+}
+
+function handleCamperCardInlineInputKeydown(event) {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    if (event.currentTarget === camperNameEditInput) {
+      editActiveCamperName();
+    } else if (event.currentTarget === camperCatchphraseEditInput) {
+      editActiveCamperCatchphrase();
+    }
+  } else if (event.key === "Escape") {
+    event.preventDefault();
+    setCamperCardEditingField("");
+  }
 }
 
 function updateCamperProfileControls() {
@@ -7675,7 +7988,11 @@ if (buildModeToggle) {
 uiDisplayToggle.addEventListener("click", toggleUiDisplayMode);
 if (camperProfileButton) {
   camperProfileButton.addEventListener("click", function() {
-    startCamperProfileFlow("manual");
+    if (hasCamperProfile(gameState)) {
+      startCamperProfileFlow("card");
+    } else {
+      startCamperProfileFlow("required");
+    }
   });
 }
 onboardingHelpButton.addEventListener("click", function() {
@@ -7699,6 +8016,31 @@ if (camperProfilePrimaryButton) {
 }
 if (camperProfileSecondaryButton) {
   camperProfileSecondaryButton.addEventListener("click", handleCamperProfileSecondaryAction);
+}
+if (camperCardCloseButton) {
+  camperCardCloseButton.addEventListener("click", closeCamperCardAndResume);
+}
+if (camperNameEditButton) {
+  camperNameEditButton.addEventListener("click", editActiveCamperName);
+}
+if (camperNameEditInput) {
+  camperNameEditInput.addEventListener("keydown", handleCamperCardInlineInputKeydown);
+}
+if (camperCatchphraseEditButton) {
+  camperCatchphraseEditButton.addEventListener("click", editActiveCamperCatchphrase);
+}
+if (camperCatchphraseEditInput) {
+  camperCatchphraseEditInput.addEventListener("keydown", handleCamperCardInlineInputKeydown);
+}
+if (camperRetakeQuizButton) {
+  camperRetakeQuizButton.addEventListener("click", function() {
+    startCamperProfileFlow("retakeQuiz");
+  });
+}
+if (camperRecustomizeButton) {
+  camperRecustomizeButton.addEventListener("click", function() {
+    startCamperProfileFlow("appearanceOnly");
+  });
 }
 resetSaveButton.addEventListener("click", confirmResetSave);
 

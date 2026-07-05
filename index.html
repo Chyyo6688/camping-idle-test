@@ -77,10 +77,6 @@
       </nav>
 
       <nav class="utility-controls" aria-label="Save and help controls">
-        <button id="uiDisplayToggle" class="utility-button ui-toggle-button" type="button" aria-label="Toggle UI display">
-          <span id="uiDisplayLabel">UI</span>
-        </button>
-
         <button id="onboardingHelpButton" class="utility-button help-button" type="button" aria-label="Open guide">
           <span class="help-mark">?</span>
           <span>Help</span>
@@ -93,6 +89,12 @@
         <button id="resetSaveButton" class="utility-button" type="button">
           <img class="button-icon" src="assets/ui/icon_tools.png?v=2.7.12" alt="">
           <span>Reset</span>
+        </button>
+      </nav>
+
+      <nav class="ui-display-controls" aria-label="Display controls">
+        <button id="uiDisplayToggle" class="utility-button ui-toggle-button" type="button" aria-label="Toggle UI display">
+          <span id="uiDisplayLabel">UI</span>
         </button>
       </nav>
 
@@ -152,7 +154,7 @@
         </div>
 
         <div id="camperProfileLayer" class="camper-profile-layer hidden" aria-hidden="true" aria-live="polite">
-          <section class="camper-profile-panel" aria-label="Create camper">
+          <section id="camperProfilePanel" class="camper-profile-panel" aria-label="Create camper">
             <p id="camperProfileStepLabel" class="camper-profile-step-label"></p>
             <h2 id="camperProfileTitle"></h2>
             <p id="camperProfileBody"></p>
@@ -173,9 +175,45 @@
             </div>
 
             <div id="camperResultStep" class="camper-result-step hidden">
-              <p id="camperResultName" class="camper-result-name"></p>
-              <h3 id="camperResultTitle"></h3>
-              <p id="camperResultDescription"></p>
+              <div class="camper-card">
+                <div id="camperCardPortrait" class="camper-card-portrait" role="img" aria-label="Camper portrait">
+                  <img id="camperCardBackground" class="camper-card-background" src="assets/backgrounds/camper-card/slowMood.png?v=2.7.12" alt="">
+                  <div id="camperCardCamper" class="camper-card-camper" aria-hidden="true"></div>
+                </div>
+
+                <div class="camper-card-info">
+                  <button id="camperCardCloseButton" class="camper-card-close" type="button" aria-label="Close camper card">×</button>
+
+                  <div class="camper-card-field">
+                    <p class="camper-card-label">昵称</p>
+                    <div class="camper-card-edit-row">
+                      <h3 id="camperResultName" class="camper-card-name"></h3>
+                      <input id="camperNameEditInput" class="camper-card-inline-input camper-card-name-input hidden" type="text" maxlength="18" autocomplete="off" />
+                      <button id="camperNameEditButton" class="camper-card-edit-button" type="button" aria-label="Edit nickname" title="Edit nickname">✎</button>
+                    </div>
+                  </div>
+
+                  <div class="camper-card-field">
+                    <p class="camper-card-label">性格</p>
+                    <h4 id="camperResultTitle" class="camper-card-personality"></h4>
+                    <p id="camperResultDescription" class="camper-card-description"></p>
+                  </div>
+
+                  <div class="camper-card-field">
+                    <p class="camper-card-label">口头禅</p>
+                    <div class="camper-card-edit-row">
+                      <p id="camperCatchphraseText" class="camper-card-catchphrase"></p>
+                      <input id="camperCatchphraseEditInput" class="camper-card-inline-input hidden" type="text" maxlength="42" autocomplete="off" />
+                      <button id="camperCatchphraseEditButton" class="camper-card-edit-button" type="button" aria-label="Edit catchphrase" title="Edit catchphrase">✎</button>
+                    </div>
+                  </div>
+
+                  <div class="camper-card-actions">
+                    <button id="camperRetakeQuizButton" class="camper-profile-button secondary" type="button">重新答题</button>
+                    <button id="camperRecustomizeButton" class="camper-profile-button primary" type="button">重新捏脸</button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="camper-profile-actions">
