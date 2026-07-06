@@ -1,5 +1,5 @@
 const SAVE_KEY = "cozyCampfireSave";
-const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "2.7.12";
+const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "2.8";
 
 function withVersion(path) {
   const separator = path.includes("?") ? "&" : "?";
@@ -196,6 +196,8 @@ const defaultGameState = {
   nightUnlocked: false,
   isNight: false,
   gatherWoodMode: false,
+  economyResetTo500Applied: true,
+  lastSeen: Date.now(),
   lastSaveTime: Date.now()
 };
 
@@ -217,6 +219,11 @@ function createDefaultGameState() {
     onboardingSeen: defaultGameState.onboardingSeen,
     interactionGuideSeen: defaultGameState.interactionGuideSeen,
     buildModeGuideSeen: defaultGameState.buildModeGuideSeen,
+    nightUnlocked: defaultGameState.nightUnlocked,
+    isNight: defaultGameState.isNight,
+    gatherWoodMode: defaultGameState.gatherWoodMode,
+    economyResetTo500Applied: defaultGameState.economyResetTo500Applied,
+    lastSeen: Date.now(),
     lastSaveTime: Date.now()
   };
 }
@@ -239,6 +246,8 @@ const campfireBurnRates = {
 };
 
 const baseOfflineSeconds = 1800;
+const maxOfflineEarningsSeconds = 2 * 60 * 60;
+const economyResetCozyPoints = 500;
 const maxWoodItems = 5;
 const camperFrameDurationMs = 120;
 const camperSpriteRefreshMs = 100;
@@ -785,6 +794,46 @@ const CAMPER_PERSONALITIES = {
       lookingAtLake: ["湖面像滤镜", "这光线很会"],
       sittingOnFurniture: ["坐姿也要有构图"]
     }
+  },
+  forestWanderer: {
+    title: "森林乱逛型",
+    description: "总能被树影、小路和远处的山吸走注意力。它不是迷路，只是在认真收集营地附近的风。",
+    catchphrase: "我去那边看看，很快回来。",
+    cardBackground: "assets/backgrounds/camper-card/forestWanderer.png",
+    idleWeights: { wandering: 6, lookingAtLake: 3, resting: 2, observingGear: 1, sittingByFire: 1 },
+    bubbles: {
+      wandering: ["那边好像有条小路", "我去看一眼树影", "木牌后面会是什么"],
+      lookingAtLake: ["远处山影很好看", "湖边也算路线的一部分"],
+      resting: ["散步回来，草地刚好"],
+      observingGear: ["这个像路标吗"]
+    }
+  },
+  campfireChatter: {
+    title: "篝火话很多型",
+    description: "火一亮，话匣子也跟着亮起来。喜欢有人一起坐着，把普通夜晚聊成暖乎乎的小故事。",
+    catchphrase: "火都点起来了，聊两句吧。",
+    cardBackground: "assets/backgrounds/camper-card/campfireChatter.png",
+    idleWeights: { sittingByFire: 6, sittingOnFurniture: 3, wandering: 1, observingGear: 1, resting: 1 },
+    nightWeights: { sittingByFire: 4, sittingOnFurniture: 2 },
+    bubbles: {
+      sittingByFire: ["火都在听呢", "再讲一个小故事吧", "有人一起坐就更暖"],
+      sittingOnFurniture: ["这个座位适合聊天", "先坐近一点"],
+      wandering: ["我去喊大家过来"],
+      observingGear: ["这盏灯很有聊天氛围"]
+    }
+  },
+  picnicFirst: {
+    title: "野餐第一型",
+    description: "相信很多事情都可以先从一杯热饮开始。桌上有小零食，日子就会自动慢下来一点。",
+    catchphrase: "先喝点什么再说。",
+    cardBackground: "assets/backgrounds/camper-card/picnicFirst.png",
+    idleWeights: { sittingOnFurniture: 4, observingGear: 3, sittingByFire: 2, resting: 2, wandering: 1 },
+    bubbles: {
+      sittingOnFurniture: ["杯子放这里刚好", "先吃一点再决定", "这张桌子很懂野餐"],
+      observingGear: ["炉子也要有好位置", "小零食库存确认"],
+      sittingByFire: ["热饮靠近火会更认真"],
+      resting: ["吃完以后慢慢坐着"]
+    }
   }
 };
 
@@ -802,7 +851,7 @@ const CAMPER_PROFILE_QUESTIONS = [
     text: "朋友迟到二十分钟，你比较像哪一种？",
     options: [
       { text: "找个地方坐下，顺便把这二十分钟过得很完整", traits: { sitFirst: 2, slowMood: 1 } },
-      { text: "沿着附近慢慢走一圈，像在检查地图边缘", traits: { slowMood: 2, prettyFrame: 1 } },
+      { text: "沿着附近慢慢走一圈，像在检查地图边缘", traits: { forestWanderer: 2, slowMood: 1, prettyFrame: 1 } },
       { text: "去便利店买一个本来不需要的小玩意", traits: { gearHoarder: 2, lampKeeper: 1 } },
       { text: "回一句没事，然后短暂消失在自己的世界里", traits: { vanishSoftly: 2 } }
     ]
@@ -840,7 +889,7 @@ const CAMPER_PROFILE_QUESTIONS = [
       { text: "认真把随便变成三种选择", traits: { carefulArranger: 2 } },
       { text: "先问能不能坐着等", traits: { sitFirst: 2 } },
       { text: "拿出一个刚好能用上的小工具", traits: { gearHoarder: 2 } },
-      { text: "说好，然后做出一份很有氛围的简单东西", traits: { lampKeeper: 1, prettyFrame: 2 } }
+      { text: "说好，然后做出一份很有氛围的简单东西", traits: { picnicFirst: 2, lampKeeper: 1, prettyFrame: 1 } }
     ]
   },
   {
@@ -855,7 +904,7 @@ const CAMPER_PROFILE_QUESTIONS = [
   {
     text: "一张很普通的桌子，你会先注意什么？",
     options: [
-      { text: "有没有刚好放杯子的地方", traits: { sitFirst: 1, carefulArranger: 1 } },
+      { text: "有没有刚好放杯子的地方", traits: { picnicFirst: 2, sitFirst: 1, carefulArranger: 1 } },
       { text: "桌面会不会反光，很适合拍东西", traits: { prettyFrame: 2 } },
       { text: "下面还能不能塞个篮子", traits: { gearHoarder: 2 } },
       { text: "旁边如果有小灯就好了", traits: { lampKeeper: 2 } }
@@ -903,7 +952,7 @@ const CAMPER_PROFILE_QUESTIONS = [
       { text: "看最角落那排奇怪但实用的东西", traits: { gearHoarder: 2 } },
       { text: "看灯和杯子摆得好不好", traits: { lampKeeper: 1, prettyFrame: 1 } },
       { text: "找店里有没有能坐一下的位置", traits: { sitFirst: 2 } },
-      { text: "慢慢逛，不急着买", traits: { slowMood: 2 } }
+      { text: "慢慢逛，不急着买", traits: { forestWanderer: 2, slowMood: 1 } }
     ]
   },
   {
@@ -938,7 +987,7 @@ const CAMPER_PROFILE_QUESTIONS = [
     options: [
       { text: "能看到水的地方", traits: { slowMood: 2 } },
       { text: "有舒服座位的地方", traits: { sitFirst: 2 } },
-      { text: "有小灯和木头味道的地方", traits: { lampKeeper: 2 } },
+      { text: "有小灯和木头味道的地方", traits: { lampKeeper: 1, campfireChatter: 2 } },
       { text: "可以拍到自然光的地方", traits: { prettyFrame: 2 } }
     ]
   },
@@ -949,6 +998,51 @@ const CAMPER_PROFILE_QUESTIONS = [
       { text: "可以，但要放在对的位置", traits: { carefulArranger: 2 } },
       { text: "如果能让我更安心，就留下", traits: { lampKeeper: 1, vanishSoftly: 1 } },
       { text: "先拍一张，之后再决定", traits: { prettyFrame: 2 } }
+    ]
+  },
+  {
+    text: "营地旁边突然多出一条没见过的小路，你会？",
+    options: [
+      { text: "先走五分钟，看树影把我带到哪儿", traits: { forestWanderer: 2, slowMood: 1 } },
+      { text: "喊大家一起去，回来围着火讲发现", traits: { campfireChatter: 2, forestWanderer: 1 } },
+      { text: "带上杯子和小点心，走累了就坐下", traits: { picnicFirst: 2, sitFirst: 1 } },
+      { text: "先记一下路牌，免得快乐地找不到回来的方向", traits: { carefulArranger: 2, forestWanderer: 1 } }
+    ]
+  },
+  {
+    text: "篝火刚烧旺，旁边还空着几把椅子，你最想？",
+    options: [
+      { text: "把大家叫过来，故事从第一根火星开始", traits: { campfireChatter: 2, lampKeeper: 1 } },
+      { text: "坐近一点，安静看它慢慢亮", traits: { lampKeeper: 2, slowMood: 1 } },
+      { text: "确认每把椅子的位置都刚好不挡路", traits: { carefulArranger: 2, sitFirst: 1 } },
+      { text: "趁热把杯子捧起来，像在给夜晚加糖", traits: { picnicFirst: 2, campfireChatter: 1 } }
+    ]
+  },
+  {
+    text: "夜色刚落下来，大家还没决定要不要散场，你会？",
+    options: [
+      { text: "往火边挪挪，说一个刚想到的小故事", traits: { campfireChatter: 2 } },
+      { text: "把灯调亮一点，让回去的路看起来安心", traits: { lampKeeper: 2 } },
+      { text: "拿热饮和小点心，把散场拖慢一点点", traits: { picnicFirst: 2, campfireChatter: 1 } },
+      { text: "说我去看看树后面那条暗暗的小路", traits: { forestWanderer: 2, vanishSoftly: 1 } }
+    ]
+  },
+  {
+    text: "清晨阳光落在野餐桌上，你第一件事是？",
+    options: [
+      { text: "找杯子、热饮和一口不会掉屑的小点心", traits: { picnicFirst: 2 } },
+      { text: "看影子从哪边过来，顺便发现一条能散步的路", traits: { forestWanderer: 2, prettyFrame: 1 } },
+      { text: "把桌面整理到看起来很会生活", traits: { carefulArranger: 2, prettyFrame: 1 } },
+      { text: "先坐下，让早晨自己慢慢开始", traits: { sitFirst: 2, slowMood: 1 } }
+    ]
+  },
+  {
+    text: "如果今天只负责让营地多一点人味，你会加什么？",
+    options: [
+      { text: "一圈能把大家聚到一起的椅子", traits: { campfireChatter: 2, sitFirst: 1 } },
+      { text: "一块指向森林深处的小木牌", traits: { forestWanderer: 2 } },
+      { text: "一张永远有热饮位置的小桌子", traits: { picnicFirst: 2, lampKeeper: 1 } },
+      { text: "一个不解释但很有用的收纳篮", traits: { gearHoarder: 2, carefulArranger: 1 } }
     ]
   }
 ];
@@ -4335,7 +4429,8 @@ function getWoodWarmthValue() {
 
 function getOfflineCapSeconds() {
   const tentItem = getEquippedGearItem("tent");
-  return baseOfflineSeconds + (tentItem && Number(tentItem.offlineBonusSeconds) || 0);
+  const gearCapSeconds = baseOfflineSeconds + (tentItem && Number(tentItem.offlineBonusSeconds) || 0);
+  return Math.min(maxOfflineEarningsSeconds, gearCapSeconds);
 }
 
 function getCampfireUpgradeCost() {
@@ -4353,7 +4448,9 @@ function getCurrentFlameImage() {
 }
 
 function saveGame() {
-  gameState.lastSaveTime = Date.now();
+  const now = Date.now();
+  gameState.lastSeen = now;
+  gameState.lastSaveTime = now;
   localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
 }
 
@@ -4449,7 +4546,11 @@ function sanitizeSave(savedGame) {
     if (savedGame.buildModeGuideSeen !== undefined) {
       cleanState.buildModeGuideSeen = Boolean(savedGame.buildModeGuideSeen);
     }
+    cleanState.economyResetTo500Applied = Boolean(savedGame.economyResetTo500Applied);
     cleanState.vehiclePlacementMigrated = Boolean(savedGame.vehiclePlacementMigrated);
+    if (savedGame.lastSeen !== undefined) {
+      cleanState.lastSeen = savedGame.lastSeen;
+    }
     if (savedGame.lastSaveTime !== undefined) {
       cleanState.lastSaveTime = savedGame.lastSaveTime;
     }
@@ -4652,9 +4753,24 @@ function sanitizeSave(savedGame) {
   cleanState.isNight = Boolean(cleanState.isNight && cleanState.nightUnlocked);
   cleanState.gatherWoodMode = Boolean(cleanState.gatherWoodMode);
   cleanState.lastSaveTime = Number(cleanState.lastSaveTime) || Date.now();
+  cleanState.lastSeen = Number(cleanState.lastSeen) || cleanState.lastSaveTime;
   cleanState.comfort = calculateComfort(cleanState);
 
   return cleanState;
+}
+
+function applyOneTimeEconomyResetMigration() {
+  if (!gameState || gameState.economyResetTo500Applied) {
+    return false;
+  }
+
+  const now = Date.now();
+  gameState.cozyPoints = economyResetCozyPoints;
+  gameState.economyResetTo500Applied = true;
+  gameState.lastSeen = now;
+  gameState.lastSaveTime = now;
+  showWelcome("Economy reset: Cozy Points set to " + formatNumber(economyResetCozyPoints) + ". Offline earnings start fresh from now.");
+  return true;
 }
 
 function loadGame() {
@@ -4674,7 +4790,9 @@ function loadGame() {
   try {
     gameState = sanitizeSave(JSON.parse(savedText));
     loadedExistingSaveWithoutCamperProfile = !hasCamperProfile(gameState);
-    applyOfflineEarnings();
+    if (!applyOneTimeEconomyResetMigration()) {
+      applyOfflineEarnings();
+    }
     saveGame();
   } catch (error) {
     gameState = createDefaultGameState();
@@ -4691,16 +4809,31 @@ function applyOfflineEarnings() {
   const netBurnRate = getNetWarmthBurnRate();
   const possibleFireSeconds = gameState.warmthSeconds / netBurnRate;
   const activeSeconds = Math.min(secondsAway, offlineCap, possibleFireSeconds);
+  const earnedPoints = activeSeconds * getCozyPointsPerSecond();
+  const reachedOfflineEarningsLimit = secondsAway > maxOfflineEarningsSeconds;
 
   if (activeSeconds > 0) {
-    const earnedPoints = activeSeconds * getCozyPointsPerSecond();
     gameState.cozyPoints += earnedPoints;
     gameState.warmthSeconds = Math.max(0, gameState.warmthSeconds - activeSeconds * netBurnRate);
-    showWelcome("Welcome back: +" + formatNumber(earnedPoints) + " Cozy Points from " + formatShortTime(activeSeconds) + " of firelight.");
-  } else if (secondsAway > 60) {
-    showWelcome("Welcome back. The campfire is waiting for more branches.");
   }
 
+  if (activeSeconds > 0 || secondsAway > 60) {
+    let message = "Welcome back: offline " + formatShortTime(secondsAway) +
+      "; settled " + formatShortTime(activeSeconds) +
+      "; earned +" + formatNumber(earnedPoints) + " Cozy Points.";
+
+    if (reachedOfflineEarningsLimit) {
+      message += " 离线收益已达到上限。";
+    }
+
+    if (activeSeconds <= 0) {
+      message += " The campfire is waiting for more branches.";
+    }
+
+    showWelcome(message);
+  }
+
+  gameState.lastSeen = now;
   gameState.lastSaveTime = now;
 }
 
