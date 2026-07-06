@@ -1,10 +1,11 @@
 # Cozy Camping Idle - Task Log
 
-## 当前 V2.6 状态
+## 当前 V2.7 状态
 
-- `index.html` 和 `game.js` 已指向 app version `2.6`。
+- `index.html` 和 `game.js` 已指向 app version `2.7`。
 - 包检查：没有 npm package、lockfile、bundler、第三方 runtime script 或外部依赖。
 - 当前运行包就是根目录静态 app：`index.html`、`style.css`、`gearCatalog.js`、`game.js`、`assets/`。
+- Camper 运行素材已切到 `assets/characters/polished/frames/`。
 - 后续直接上传根目录静态包到 GitHub。
 - 当前未提交代码改动在 `game.js` 和 `style.css`。
 
@@ -16,6 +17,7 @@
 - V2.4：Reset、`?reset=1`、toast、mobile shop、静态发布规则。
 - V2.5：Shop UI polish、place/pack、tarp/vehicle replacement、rooftop mount、headlamp layers。
 - V2.6：onboarding/help、手动 action queue、UI 显示切换、Build Mode 拖动/层级存档。
+- V2.7：camper polished 角色帧接入运行素材。
 
 ## 维护规则
 

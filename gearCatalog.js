@@ -471,7 +471,7 @@
         seatable: {
           camperFacingMode: "sameAsFurniture",
           seatOffsets: {
-            left: { ratioX: 0.3125, ratioY: 0.95 }
+            left: { ratioX: 0.4, ratioY: 0.99 }
           }
         }
       },
@@ -485,7 +485,7 @@
       image: imagePath("chair", "nokaMoonChair", "png"), 
       scene: scene({ x: 57, y: 79 }, 10, 22, { facing: "left", mirrored: false }),
       interactions: { seatable: { camperFacingMode: "sameAsFurniture", 
-        seatOffsets: { left: { ratioX: 0.3, ratioY: 0.95 } } } },
+        seatOffsets: { left: { ratioX: 0.37, ratioY: 0.95 } } } },
         anchors: { ground: { ratioX: 0.5, ratioY: 0.9 } } }),
     gear({ id: "redDirectorChair", 
       category: "chair", 
@@ -495,7 +495,7 @@
       image: imagePath("chair", "redDirectorChair", "png"), 
       scene: scene({ x: 75, y: 76 }, 11, 22, { facing: "left" }), 
       interactions: { seatable: { camperFacingMode: "sameAsFurniture", 
-        seatOffsets: { left: { ratioX: 0.3370786517, ratioY: 0.94 } } } }, 
+        seatOffsets: { left: { ratioX: 0.42, ratioY: 0.94 } } } }, 
         anchors: { ground: { ratioX: 0.4494382022, ratioY: 0.9 } } }),
     gear({ id: "tripleCampSofa", 
       category: "chair", 
@@ -505,7 +505,7 @@
       image: imagePath("chair", "tripleCampSofa", "png"), 
       scene: scene({ x: 26, y: 72 }, 18, 23, { facing: "left", mirrored: true }), 
       interactions: { seatable: { camperFacingMode: "sameAsFurniture", 
-        seatOffsets: { left: { ratioX: 0.4, ratioY: 0.99 } } } }, 
+        seatOffsets: { left: { ratioX: 0.5, ratioY: 0.99 } } } }, 
         anchors: { ground: { ratioX: 0.4074074074, ratioY: 0.9 } } }),
     gear({ id: "inflatableLoungeChair", 
       category: "chair", 
@@ -515,7 +515,7 @@
       image: imagePath("chair", "inflatableLoungeChair", "png"), 
       scene: scene({ x: 37, y: 69 }, 14, 22, { facing: "left",mirrored: true }), 
       interactions: { seatable: { camperFacingMode: "sameAsFurniture", 
-        seatOffsets: { left: { ratioX: 0.3333333333, ratioY: 0.95 } } } }, 
+        seatOffsets: { left: { ratioX: 0.38, ratioY: 0.99 } } } }, 
         anchors: { ground: { ratioX: 0.4126984127, ratioY: 0.6687306502 } } }),
     gear({ id: "lowCampChair", 
       category: "chair", 
@@ -525,7 +525,7 @@
       image: imagePath("chair", "lowCampChair", "png"), 
       scene: scene({ x: 55, y: 52 }, 11.5, 22, { facing: "left" }), 
       interactions: { seatable: { camperFacingMode: "sameAsFurniture", 
-        seatOffsets: { left: { ratioX: 0.35, ratioY: 1 } } } }, 
+        seatOffsets: { left: { ratioX: 0.45, ratioY: 1.05 } } } }, 
         anchors: { ground: { ratioX: 0.38585209, ratioY: 0.9 } } }),
 
     gear({ id: "checkerboardTable", 

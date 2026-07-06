@@ -1,6 +1,6 @@
 # Test Build Instructions
 
-当前源码版本：V2.6。
+当前源码版本：V2.7。
 
 ## 包状态
 
