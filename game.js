@@ -562,43 +562,43 @@ const CAMPER_SHEET_FRAME_NAMES = [
   "camper_rest.png"
 ];
 const CAMPER_LAYER_RENDER_ORDER = [
-  { id: "bodyBase", sheet: "camper_body_base.png", appearanceCategory: "body" },
+  { id: "bodyBase", sheet: "camper_body_base.png" },
   { id: "eyes", sheet: "camper_eye_bright.png", appearanceCategory: "eyes" },
   { id: "nose", sheet: "camper_nose_tiny.png", appearanceCategory: "nose" },
   { id: "mouth", sheet: "camper_mouth_smallsmile.png", appearanceCategory: "mouth" },
+  { id: "clothes", sheet: "camper_top_1.png", appearanceCategory: "clothes" },
   { id: "hair", sheet: "camper_hair_short.png", appearanceCategory: "hair" },
-  { id: "bottoms", sheet: "camper_bottoms_denim.png", appearanceCategory: "bottoms" },
-  { id: "top", sheet: "camper_top.png", appearanceCategory: "top" }
+  { id: "accessory", sheet: "", appearanceCategory: "accessory" }
 ];
+const CAMPER_HAIR_COLOR_RANGE = { min: 0, max: 360, step: 1, defaultValue: 0 };
+const CAMPER_APPEARANCE_LEGACY_FIELD_MAP = {
+  clothes: "top"
+};
 const CAMPER_APPEARANCE_CATEGORIES = [
-  { id: "body", label: "体型", renderLayerId: "bodyBase" },
-  { id: "skin", label: "肤色", renderLayerId: "bodyBase" },
   { id: "hair", label: "发型", renderLayerId: "hair" },
+  { id: "hairColor", label: "发色", renderLayerId: "hair", control: "range", min: CAMPER_HAIR_COLOR_RANGE.min, max: CAMPER_HAIR_COLOR_RANGE.max, step: CAMPER_HAIR_COLOR_RANGE.step, defaultValue: CAMPER_HAIR_COLOR_RANGE.defaultValue },
   { id: "eyes", label: "眼睛", renderLayerId: "eyes" },
   { id: "nose", label: "鼻子", renderLayerId: "nose" },
   { id: "mouth", label: "嘴巴", renderLayerId: "mouth" },
-  { id: "top", label: "上衣", renderLayerId: "top" },
-  { id: "bottoms", label: "下装", renderLayerId: "bottoms" }
+  { id: "clothes", label: "衣服", renderLayerId: "clothes" },
+  { id: "accessory", label: "配饰", renderLayerId: "accessory" },
 ];
 const CAMPER_APPEARANCE_OPTIONS = {
-  body: [
-    { id: "base", label: "标准体型", assetSheet: "camper_body_base.png" },
-    { id: "strong", label: "强壮体型", assetSheet: "camper_body_strong.png" },
-    { id: "thin", label: "纤细体型", assetSheet: "camper_body_thin.png" }
-  ],
-  skin: [
-    { id: "warm", label: "Warm Skin", assetSheet: "camper_body_base.png" },
-    { id: "sunny", label: "Sunny Skin", assetSheet: "camper_body_base.png" },
-    { id: "rose", label: "Rose Skin", assetSheet: "camper_body_base.png" }
-  ],
   hair: [
-    { id: "short", label: "短发", assetSheet: "camper_hair_short.png" },
+    { id: "bob", label: "短发", assetSheet: "camper_hair_bob.png" },
+    { id: "short", label: "少年发", assetSheet: "camper_hair_short.png" },
     { id: "short-curl", label: "短卷发", assetSheet: "camper_hair_shortcurl.png" },
-    { id: "long-straight", label: "长直发", assetSheet: "camper_hair_long straight.png" }
+    { id: "longb-braided", label: "麻花辫", assetSheet: "camper_hair_longbraided.png" }
+  ],
+  accessory: [
+    { id: "none", label: "无配饰", assetSheet: "" },
+    { id: "hat", label: "帽子", assetSheet: "camper_accessory_hat.png" },
+    { id: "hat2", label: "帽兜", assetSheet: "camper_accessory_hat2.png" }
   ],
   eyes: [
+    { id: "watering", label: "水汪汪", assetSheet: "camper_eye_watering.png" },
     { id: "bright", label: "明亮眼睛", assetSheet: "camper_eye_bright.png" },
-    { id: "sleepy", label: "困倦眼睛", assetSheet: "camper_eye_sleepy.png" },
+    { id: "smile", label: "眯眯眼", assetSheet: "camper_eye_smile.png" },
     { id: "determined", label: "坚毅眼神", assetSheet: "camper_eye_determined.png" }
   ],
   nose: [
@@ -607,19 +607,16 @@ const CAMPER_APPEARANCE_OPTIONS = {
     { id: "determined", label: "利落鼻子", assetSheet: "camper_nose_determined.png" }
   ],
   mouth: [
-    { id: "small-smile", label: "小微笑", assetSheet: "camper_mouth_smallsmile.png" },
-    { id: "rabbit", label: "兔牙嘴", assetSheet: "camper_mouth_rabbit.png" },
-    { id: "determined", label: "坚定嘴型", assetSheet: "camper_mouth_determined.png" }
+    { id: "small-smile", label: "微笑", assetSheet: "camper_mouth_smallsmile.png" },
+    { id: "laugh", label: "开朗", assetSheet: "camper_mouth_laugh.png" },
+    { id: "determined", label: "坚定", assetSheet: "camper_mouth_determined.png" }
   ],
-  top: [
-    { id: "top-1", label: "上衣 1", assetSheet: "camper_top_1.png" },
-    { id: "top-2", label: "上衣 2", assetSheet: "camper_top_2.png" },
-    { id: "top-3", label: "上衣 3", assetSheet: "camper_top_3.png" }
-  ],
-  bottoms: [
-    { id: "denim", label: "牛仔裤", assetSheet: "camper_bottoms_denim.png" },
-    { id: "shorts", label: "短裤", assetSheet: "camper_bottoms_shorts.png" },
-    { id: "skirt", label: "裙装", assetSheet: "camper_bottoms_skirt.png" }
+  clothes: [
+    { id: "top-1", label: "秋野漫步", assetSheet: "camper_top_1.png" }, 
+    { id: "top-2", label: "雨林夜行", assetSheet: "camper_top_2.png" },
+    { id: "top-3", label: "森间茶歇", assetSheet: "camper_top_3.png" },
+    { id: "top-4", label: "山径轻装", assetSheet: "camper_top_4.png" },
+    { id: "top-5", label: "松影斗篷", assetSheet: "camper_top_5.png" }
   ]
 };
 
@@ -3023,8 +3020,57 @@ function getCamperAppearanceOptions(categoryId) {
   return CAMPER_APPEARANCE_OPTIONS[categoryId] || [];
 }
 
+function getCamperAppearanceCategory(categoryId) {
+  return CAMPER_APPEARANCE_CATEGORIES.find(function(category) {
+    return category.id === categoryId;
+  }) || null;
+}
+
+function isCamperAppearanceRangeCategory(category) {
+  return Boolean(category && category.control === "range");
+}
+
+function getCamperAppearanceRangeValue(value, category) {
+  const min = Number.isFinite(category && category.min) ? category.min : 0;
+  const max = Number.isFinite(category && category.max) ? category.max : min;
+  const step = Number.isFinite(category && category.step) && category.step > 0 ? category.step : 1;
+  const defaultValue = Number.isFinite(category && category.defaultValue) ? category.defaultValue : min;
+  const requestedValue = Number(value);
+  const safeValue = Number.isFinite(requestedValue) ? requestedValue : defaultValue;
+  const steppedValue = min + Math.round((clamp(safeValue, min, max) - min) / step) * step;
+
+  return clamp(steppedValue, min, max);
+}
+
+function getRandomCamperAppearanceRangeValue(category) {
+  const min = Number.isFinite(category && category.min) ? category.min : 0;
+  const max = Number.isFinite(category && category.max) ? category.max : min;
+  const step = Number.isFinite(category && category.step) && category.step > 0 ? category.step : 1;
+  const stepCount = Math.max(0, Math.floor((max - min) / step));
+
+  return clamp(min + Math.floor(Math.random() * (stepCount + 1)) * step, min, max);
+}
+
+function getCamperAppearanceInputValue(input, category) {
+  if (!category) {
+    return undefined;
+  }
+
+  if (input[category.id] !== undefined) {
+    return input[category.id];
+  }
+
+  const legacyField = CAMPER_APPEARANCE_LEGACY_FIELD_MAP[category.id];
+  return legacyField ? input[legacyField] : undefined;
+}
+
 function getDefaultCamperAppearance() {
   return CAMPER_APPEARANCE_CATEGORIES.reduce(function(appearance, category) {
+    if (isCamperAppearanceRangeCategory(category)) {
+      appearance[category.id] = getCamperAppearanceRangeValue(category.defaultValue, category);
+      return appearance;
+    }
+
     const options = getCamperAppearanceOptions(category.id);
     appearance[category.id] = options[0] ? options[0].id : "";
     return appearance;
@@ -3036,8 +3082,13 @@ function normalizeCamperAppearance(appearance) {
   const fallback = getDefaultCamperAppearance();
 
   CAMPER_APPEARANCE_CATEGORIES.forEach(function(category) {
+    if (isCamperAppearanceRangeCategory(category)) {
+      fallback[category.id] = getCamperAppearanceRangeValue(getCamperAppearanceInputValue(input, category), category);
+      return;
+    }
+
     const options = getCamperAppearanceOptions(category.id);
-    const requestedId = input[category.id];
+    const requestedId = getCamperAppearanceInputValue(input, category);
     const validOption = options.find(function(option) {
       return option.id === requestedId;
     });
@@ -3050,6 +3101,11 @@ function normalizeCamperAppearance(appearance) {
 
 function getRandomCamperAppearance() {
   return CAMPER_APPEARANCE_CATEGORIES.reduce(function(appearance, category) {
+    if (isCamperAppearanceRangeCategory(category)) {
+      appearance[category.id] = getRandomCamperAppearanceRangeValue(category);
+      return appearance;
+    }
+
     const options = getCamperAppearanceOptions(category.id);
     const option = options[Math.floor(Math.random() * options.length)] || options[0];
     appearance[category.id] = option ? option.id : "";
@@ -3081,18 +3137,33 @@ function getActiveCamperAppearance() {
 }
 
 function getCamperLayerAssetSheet(layer, appearance) {
-  if (layer.id === "bodyBase") {
-    const bodyOption = getCamperAppearanceOption("body", appearance);
-    return bodyOption && bodyOption.assetSheet || layer.sheet;
+  if (!layer.appearanceCategory) {
+    return layer.sheet;
   }
 
   const option = getCamperAppearanceOption(layer.appearanceCategory, appearance);
-  return option && option.assetSheet || layer.sheet;
+  return option && Object.prototype.hasOwnProperty.call(option, "assetSheet") ? option.assetSheet : layer.sheet;
 }
 
 function getCamperLayerSheetPath(layer, appearance) {
   const assetSheet = getCamperLayerAssetSheet(layer, appearance);
+  if (!assetSheet) {
+    return "";
+  }
+
   return withVersion(CAMPER_LAYER_SHEET_ROOT + "/" + assetSheet);
+}
+
+function getCamperHairColorFilter(appearance) {
+  const hairColorCategory = getCamperAppearanceCategory("hairColor");
+  const normalizedAppearance = normalizeCamperAppearance(appearance);
+  const hue = getCamperAppearanceRangeValue(normalizedAppearance.hairColor, hairColorCategory);
+
+  if (hue === CAMPER_HAIR_COLOR_RANGE.defaultValue) {
+    return "";
+  }
+
+  return "hue-rotate(" + hue + "deg) saturate(1.08)";
 }
 
 function getCamperSheetFrameIndex(frameName) {
@@ -3135,6 +3206,40 @@ function ensureCamperLayerElement(container, layer) {
   return element;
 }
 
+function removeUnusedCamperLayerElements(container) {
+  const activeLayerIds = CAMPER_LAYER_RENDER_ORDER.map(function(layer) {
+    return layer.id;
+  });
+
+  Array.from(container.querySelectorAll("[data-camper-layer]")).forEach(function(element) {
+    if (activeLayerIds.indexOf(element.dataset.camperLayer) === -1) {
+      element.remove();
+    }
+  });
+}
+
+function applyCamperLayerAppearance(element, layer, appearance) {
+  if (!element) {
+    return;
+  }
+
+  if (layer.id === "hair") {
+    const nextFilter = getCamperHairColorFilter(appearance);
+
+    if (element.dataset.camperHairColorFilter !== nextFilter) {
+      element.style.filter = nextFilter;
+      element.dataset.camperHairColorFilter = nextFilter;
+    }
+
+    return;
+  }
+
+  if (element.dataset.camperHairColorFilter !== undefined) {
+    element.style.filter = "";
+    delete element.dataset.camperHairColorFilter;
+  }
+}
+
 function renderCamperLayerStack(container, appearance, frameName) {
   if (!container) {
     return;
@@ -3145,12 +3250,27 @@ function renderCamperLayerStack(container, appearance, frameName) {
   const sheetPosition = getCamperSheetPosition(activeFrameName);
   const backgroundPosition = sheetPosition.x + "% " + sheetPosition.y + "%";
 
+  removeUnusedCamperLayerElements(container);
+
   CAMPER_LAYER_RENDER_ORDER.forEach(function(layer) {
     const element = ensureCamperLayerElement(container, layer);
     const nextPath = getCamperLayerSheetPath(layer, normalizedAppearance);
 
     if (!element) {
       return;
+    }
+
+    if (!nextPath) {
+      if (element.dataset.camperLayerSrc !== "") {
+        element.style.backgroundImage = "";
+        element.dataset.camperLayerSrc = "";
+      }
+      element.style.display = "none";
+      return;
+    }
+
+    if (element.style.display === "none") {
+      element.style.display = "";
     }
 
     if (element.dataset.camperLayerSrc !== nextPath) {
@@ -3162,6 +3282,8 @@ function renderCamperLayerStack(container, appearance, frameName) {
       element.style.backgroundPosition = backgroundPosition;
       element.dataset.camperFramePosition = backgroundPosition;
     }
+
+    applyCamperLayerAppearance(element, layer, normalizedAppearance);
   });
 }
 
@@ -3204,18 +3326,47 @@ function renderCamperAppearanceControls() {
   camperAppearanceControls.innerHTML = "";
 
   CAMPER_APPEARANCE_CATEGORIES.forEach(function(category) {
-    const options = getCamperAppearanceOptions(category.id);
-    const optionIndex = getCamperAppearanceOptionIndex(category.id, appearance);
-    const option = options[optionIndex] || options[0];
     const row = document.createElement("div");
     const label = document.createElement("span");
-    const previousButton = document.createElement("button");
-    const value = document.createElement("strong");
-    const nextButton = document.createElement("button");
 
     row.className = "camper-appearance-row";
     label.className = "camper-appearance-label";
     label.textContent = category.label;
+
+    if (isCamperAppearanceRangeCategory(category)) {
+      const rangeValue = getCamperAppearanceRangeValue(appearance[category.id], category);
+      const slider = document.createElement("input");
+      const value = document.createElement("strong");
+
+      row.className += " camper-appearance-range-row";
+      slider.className = "camper-appearance-slider";
+      slider.type = "range";
+      slider.min = String(category.min);
+      slider.max = String(category.max);
+      slider.step = String(category.step);
+      slider.value = String(rangeValue);
+      slider.setAttribute("aria-label", category.label);
+      slider.addEventListener("input", function(event) {
+        const nextValue = changeCamperAppearanceRange(category.id, event.currentTarget.value);
+        value.textContent = Math.round(nextValue) + "°";
+      });
+
+      value.className = "camper-appearance-value camper-appearance-color-value";
+      value.textContent = Math.round(rangeValue) + "°";
+
+      row.appendChild(label);
+      row.appendChild(slider);
+      row.appendChild(value);
+      camperAppearanceControls.appendChild(row);
+      return;
+    }
+
+    const options = getCamperAppearanceOptions(category.id);
+    const optionIndex = getCamperAppearanceOptionIndex(category.id, appearance);
+    const option = options[optionIndex] || options[0];
+    const previousButton = document.createElement("button");
+    const value = document.createElement("strong");
+    const nextButton = document.createElement("button");
 
     previousButton.className = "camper-appearance-arrow";
     previousButton.type = "button";
@@ -3266,6 +3417,24 @@ function changeCamperAppearanceOption(categoryId, direction) {
   renderCamperAppearanceControls();
   updateCamperAppearancePreview();
   updateCamperSprite();
+}
+
+function changeCamperAppearanceRange(categoryId, value) {
+  const category = getCamperAppearanceCategory(categoryId);
+
+  if (!isCamperAppearanceRangeCategory(category)) {
+    return 0;
+  }
+
+  const currentAppearance = normalizeCamperAppearance(camperProfileDraftAppearance);
+  const nextValue = getCamperAppearanceRangeValue(value, category);
+
+  currentAppearance[categoryId] = nextValue;
+  camperProfileDraftAppearance = currentAppearance;
+  updateCamperAppearancePreview();
+  updateCamperSprite();
+
+  return nextValue;
 }
 
 function getActiveCamperProfile(state) {
@@ -3564,7 +3733,7 @@ function updateCamperProfileView() {
     camperProfileBody.textContent = camperProfileMode === "appearanceOnly" ? "只会更新小人外观，昵称、性格、口头禅和背景都会保留。" : "先捏一下小人，再答几个轻松的小问题。";
     camperProfilePrimaryButton.textContent = camperProfileMode === "appearanceOnly" ? "保存外观" : "Start questions";
     camperProfilePrimaryButton.disabled = false;
-    camperProfileSecondaryButton.textContent = "Random look";
+    camperProfileSecondaryButton.textContent = "随机";
     renderCamperAppearanceControls();
     updateCamperAppearancePreview();
   } else if (isQuestionStep && currentQuestion) {
