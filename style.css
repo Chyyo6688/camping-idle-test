@@ -456,6 +456,32 @@ body.night .string-lights-glow {
   filter: drop-shadow(0 4px 3px rgba(10, 14, 9, 0.26));
 }
 
+.activity-zone-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 28;
+  pointer-events: none;
+}
+
+.activity-zone {
+  position: absolute;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.activity-zone.hidden {
+  display: none;
+}
+
+.activity-zone:focus-visible {
+  outline: 2px solid rgba(255, 209, 122, 0.62);
+  outline-offset: 2px;
+}
+
 .gear-object > .object-image,
 .gear-front-layer > .object-image,
 .campfire > .object-image {
@@ -742,7 +768,7 @@ body.night .campfire.lit .fire-glow-img {
   width: 100%;
   height: 100%;
   background-repeat: no-repeat;
-  background-size: 700% 300%;
+  background-size: 700% 500%;
   image-rendering: auto;
   pointer-events: none;
   backface-visibility: hidden;

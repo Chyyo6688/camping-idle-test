@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 from pathlib import Path
 
@@ -11,8 +12,6 @@ from PIL import Image
 FRAME_WIDTH = 128
 FRAME_HEIGHT = 144
 COLUMNS = 7
-ROWS = 3
-EXPECTED_SIZE = (FRAME_WIDTH * COLUMNS, FRAME_HEIGHT * ROWS)
 
 FRAME_NAMES = [
     "camper_idle.png",
@@ -34,12 +33,29 @@ FRAME_NAMES = [
     "camper_sit_chair.png",
     "camper_look_lake_back.png",
     "camper_rest.png",
+    "camper_activity_cook_01.png",
+    "camper_activity_cook_02.png",
+    "camper_activity_cook_03.png",
+    "camper_activity_cook_04.png",
+    "camper_activity_fish_01.png",
+    "camper_activity_fish_02.png",
+    "camper_activity_fish_03.png",
+    "camper_activity_fish_04.png",
+    "camper_activity_birdwatch_01.png",
+    "camper_activity_birdwatch_02.png",
+    "camper_activity_birdwatch_03.png",
+    "camper_activity_birdwatch_04.png",
 ]
+ROWS = math.ceil(len(FRAME_NAMES) / COLUMNS)
+EXPECTED_SIZE = (FRAME_WIDTH * COLUMNS, FRAME_HEIGHT * ROWS)
 
 
 def read_game_asset_sheets(game_js_path: Path) -> list[str]:
     game_js = game_js_path.read_text(encoding="utf-8")
-    return sorted(set(re.findall(r'assetSheet:\s*"([^"]+)"', game_js)))
+    sheets = set(re.findall(r'assetSheet:\s*"([^"]+)"', game_js))
+    sheets.update(re.findall(r'sheet:\s*"([^"]+\.png)"', game_js))
+    sheets.discard("")
+    return sorted(sheets)
 
 
 def validate_sheet(sheet_dir: Path, sheet_name: str) -> dict[str, object]:

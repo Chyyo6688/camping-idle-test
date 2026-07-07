@@ -2,7 +2,7 @@
   "frameWidth": 128,
   "frameHeight": 144,
   "columns": 7,
-  "rows": 3,
+  "rows": 5,
   "frameNames": [
     "camper_idle.png",
     "camper_walk_01.png",
@@ -22,39 +22,88 @@
     "camper_sit_ground.png",
     "camper_sit_chair.png",
     "camper_look_lake_back.png",
-    "camper_rest.png"
+    "camper_rest.png",
+    "camper_activity_cook_01.png",
+    "camper_activity_cook_02.png",
+    "camper_activity_cook_03.png",
+    "camper_activity_cook_04.png",
+    "camper_activity_fish_01.png",
+    "camper_activity_fish_02.png",
+    "camper_activity_fish_03.png",
+    "camper_activity_fish_04.png",
+    "camper_activity_birdwatch_01.png",
+    "camper_activity_birdwatch_02.png",
+    "camper_activity_birdwatch_03.png",
+    "camper_activity_birdwatch_04.png"
   ],
   "sourceDir": "assets/characters",
   "renderMode": "css-sheet-background-position",
   "sheets": [
+    "camper_accessory_hat.png",
+    "camper_accessory_hat2.png",
     "camper_body_base.png",
-    "camper_body_strong.png",
-    "camper_body_thin.png",
-    "camper_bottoms_denim.png",
-    "camper_bottoms_shorts.png",
-    "camper_bottoms_skirt.png",
     "camper_eye_bright.png",
-    "camper_eye_determined - Copy.png",
-    "camper_eye_sleepy.png",
-    "camper_hair_long straight.png",
+    "camper_eye_determined.png",
+    "camper_eye_smile.png",
+    "camper_eye_watering.png",
+    "camper_hair_bob.png",
+    "camper_hair_longbraided.png",
     "camper_hair_short.png",
     "camper_hair_shortcurl.png",
     "camper_mouth_determined.png",
-    "camper_mouth_rabbit.png",
+    "camper_mouth_laugh.png",
     "camper_mouth_smallsmile.png",
     "camper_nose_button.png",
     "camper_nose_determined.png",
     "camper_nose_tiny.png",
     "camper_top_1.png",
     "camper_top_2.png",
-    "camper_top_3.png"
+    "camper_top_3.png",
+    "camper_top_4.png",
+    "camper_top_5.png"
   ],
   "details": {
+    "camper_accessory_hat.png": {
+      "path": "assets/characters/camper_accessory_hat.png",
+      "size": [
+        896,
+        720
+      ],
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "bbox": [
+        35,
+        7,
+        862,
+        622
+      ]
+    },
+    "camper_accessory_hat2.png": {
+      "path": "assets/characters/camper_accessory_hat2.png",
+      "size": [
+        896,
+        720
+      ],
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "bbox": [
+        30,
+        2,
+        858,
+        631
+      ]
+    },
     "camper_body_base.png": {
       "path": "assets/characters/camper_body_base.png",
       "size": [
         896,
-        432
+        720
       ],
       "mode": "RGBA",
       "alphaExtrema": [
@@ -62,107 +111,17 @@
         255
       ],
       "bbox": [
-        36,
-        9,
-        873,
-        430
-      ]
-    },
-    "camper_body_strong.png": {
-      "path": "assets/characters/camper_body_strong.png",
-      "size": [
-        896,
-        432
-      ],
-      "mode": "RGBA",
-      "alphaExtrema": [
-        0,
-        255
-      ],
-      "bbox": [
-        36,
-        9,
-        873,
-        430
-      ]
-    },
-    "camper_body_thin.png": {
-      "path": "assets/characters/camper_body_thin.png",
-      "size": [
-        896,
-        432
-      ],
-      "mode": "RGBA",
-      "alphaExtrema": [
-        0,
-        255
-      ],
-      "bbox": [
-        36,
-        9,
-        873,
-        430
-      ]
-    },
-    "camper_bottoms_denim.png": {
-      "path": "assets/characters/camper_bottoms_denim.png",
-      "size": [
-        896,
-        432
-      ],
-      "mode": "RGBA",
-      "alphaExtrema": [
-        0,
-        255
-      ],
-      "bbox": [
-        43,
-        78,
-        861,
-        420
-      ]
-    },
-    "camper_bottoms_shorts.png": {
-      "path": "assets/characters/camper_bottoms_shorts.png",
-      "size": [
-        896,
-        432
-      ],
-      "mode": "RGBA",
-      "alphaExtrema": [
-        0,
-        255
-      ],
-      "bbox": [
-        43,
-        78,
-        853,
-        420
-      ]
-    },
-    "camper_bottoms_skirt.png": {
-      "path": "assets/characters/camper_bottoms_skirt.png",
-      "size": [
-        896,
-        432
-      ],
-      "mode": "RGBA",
-      "alphaExtrema": [
-        0,
-        255
-      ],
-      "bbox": [
-        43,
-        78,
-        853,
-        420
+        45,
+        10,
+        851,
+        657
       ]
     },
     "camper_eye_bright.png": {
       "path": "assets/characters/camper_eye_bright.png",
       "size": [
         896,
-        432
+        720
       ],
       "mode": "RGBA",
       "alphaExtrema": [
@@ -170,17 +129,17 @@
         255
       ],
       "bbox": [
-        59,
-        31,
-        855,
-        402
+        60,
+        32,
+        850,
+        621
       ]
     },
     "camper_eye_determined.png": {
-      "path": "assets/characters/camper_eye_determined - Copy.png",
+      "path": "assets/characters/camper_eye_determined.png",
       "size": [
         896,
-        432
+        720
       ],
       "mode": "RGBA",
       "alphaExtrema": [
@@ -188,17 +147,17 @@
         255
       ],
       "bbox": [
-        59,
-        36,
-        850,
-        402
+        60,
+        33,
+        849,
+        621
       ]
     },
-    "camper_eye_sleepy.png": {
-      "path": "assets/characters/camper_eye_sleepy.png",
+    "camper_eye_smile.png": {
+      "path": "assets/characters/camper_eye_smile.png",
       "size": [
         896,
-        432
+        720
       ],
       "mode": "RGBA",
       "alphaExtrema": [
@@ -206,17 +165,17 @@
         255
       ],
       "bbox": [
-        59,
-        36,
+        47,
+        20,
         850,
-        402
+        623
       ]
     },
-    "camper_hair_long straight.png": {
-      "path": "assets/characters/camper_hair_long straight.png",
+    "camper_eye_watering.png": {
+      "path": "assets/characters/camper_eye_watering.png",
       "size": [
         896,
-        432
+        720
       ],
       "mode": "RGBA",
       "alphaExtrema": [
@@ -224,17 +183,53 @@
         255
       ],
       "bbox": [
-        34,
-        2,
-        865,
-        398
+        41,
+        23,
+        856,
+        626
+      ]
+    },
+    "camper_hair_bob.png": {
+      "path": "assets/characters/camper_hair_bob.png",
+      "size": [
+        896,
+        720
+      ],
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "bbox": [
+        39,
+        9,
+        855,
+        637
+      ]
+    },
+    "camper_hair_longbraided.png": {
+      "path": "assets/characters/camper_hair_longbraided.png",
+      "size": [
+        896,
+        720
+      ],
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "bbox": [
+        41,
+        12,
+        856,
+        677
       ]
     },
     "camper_hair_short.png": {
       "path": "assets/characters/camper_hair_short.png",
       "size": [
         896,
-        432
+        720
       ],
       "mode": "RGBA",
       "alphaExtrema": [
@@ -243,16 +238,16 @@
       ],
       "bbox": [
         34,
-        2,
-        865,
-        398
+        5,
+        861,
+        638
       ]
     },
     "camper_hair_shortcurl.png": {
       "path": "assets/characters/camper_hair_shortcurl.png",
       "size": [
         896,
-        432
+        720
       ],
       "mode": "RGBA",
       "alphaExtrema": [
@@ -260,17 +255,17 @@
         255
       ],
       "bbox": [
-        34,
-        2,
-        865,
-        398
+        35,
+        12,
+        858,
+        637
       ]
     },
     "camper_mouth_determined.png": {
       "path": "assets/characters/camper_mouth_determined.png",
       "size": [
         896,
-        432
+        720
       ],
       "mode": "RGBA",
       "alphaExtrema": [
@@ -278,17 +273,17 @@
         255
       ],
       "bbox": [
-        71,
-        52,
-        843,
-        358
+        41,
+        23,
+        856,
+        630
       ]
     },
-    "camper_mouth_rabbit.png": {
-      "path": "assets/characters/camper_mouth_rabbit.png",
+    "camper_mouth_laugh.png": {
+      "path": "assets/characters/camper_mouth_laugh.png",
       "size": [
         896,
-        432
+        720
       ],
       "mode": "RGBA",
       "alphaExtrema": [
@@ -296,17 +291,17 @@
         255
       ],
       "bbox": [
-        66,
+        63,
         46,
-        847,
-        398
+        846,
+        628
       ]
     },
     "camper_mouth_smallsmile.png": {
       "path": "assets/characters/camper_mouth_smallsmile.png",
       "size": [
         896,
-        432
+        720
       ],
       "mode": "RGBA",
       "alphaExtrema": [
@@ -314,17 +309,17 @@
         255
       ],
       "bbox": [
-        66,
-        46,
-        847,
-        398
+        58,
+        23,
+        848,
+        630
       ]
     },
     "camper_nose_button.png": {
       "path": "assets/characters/camper_nose_button.png",
       "size": [
         896,
-        432
+        720
       ],
       "mode": "RGBA",
       "alphaExtrema": [
@@ -332,17 +327,17 @@
         255
       ],
       "bbox": [
-        74,
-        45,
-        845,
-        395
+        72,
+        44,
+        844,
+        623
       ]
     },
     "camper_nose_determined.png": {
       "path": "assets/characters/camper_nose_determined.png",
       "size": [
         896,
-        432
+        720
       ],
       "mode": "RGBA",
       "alphaExtrema": [
@@ -350,17 +345,17 @@
         209
       ],
       "bbox": [
-        73,
-        47,
+        72,
+        42,
         844,
-        396
+        623
       ]
     },
     "camper_nose_tiny.png": {
       "path": "assets/characters/camper_nose_tiny.png",
       "size": [
         896,
-        432
+        720
       ],
       "mode": "RGBA",
       "alphaExtrema": [
@@ -368,17 +363,17 @@
         255
       ],
       "bbox": [
-        74,
-        45,
-        845,
-        395
+        41,
+        23,
+        856,
+        626
       ]
     },
     "camper_top_1.png": {
       "path": "assets/characters/camper_top_1.png",
       "size": [
         896,
-        432
+        720
       ],
       "mode": "RGBA",
       "alphaExtrema": [
@@ -387,16 +382,16 @@
       ],
       "bbox": [
         35,
-        47,
-        860,
-        413
+        50,
+        875,
+        714
       ]
     },
     "camper_top_2.png": {
       "path": "assets/characters/camper_top_2.png",
       "size": [
         896,
-        432
+        720
       ],
       "mode": "RGBA",
       "alphaExtrema": [
@@ -404,17 +399,17 @@
         255
       ],
       "bbox": [
-        35,
-        47,
-        860,
-        413
+        19,
+        50,
+        874,
+        713
       ]
     },
     "camper_top_3.png": {
       "path": "assets/characters/camper_top_3.png",
       "size": [
         896,
-        432
+        720
       ],
       "mode": "RGBA",
       "alphaExtrema": [
@@ -422,10 +417,46 @@
         255
       ],
       "bbox": [
-        35,
+        37,
+        25,
+        873,
+        715
+      ]
+    },
+    "camper_top_4.png": {
+      "path": "assets/characters/camper_top_4.png",
+      "size": [
+        896,
+        720
+      ],
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "bbox": [
+        36,
+        44,
+        874,
+        714
+      ]
+    },
+    "camper_top_5.png": {
+      "path": "assets/characters/camper_top_5.png",
+      "size": [
+        896,
+        720
+      ],
+      "mode": "RGBA",
+      "alphaExtrema": [
+        0,
+        255
+      ],
+      "bbox": [
+        25,
         47,
-        860,
-        413
+        874,
+        713
       ]
     }
   }

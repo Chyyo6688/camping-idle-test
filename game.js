@@ -1,5 +1,5 @@
 const SAVE_KEY = "cozyCampfireSave";
-const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "2.8";
+const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "2.9";
 
 function withVersion(path) {
   const separator = path.includes("?") ? "&" : "?";
@@ -71,7 +71,10 @@ const CAMPER_BODY_RECTS = {
   sittingChair: { ratioX: 0.22, ratioY: 0.3, ratioWidth: 0.56, ratioHeight: 0.58 },
   resting: { ratioX: 0.16, ratioY: 0.45, ratioWidth: 0.68, ratioHeight: 0.38 },
   tentRest: { ratioX: 0.16, ratioY: 0.45, ratioWidth: 0.68, ratioHeight: 0.38 },
-  lookingLakeBack: { ratioX: 0.3, ratioY: 0.14, ratioWidth: 0.4, ratioHeight: 0.78 }
+  lookingLakeBack: { ratioX: 0.3, ratioY: 0.14, ratioWidth: 0.4, ratioHeight: 0.78 },
+  activityCook: { ratioX: 0.28, ratioY: 0.12, ratioWidth: 0.44, ratioHeight: 0.8 },
+  activityFish: { ratioX: 0.22, ratioY: 0.12, ratioWidth: 0.56, ratioHeight: 0.8 },
+  activityBirdwatch: { ratioX: 0.24, ratioY: 0.12, ratioWidth: 0.52, ratioHeight: 0.8 }
 };
 const CAMPER_THOUGHT_RECTS = {
   default: { ratioX: 0.5, ratioY: 0.06 },
@@ -81,7 +84,10 @@ const CAMPER_THOUGHT_RECTS = {
   sittingChair: { ratioX: 0.5, ratioY: 0.24 },
   resting: { ratioX: 0.5, ratioY: 0.4 },
   tentRest: { ratioX: 0.5, ratioY: 0.4 },
-  lookingLakeBack: { ratioX: 0.5, ratioY: 0.06 }
+  lookingLakeBack: { ratioX: 0.5, ratioY: 0.06 },
+  activityCook: { ratioX: 0.5, ratioY: 0.05 },
+  activityFish: { ratioX: 0.5, ratioY: 0.05 },
+  activityBirdwatch: { ratioX: 0.5, ratioY: 0.05 }
 };
 const DEFAULT_COLLISION_FOOTPRINTS = {
   vehicle: { ratioX: 0.14, ratioY: 0.62, ratioWidth: 0.72, ratioHeight: 0.28 },
@@ -186,6 +192,7 @@ const defaultGameState = {
   userDepthOffsetY: {},
   userGearPositions: {},
   userGearMountOffsets: {},
+  activityStats: {},
   camperProfileVersion: 0,
   activeCamperIndex: 0,
   campers: [],
@@ -210,6 +217,7 @@ function createDefaultGameState() {
     userDepthOffsetY: { ...defaultGameState.userDepthOffsetY },
     userGearPositions: { ...defaultGameState.userGearPositions },
     userGearMountOffsets: { ...defaultGameState.userGearMountOffsets },
+    activityStats: { ...defaultGameState.activityStats },
     camperProfileVersion: defaultGameState.camperProfileVersion,
     activeCamperIndex: defaultGameState.activeCamperIndex,
     campers: defaultGameState.campers.map(function(camperProfile) {
@@ -250,6 +258,7 @@ const maxOfflineEarningsSeconds = 2 * 60 * 60;
 const economyResetCozyPoints = 500;
 const maxWoodItems = 5;
 const camperFrameDurationMs = 120;
+const camperActivityFrameDurationMs = 280;
 const camperSpriteRefreshMs = 100;
 const DEV_SCENE_PLACEHOLDER_SIZE = 64;
 
@@ -288,7 +297,25 @@ const assetPaths = versionAssetPaths({
       sitGround: "camper_sit_ground.png",
       sitChair: "camper_sit_chair.png",
       lookLakeBack: "camper_look_lake_back.png",
-      rest: "camper_rest.png"
+      rest: "camper_rest.png",
+      activityFrames: {
+        cook: [
+          "camper_activity_cook_01.png",
+          "camper_activity_cook_02.png",
+          "camper_activity_cook_03.png"
+        ],
+        fish: [
+          "camper_activity_fish_01.png",
+          "camper_activity_fish_02.png",
+          "camper_activity_fish_03.png",
+          "camper_activity_fish_04.png"
+        ],
+        birdwatch: [
+          "camper_activity_birdwatch_01.png",
+          "camper_activity_birdwatch_02.png",
+          "camper_activity_birdwatch_03.png",
+        ]
+      }
     }
   },
   campfire: {
@@ -330,6 +357,7 @@ let camper = {
   target: null,
   actionAfterArrival: null,
   currentAction: null,
+  currentActivityId: "",
   actionTimer: 0,
   targetWoodId: null,
   woodCollectionSource: null,
@@ -366,6 +394,7 @@ let buildDragState = null;
 let buildHitCanvas = null;
 let buildHitCanvasContext = null;
 let suppressNextBuildClick = false;
+let activityZoneLayer = null;
 
 // These variables connect JavaScript to the HTML.
 const cozyPointsAmount = document.getElementById("cozyPointsAmount");
@@ -521,6 +550,81 @@ const campSpots = {
   rest: { x: 24, y: 81 }
 };
 
+const ACTIVITY_ZONE_TARGET_PREFIX = "zone:";
+const activityZones = {
+  lakeFishing: {
+    id: "lakeFishing",
+    activityId: "fish",
+    label: "Lake fishing spot",
+    bounds: { x: 36, y: 43, width: 28, height: 16 },
+    target: { x: 47, y: 52.5, activityFacing: "right" }
+  },
+  lakeBirdwatch: {
+    id: "lakeBirdwatch",
+    activityId: "birdwatch",
+    label: "Lake birdwatching spot",
+    bounds: { x: 58, y: 47, width: 22, height: 18 },
+    target: { x: 62, y: 58, activityFacing: "left" }
+  },
+  treelineBirdwatch: {
+    id: "treelineBirdwatch",
+    activityId: "birdwatch",
+    label: "Treeline birdwatching spot",
+    bounds: { x: 15, y: 34, width: 28, height: 22 },
+    target: { x: 32, y: 56, activityFacing: "left" }
+  }
+};
+
+const activityDefinitions = {
+  cook: {
+    id: "cook",
+    label: "Cook",
+    actionLabel: "Cooking at camp",
+    targetLabel: "camp kitchen",
+    durationSeconds: 4.2,
+    weight: 2.6,
+    pose: "activityCook",
+    targetOffset: { x: 0, y: 2.2 },
+    targetPoint: { ratioX: 0.5, ratioY: 1 },
+    requires: {
+      anyGearCategory: ["stove", "table", "cooler"],
+      anyGearId: ["kitchenCarryCase"]
+    },
+    gearCategories: ["stove", "table", "cooler"],
+    gearIds: ["kitchenCarryCase"]
+  },
+  fish: {
+    id: "fish",
+    label: "Fish",
+    actionLabel: "Fishing by the lake",
+    targetLabel: "the lake",
+    durationSeconds: 4.8,
+    weight: 2.4,
+    pose: "activityFish",
+    targetOffset: { x: 0, y: 1.8 },
+    targetPoint: { ratioX: 0.5, ratioY: 1 },
+    requires: { area: "lake" },
+    gearIds: ["fishingRod"],
+    zoneIds: ["lakeFishing"],
+    fallbackTarget: { x: 47, y: 52.5, activityFacing: "right" }
+  },
+  birdwatch: {
+    id: "birdwatch",
+    label: "Birdwatch",
+    actionLabel: "Birdwatching",
+    targetLabel: "a quiet lookout",
+    durationSeconds: 4.6,
+    weight: 2,
+    pose: "activityBirdwatch",
+    targetOffset: { x: 0, y: 2 },
+    targetPoint: { ratioX: 0.5, ratioY: 1 },
+    requires: { area: "treelineOrLake" },
+    gearIds: ["binoculars", "cameraTripod"],
+    zoneIds: ["treelineBirdwatch", "lakeBirdwatch"],
+    fallbackTarget: { x: 32, y: 56, activityFacing: "left" }
+  }
+};
+
 let activeShopFilter = "all";
 let statusToastTimer = null;
 let welcomeToastTimer = null;
@@ -547,7 +651,6 @@ let camperCardEditingField = "";
 
 const CAMPER_LAYER_SHEET_ROOT = "assets/characters";
 const CAMPER_SHEET_COLUMNS = 7;
-const CAMPER_SHEET_ROWS = 3;
 const CAMPER_IDLE_FRAME_NAME = "camper_idle.png";
 const CAMPER_SHEET_FRAME_NAMES = [
   "camper_idle.png",
@@ -568,8 +671,22 @@ const CAMPER_SHEET_FRAME_NAMES = [
   "camper_sit_ground.png",
   "camper_sit_chair.png",
   "camper_look_lake_back.png",
-  "camper_rest.png"
+  "camper_rest.png",
+  "__unused_01",
+  "__unused_02",
+  "camper_activity_cook_01.png",
+  "camper_activity_cook_02.png",
+  "camper_activity_cook_03.png",
+  "camper_activity_cook_04.png",
+  "camper_activity_birdwatch_01.png",
+  "camper_activity_birdwatch_02.png",
+  "camper_activity_birdwatch_03.png",
+  "camper_activity_fish_01.png",
+  "camper_activity_fish_02.png",
+  "camper_activity_fish_03.png",
+  "camper_activity_fish_04.png"
 ];
+const CAMPER_SHEET_ROWS = 6;
 const CAMPER_LAYER_RENDER_ORDER = [
   { id: "bodyBase", sheet: "camper_body_base.png" },
   { id: "eyes", sheet: "camper_eye_bright.png", appearanceCategory: "eyes" },
@@ -690,7 +807,10 @@ const camperActionLabels = {
   sittingOnFurniture: "Settling into camp seating",
   sittingOnChair: "Settling into the camp chair",
   observingGear: "Inspecting camp gear",
-  tentRest: "Resting inside the tent"
+  tentRest: "Resting inside the tent",
+  cook: "Cooking at camp",
+  fish: "Fishing by the lake",
+  birdwatch: "Birdwatching"
 };
 
 const camperThoughtLines = {
@@ -703,6 +823,10 @@ const camperThoughtLines = {
   resting: ["小累一会儿", "闭眼休息", "草地很软", "先躺一下", "慢慢恢复"],
   tentRest: ["钻进帐篷", "帐篷里好安心", "小睡一会儿", "外面风声好轻", "今晚睡这里"]
 };
+
+camperThoughtLines.cook = ["锅里开始香了", "先搅一搅", "营地要有热乎气", "这一口会很安心"];
+camperThoughtLines.fish = ["水面动了一下", "线要慢慢放", "湖边很适合等", "今天也许有收获"];
+camperThoughtLines.birdwatch = ["那边有翅膀声", "先别惊动它", "树影里有小动静", "看到一闪而过"];
 
 const CAMPER_PROFILE_VERSION = 1;
 const CAMPER_PROFILE_QUESTION_COUNT = 5;
@@ -1490,6 +1614,255 @@ function getActiveDepthControlTargetItem() {
   return getGearItem(getSelectedActionTargetId() || depthControlHoverTargetId);
 }
 
+function getActivityDefinition(activityId) {
+  return activityId && activityDefinitions[activityId] ? activityDefinitions[activityId] : null;
+}
+
+function getActivityIds() {
+  return Object.keys(activityDefinitions);
+}
+
+function isActivityId(activityId) {
+  return Boolean(getActivityDefinition(activityId));
+}
+
+function getActivityZoneTargetId(zoneId) {
+  return ACTIVITY_ZONE_TARGET_PREFIX + zoneId;
+}
+
+function getActivityZoneIdFromTargetId(targetId) {
+  return typeof targetId === "string" && targetId.indexOf(ACTIVITY_ZONE_TARGET_PREFIX) === 0 ?
+    targetId.slice(ACTIVITY_ZONE_TARGET_PREFIX.length) :
+    "";
+}
+
+function getActivityZone(zoneId) {
+  return zoneId && activityZones[zoneId] ? activityZones[zoneId] : null;
+}
+
+function getActivityZoneElementId(zoneId) {
+  return "activity-zone-" + zoneId;
+}
+
+function getActivityZoneElement(zoneId) {
+  return document.getElementById(getActivityZoneElementId(zoneId));
+}
+
+function getActivityStatsMap(state) {
+  const campState = state || gameState;
+
+  if (!campState.activityStats || typeof campState.activityStats !== "object" || Array.isArray(campState.activityStats)) {
+    campState.activityStats = {};
+  }
+
+  return campState.activityStats;
+}
+
+function getActivityStats(activityId, state) {
+  const statsMap = getActivityStatsMap(state);
+
+  if (!statsMap[activityId] || typeof statsMap[activityId] !== "object") {
+    statsMap[activityId] = {
+      completed: 0,
+      lastCompletedAt: 0
+    };
+  }
+
+  statsMap[activityId].completed = Math.max(0, Number(statsMap[activityId].completed) || 0);
+  statsMap[activityId].lastCompletedAt = Number(statsMap[activityId].lastCompletedAt) || 0;
+  return statsMap[activityId];
+}
+
+function sanitizeActivityStats(stats) {
+  const cleanStats = {};
+
+  if (!stats || typeof stats !== "object" || Array.isArray(stats)) {
+    return cleanStats;
+  }
+
+  getActivityIds().forEach(function(activityId) {
+    const savedStats = stats[activityId];
+    const completed = savedStats && typeof savedStats === "object" ? Number(savedStats.completed) : Number(savedStats);
+    const lastCompletedAt = savedStats && typeof savedStats === "object" ? Number(savedStats.lastCompletedAt) : 0;
+
+    cleanStats[activityId] = {
+      completed: Math.max(0, Number.isFinite(completed) ? Math.floor(completed) : 0),
+      lastCompletedAt: Number.isFinite(lastCompletedAt) ? Math.max(0, lastCompletedAt) : 0
+    };
+  });
+
+  return cleanStats;
+}
+
+function recordActivityCompletion(activityId) {
+  if (!isActivityId(activityId)) {
+    return;
+  }
+
+  const stats = getActivityStats(activityId);
+  stats.completed += 1;
+  stats.lastCompletedAt = Date.now();
+  saveGame();
+}
+
+function getActivityCompletionCount(activityId) {
+  return getActivityStats(activityId).completed;
+}
+
+function itemMatchesActivityGear(item, activityId) {
+  const activity = getActivityDefinition(activityId);
+
+  if (!item || !activity) {
+    return false;
+  }
+
+  const gearCategories = activity.gearCategories || [];
+  const gearIds = activity.gearIds || [];
+
+  return gearIds.indexOf(item.id) !== -1 || gearCategories.indexOf(item.category) !== -1;
+}
+
+function getActivityIdForGear(item) {
+  if (!item || !item.scene) {
+    return "";
+  }
+
+  return getActivityIds().find(function(activityId) {
+    return itemMatchesActivityGear(item, activityId);
+  }) || "";
+}
+
+function activityHasRequiredGear(activity) {
+  const requirements = activity && activity.requires ? activity.requires : {};
+  const requiredCategories = requirements.anyGearCategory || [];
+  const requiredIds = requirements.anyGearId || [];
+
+  if (requiredCategories.length === 0 && requiredIds.length === 0) {
+    return true;
+  }
+
+  return getGearItems().some(function(item) {
+    return item &&
+      isGearVisibleInScene(item) &&
+      (requiredIds.indexOf(item.id) !== -1 || requiredCategories.indexOf(item.category) !== -1);
+  });
+}
+
+function isActivityAvailable(activityId) {
+  const activity = getActivityDefinition(activityId);
+
+  if (!activity) {
+    return false;
+  }
+
+  return activityHasRequiredGear(activity);
+}
+
+function getActivityGearCandidates(activityId) {
+  return getGearItems().filter(function(item) {
+    return itemMatchesActivityGear(item, activityId) && isGearVisibleInScene(item);
+  });
+}
+
+function getActivityTargetFromGear(item, activityId) {
+  const activity = getActivityDefinition(activityId);
+
+  if (!item || !activity || !isGearVisibleInScene(item)) {
+    return null;
+  }
+
+  const layout = getDisplayedGearLayoutOverride(item);
+  const scenePoint = getScenePointFromAssetPoint(item, activity.targetPoint || { ratioX: 0.5, ratioY: 1 }, layout);
+  const percentPoint = scenePointToPercent(scenePoint);
+  const targetOffset = activity.targetOffset || { x: 0, y: 0 };
+  const itemPosition = getDisplayedGearScenePosition(item);
+  const faceToward = itemPosition ? scenePointToPercent(itemPosition) : null;
+
+  return {
+    x: clamp(percentPoint.x + targetOffset.x, 8, 92),
+    y: clamp(percentPoint.y + targetOffset.y, 36, 90),
+    interactionTargetId: item.id,
+    ignoreObstacleId: item.id,
+    faceToward: faceToward
+  };
+}
+
+function getActivityTargetFromZone(zone, activityId) {
+  const activity = getActivityDefinition(activityId || zone && zone.activityId);
+
+  if (!zone || !activity || zone.activityId !== activity.id) {
+    return null;
+  }
+
+  return Object.assign({}, zone.target || activity.fallbackTarget, {
+    interactionTargetId: getActivityZoneTargetId(zone.id)
+  });
+}
+
+function getActivityFallbackTarget(activity) {
+  if (!activity || !activity.fallbackTarget) {
+    return null;
+  }
+
+  return Object.assign({}, activity.fallbackTarget, {
+    interactionTargetId: "activity:" + activity.id
+  });
+}
+
+function resolveActivityTarget(activityId, preferredTargetId) {
+  const activity = getActivityDefinition(activityId);
+
+  if (!activity || !isActivityAvailable(activityId)) {
+    return null;
+  }
+
+  const preferredZoneId = getActivityZoneIdFromTargetId(preferredTargetId);
+  const preferredZone = getActivityZone(preferredZoneId);
+
+  if (preferredZone) {
+    return getActivityTargetFromZone(preferredZone, activityId);
+  }
+
+  const preferredItem = getGearItem(preferredTargetId);
+
+  if (preferredItem && itemMatchesActivityGear(preferredItem, activityId)) {
+    const gearTarget = getActivityTargetFromGear(preferredItem, activityId);
+
+    if (gearTarget) {
+      return gearTarget;
+    }
+  }
+
+  const gearCandidates = getActivityGearCandidates(activityId);
+
+  if (gearCandidates.length > 0) {
+    const item = gearCandidates[Math.floor(Math.random() * gearCandidates.length)];
+    const gearTarget = getActivityTargetFromGear(item, activityId);
+
+    if (gearTarget) {
+      return gearTarget;
+    }
+  }
+
+  const zoneIds = activity.zoneIds || [];
+
+  for (let index = 0; index < zoneIds.length; index += 1) {
+    const zoneTarget = getActivityTargetFromZone(getActivityZone(zoneIds[index]), activityId);
+
+    if (zoneTarget) {
+      return zoneTarget;
+    }
+  }
+
+  return getActivityFallbackTarget(activity);
+}
+
+function getGearActionMetadata(item) {
+  const activityId = getActivityIdForGear(item);
+
+  return activityId ? { activityId: activityId } : {};
+}
+
 function isSceneDepthAdjustableItem(item) {
   return Boolean(item && item.scene && item.scene.renderMode !== "campfire");
 }
@@ -2275,12 +2648,18 @@ function configureGearBuildDragTarget(element, item) {
   });
 }
 
-function getActionTargetKey(type, targetId) {
+function getActionTargetKey(type, targetId, metadata) {
+  const actionMetadata = metadata || {};
+
+  if (type === "activity" && actionMetadata.activityId) {
+    return type + ":" + actionMetadata.activityId + ":" + targetId;
+  }
+
   return type + ":" + targetId;
 }
 
 function getActionKey(action) {
-  return action ? getActionTargetKey(action.type, action.targetId) : "";
+  return action ? getActionTargetKey(action.type, action.targetId, action) : "";
 }
 
 function clearSelectedActionTarget() {
@@ -2307,11 +2686,16 @@ function clearSelectedBuildTarget() {
 function getGearSelectionKey(item) {
   const actionType = getGearActionType(item);
 
-  return actionType && item ? getActionTargetKey(actionType, item.id) : "";
+  return actionType && item ? getActionTargetKey(actionType, item.id, getGearActionMetadata(item)) : "";
 }
 
 function getGearTouchPrompt(item) {
   const actionType = getGearActionType(item);
+
+  if (actionType === "activity") {
+    const activity = getActivityDefinition(getActivityIdForGear(item));
+    return "Tap again to send the camper to " + (activity ? activity.label.toLowerCase() : "do an activity") + " near " + item.displayName + ".";
+  }
 
   if (actionType === "chair") {
     return "Tap again to send the camper to sit at " + item.displayName + ".";
@@ -2360,6 +2744,7 @@ function rememberActionPointerType(event, element) {
 
 function handleGearActionClick(event, element, item) {
   const actionType = getGearActionType(item);
+  const actionMetadata = getGearActionMetadata(item);
 
   if (event) {
     event.preventDefault();
@@ -2375,7 +2760,7 @@ function handleGearActionClick(event, element, item) {
     return;
   }
 
-  if (hasQueuedAction(actionType, item.id)) {
+  if (hasQueuedAction(actionType, item.id, actionMetadata)) {
     clearSelectedActionTarget();
     queueGearAction(item);
     return;
@@ -2405,6 +2790,14 @@ function getQueuedActionsInOrder() {
 function getActionTargetElement(action) {
   if (!action) {
     return null;
+  }
+
+  if (action.type === "activity") {
+    const zoneId = getActivityZoneIdFromTargetId(action.targetId);
+
+    if (zoneId) {
+      return getActivityZoneElement(zoneId);
+    }
   }
 
   if (action.type === "wood") {
@@ -2460,8 +2853,8 @@ function updateActionQueueIndicators() {
   });
 }
 
-function hasQueuedAction(type, targetId) {
-  const key = getActionTargetKey(type, targetId);
+function hasQueuedAction(type, targetId, metadata) {
+  const key = getActionTargetKey(type, targetId, metadata);
 
   if (getActionKey(activeQueuedAction) === key) {
     return true;
@@ -2472,7 +2865,12 @@ function hasQueuedAction(type, targetId) {
   });
 }
 
-function getQueuedActionLabel(type, targetId) {
+function getQueuedActionLabel(type, targetId, metadata) {
+  if (type === "activity") {
+    const activity = getActivityDefinition(metadata && metadata.activityId || targetId);
+    return activity ? activity.label : "activity";
+  }
+
   if (type === "wood") {
     return "fallen branches";
   }
@@ -2486,15 +2884,16 @@ function getQueuedActionLabel(type, targetId) {
   return item ? item.displayName : "target";
 }
 
-function enqueueAction(type, targetId) {
-  const label = getQueuedActionLabel(type, targetId);
+function enqueueAction(type, targetId, metadata) {
+  const actionMetadata = metadata || {};
+  const label = getQueuedActionLabel(type, targetId, actionMetadata);
 
   if (isBuildModeActive()) {
     return false;
   }
 
-  if (hasQueuedAction(type, targetId)) {
-    if (selectedActionTargetKey === getActionTargetKey(type, targetId)) {
+  if (hasQueuedAction(type, targetId, actionMetadata)) {
+    if (selectedActionTargetKey === getActionTargetKey(type, targetId, actionMetadata)) {
       clearSelectedActionTarget();
     }
 
@@ -2505,7 +2904,8 @@ function enqueueAction(type, targetId) {
   actionQueue.push({
     id: nextActionQueueId,
     type: type,
-    targetId: targetId
+    targetId: targetId,
+    activityId: actionMetadata.activityId || ""
   });
   nextActionQueueId += 1;
   clearSelectedActionTarget();
@@ -2571,10 +2971,14 @@ function isGearQueueInteractive(item) {
     return true;
   }
 
-  return false;
+  return Boolean(getActivityIdForGear(item));
 }
 
 function getGearActionType(item) {
+  if (getActivityIdForGear(item)) {
+    return "activity";
+  }
+
   if (item && item.category === "chair" && item.interactions && item.interactions.seatable) {
     return "chair";
   }
@@ -2588,12 +2992,13 @@ function getGearActionType(item) {
 
 function queueGearAction(item) {
   const actionType = getGearActionType(item);
+  const actionMetadata = getGearActionMetadata(item);
 
   if (!actionType || !isGearVisibleInScene(item)) {
     return;
   }
 
-  enqueueAction(actionType, item.id);
+  enqueueAction(actionType, item.id, actionMetadata);
 }
 
 function executeQueuedAction(action) {
@@ -2618,6 +3023,11 @@ function executeQueuedAction(action) {
 
   if (action.type === "fire") {
     executeQueuedFireAction();
+    return;
+  }
+
+  if (action.type === "activity") {
+    executeQueuedActivityAction(action);
     return;
   }
 
@@ -3343,6 +3753,7 @@ function renderCamperLayerStack(container, appearance, frameName) {
   const activeFrameName = frameName || CAMPER_IDLE_FRAME_NAME;
   const sheetPosition = getCamperSheetPosition(activeFrameName);
   const backgroundPosition = sheetPosition.x + "% " + sheetPosition.y + "%";
+  const backgroundSize = (CAMPER_SHEET_COLUMNS * 100) + "% " + (CAMPER_SHEET_ROWS * 100) + "%";
 
   removeUnusedCamperLayerElements(container);
 
@@ -3377,12 +3788,23 @@ function renderCamperLayerStack(container, appearance, frameName) {
       element.dataset.camperFramePosition = backgroundPosition;
     }
 
+    if (element.dataset.camperBackgroundSize !== backgroundSize) {
+      element.style.backgroundSize = backgroundSize;
+      element.dataset.camperBackgroundSize = backgroundSize;
+    }
+
     applyCamperLayerAppearance(element, layer, normalizedAppearance);
   });
 }
 
 function getCamperFrameNameForPose() {
   const frameNames = assetPaths.characters.frameNames;
+  const activityId = camper.currentActivityId || "";
+
+  if (activityId) {
+    const activityFrames = frameNames.activityFrames && frameNames.activityFrames[activityId];
+    return getCamperAnimationFrame(activityFrames, frameNames.idle, camperActivityFrameDurationMs);
+  }
 
   if (camper.pose === "walking") {
     return getCamperAnimationFrame(frameNames.walkFrames, frameNames.idle);
@@ -4463,6 +4885,7 @@ function resetCamperForNewGame() {
     target: null,
     actionAfterArrival: null,
     currentAction: null,
+    currentActivityId: "",
     actionTimer: 0,
     targetWoodId: null,
     woodCollectionSource: null,
@@ -4546,6 +4969,7 @@ function sanitizeSave(savedGame) {
     if (savedGame.buildModeGuideSeen !== undefined) {
       cleanState.buildModeGuideSeen = Boolean(savedGame.buildModeGuideSeen);
     }
+    cleanState.activityStats = sanitizeActivityStats(savedGame.activityStats);
     cleanState.economyResetTo500Applied = Boolean(savedGame.economyResetTo500Applied);
     cleanState.vehiclePlacementMigrated = Boolean(savedGame.vehiclePlacementMigrated);
     if (savedGame.lastSeen !== undefined) {
@@ -5303,6 +5727,78 @@ function configureGearActionTarget(element, item) {
       queueGearAction(item);
     }
   };
+}
+
+function getOrCreateActivityZoneLayer() {
+  if (!activityZoneLayer && sceneContent) {
+    activityZoneLayer = document.createElement("div");
+    activityZoneLayer.className = "activity-zone-layer";
+    activityZoneLayer.setAttribute("aria-label", "Activity areas");
+    sceneContent.appendChild(activityZoneLayer);
+  }
+
+  return activityZoneLayer;
+}
+
+function queueActivityZoneAction(zone) {
+  if (!zone || isBuildModeActive()) {
+    return;
+  }
+
+  clearSelectedActionTarget();
+  enqueueAction("activity", getActivityZoneTargetId(zone.id), { activityId: zone.activityId });
+}
+
+function configureActivityZoneElement(element, zone) {
+  if (!element || !zone) {
+    return;
+  }
+
+  element.type = "button";
+  element.setAttribute("aria-label", zone.label);
+  element.setAttribute("data-action-target-id", getActivityZoneTargetId(zone.id));
+  element.dataset.activityId = zone.activityId;
+  element.dataset.activityZoneId = zone.id;
+  element.style.left = zone.bounds.x + "%";
+  element.style.top = zone.bounds.y + "%";
+  element.style.width = zone.bounds.width + "%";
+  element.style.height = zone.bounds.height + "%";
+  element.classList.toggle("interactive-action-target", isActivityAvailable(zone.activityId) && !isBuildModeActive());
+  element.classList.toggle("hidden", !isActivityAvailable(zone.activityId) || isBuildModeActive());
+  element.tabIndex = isActivityAvailable(zone.activityId) && !isBuildModeActive() ? 0 : -1;
+  element.onclick = function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    queueActivityZoneAction(zone);
+  };
+  element.onkeydown = function(event) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      queueActivityZoneAction(zone);
+    }
+  };
+}
+
+function updateActivityZoneElements() {
+  const layer = getOrCreateActivityZoneLayer();
+
+  if (!layer) {
+    return;
+  }
+
+  Object.keys(activityZones).forEach(function(zoneId) {
+    const zone = activityZones[zoneId];
+    let element = getActivityZoneElement(zoneId);
+
+    if (!element) {
+      element = document.createElement("button");
+      element.id = getActivityZoneElementId(zoneId);
+      element.className = "activity-zone";
+      layer.appendChild(element);
+    }
+
+    configureActivityZoneElement(element, zone);
+  });
 }
 
 function getOrCreateGearFrontElement(item) {
@@ -6475,6 +6971,7 @@ function updateSceneEquipment() {
     updateGearSceneElement(item);
     updateSceneGearVisibility(item);
   });
+  updateActivityZoneElements();
   reconcileSelectedBuildTarget();
   updateCamperAttachments();
 
@@ -6779,6 +7276,7 @@ function interruptRelaxingActionForGatherMode() {
   camper.target = null;
   camper.actionAfterArrival = null;
   camper.currentAction = "idle";
+  camper.currentActivityId = "";
   camper.actionTimer = 0;
   camper.targetWoodId = null;
   camper.woodCollectionSource = null;
@@ -6820,6 +7318,7 @@ function pauseCamperForBuildMode() {
   camper.target = null;
   camper.actionAfterArrival = null;
   camper.currentAction = "idle";
+  camper.currentActivityId = "";
   camper.actionTimer = Number.POSITIVE_INFINITY;
   camper.targetWoodId = null;
   camper.woodCollectionSource = null;
@@ -6843,6 +7342,7 @@ function refreshCamperBesideCampfire() {
   camper.target = null;
   camper.actionAfterArrival = null;
   camper.currentAction = "idle";
+  camper.currentActivityId = "";
   camper.actionTimer = Date.now() + 250;
   camper.targetWoodId = null;
   camper.woodCollectionSource = null;
@@ -7578,6 +8078,20 @@ function getRandomFacing() {
 }
 
 function getFacingForAction(action, target) {
+  const activity = getActivityDefinition(action);
+
+  if (activity) {
+    if (target && target.activityFacing) {
+      return normalizeFacing(target.activityFacing);
+    }
+
+    if (target && target.faceToward) {
+      return getFacingTowardPoint(target.faceToward);
+    }
+
+    return action === "birdwatch" ? getRandomFacing() : "right";
+  }
+
   if (action === "sittingOnFurniture" || action === "sittingOnChair") {
     return getCamperFacingForSeatable(target);
   }
@@ -7597,19 +8111,20 @@ function getFacingForAction(action, target) {
   return "right";
 }
 
-function getCamperAnimationFrameIndex(frameCount) {
+function getCamperAnimationFrameIndex(frameCount, frameDurationMs) {
   const animationStartedAt = camper.animationStartedAt || Date.now();
   const safeFrameCount = Math.max(1, frameCount || 1);
+  const duration = frameDurationMs || camperFrameDurationMs;
 
-  return Math.floor((Date.now() - animationStartedAt) / camperFrameDurationMs) % safeFrameCount;
+  return Math.floor((Date.now() - animationStartedAt) / duration) % safeFrameCount;
 }
 
-function getCamperAnimationFrame(frames, fallbackFrame) {
+function getCamperAnimationFrame(frames, fallbackFrame, frameDurationMs) {
   if (!Array.isArray(frames) || frames.length === 0) {
     return fallbackFrame || "";
   }
 
-  return frames[getCamperAnimationFrameIndex(frames.length)] || fallbackFrame || frames[0];
+  return frames[getCamperAnimationFrameIndex(frames.length, frameDurationMs)] || fallbackFrame || frames[0];
 }
 
 function updateCamperPathMotion(now) {
@@ -7687,6 +8202,7 @@ function startMovingTo(target, actionAfterArrival, options) {
     camper.state = "idle";
     camper.pose = "idle";
     camper.currentAction = "idle";
+    camper.currentActivityId = "";
     camper.actionAfterArrival = null;
     camper.target = null;
     camper.interactionTargetId = "";
@@ -7701,6 +8217,7 @@ function startMovingTo(target, actionAfterArrival, options) {
   camper.target = target;
   camper.actionAfterArrival = actionAfterArrival;
   camper.currentAction = actionName;
+  camper.currentActivityId = "";
   camper.interactionTargetId = interactionTargetId;
   camper.state = "moving";
   camper.pose = moveOptions.carryingWood ? "carryingWood" : "walking";
@@ -7719,16 +8236,19 @@ function startMovingTo(target, actionAfterArrival, options) {
   return true;
 }
 
-function startActing(action, durationSeconds) {
+function startActing(action, durationSeconds, options) {
   const now = Date.now();
   const actionTarget = camper.target;
+  const actingOptions = options || {};
+  const activityId = actingOptions.activityId || (isActivityId(action) ? action : "");
 
   camper.state = "acting";
   camper.currentAction = action;
+  camper.currentActivityId = activityId;
   camper.actionAfterArrival = null;
   camper.target = null;
   camper.interactionTargetId = getInteractionTargetId(actionTarget);
-  camper.pose = getPoseForAction(action);
+  camper.pose = activityId ? getActivityDefinition(activityId).pose : getPoseForAction(action);
   camper.facing = getFacingForAction(action, actionTarget);
   camper.animationStartedAt = now;
   camper.actionTimer = now + durationSeconds * 1000;
@@ -7742,6 +8262,12 @@ function startActing(action, durationSeconds) {
 }
 
 function getPoseForAction(action) {
+  const activity = getActivityDefinition(action);
+
+  if (activity) {
+    return activity.pose;
+  }
+
   if (action === "sittingByFire") {
     return "sittingGround";
   }
@@ -7769,6 +8295,22 @@ function getPoseForAction(action) {
   return "idle";
 }
 
+function isActivityDebugEnabled() {
+  return typeof window !== "undefined" && window.location && window.location.search.indexOf("activityDebug=1") !== -1;
+}
+
+function getCamperStateLabel() {
+  const action = camper.currentActivityId || camper.currentAction;
+  const activity = getActivityDefinition(action);
+  const baseLabel = activity ? activity.actionLabel : camperActionLabels[camper.currentAction] || camperActionLabels.idle;
+
+  if (!activity || !isActivityDebugEnabled()) {
+    return baseLabel;
+  }
+
+  return baseLabel + " [" + activity.id + ": " + getActivityCompletionCount(activity.id) + "]";
+}
+
 function updateCamperView() {
   setStyleValue(camperElement, "left", sceneXFromPercent(camper.x) + "px");
   setStyleValue(camperElement, "top", sceneYFromPercent(camper.y) + "px");
@@ -7776,7 +8318,7 @@ function updateCamperView() {
   updateCamperSprite();
   updateCamperAttachments();
   updateCamperThought();
-  camperStateText.textContent = camperActionLabels[camper.currentAction] || camperActionLabels.idle;
+  camperStateText.textContent = getCamperStateLabel();
 
   document.body.classList.toggle("camper-in-tent", camper.pose === "tentRest" && hasNightUnlock());
   updateSceneOcclusion();
@@ -7942,6 +8484,14 @@ function getRelaxingActionEntries() {
     entries.push({ id: "observingGear", weight: 2 });
   }
 
+  getActivityIds().forEach(function(activityId) {
+    const activity = getActivityDefinition(activityId);
+
+    if (activity && isActivityAvailable(activityId)) {
+      entries.push({ id: activityId, weight: activity.weight });
+    }
+  });
+
   return entries.map(function(entry) {
     return {
       id: entry.id,
@@ -7952,8 +8502,13 @@ function getRelaxingActionEntries() {
 
 function chooseRelaxingAction() {
   const action = chooseWeightedAction(getRelaxingActionEntries());
+  const activity = getActivityDefinition(action);
 
-  if (action === "lookingAtLake") {
+  if (activity) {
+    if (!startActivity(action)) {
+      startMovingTo(getRandomWanderPoint(), "wandering", { labelAction: "wandering" });
+    }
+  } else if (action === "lookingAtLake") {
     startMovingTo(campSpots.lake, "lookingAtLake");
   } else if (action === "sittingByFire") {
     startMovingToFire("sittingByFire");
@@ -7983,6 +8538,17 @@ function chooseRelaxingAction() {
   }
 
   updateCamperThought();
+}
+
+function startActivity(activityId, preferredTargetId) {
+  const activity = getActivityDefinition(activityId);
+  const target = resolveActivityTarget(activityId, preferredTargetId);
+
+  if (!activity || !target) {
+    return false;
+  }
+
+  return startMovingTo(target, activity.id);
 }
 
 function getRandomWanderPoint() {
@@ -8058,6 +8624,25 @@ function executeQueuedFireAction() {
   setStatus("The camper heads closer to the campfire.");
 }
 
+function executeQueuedActivityAction(action) {
+  const activityId = action && action.activityId || "";
+  const activity = getActivityDefinition(activityId);
+
+  if (!activity || !isActivityAvailable(activityId)) {
+    setStatus("That activity is not available yet.");
+    completeActiveQueuedAction();
+    return;
+  }
+
+  if (!startActivity(activityId, action.targetId)) {
+    setStatus("No clear path to " + activity.targetLabel + ".");
+    completeActiveQueuedAction();
+    return;
+  }
+
+  setStatus("The camper heads over to " + activity.targetLabel + ".");
+}
+
 function updateCamperAI() {
   if (camperProfileActive || !hasCamperProfile(gameState)) {
     campfireFlameImage.src = getCurrentFlameImage();
@@ -8096,8 +8681,14 @@ function updateCamperAI() {
 
 function arriveAtTarget() {
   const action = camper.actionAfterArrival;
+  const activity = getActivityDefinition(action);
 
   hideActiveQueuedActionIndicator();
+
+  if (activity) {
+    startActing(activity.id, activity.durationSeconds, { activityId: activity.id });
+    return;
+  }
 
   if (action === "pickupWood") {
     pickupTargetWood();
@@ -8173,6 +8764,19 @@ function finishCurrentAction() {
     camper.carryingWood = false;
     camper.woodCollectionSource = null;
     addWarmthFromBranches(source);
+
+    if (activeQueuedAction) {
+      completeActiveQueuedAction();
+    } else {
+      chooseNextCamperAction();
+    }
+
+    return;
+  }
+
+  if (camper.currentActivityId) {
+    recordActivityCompletion(camper.currentActivityId);
+    camper.currentActivityId = "";
 
     if (activeQueuedAction) {
       completeActiveQueuedAction();
