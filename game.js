@@ -545,10 +545,62 @@ const campSpots = {
   fire: { x: 39, y: 79 },
   fireSeat: { x: 33, y: 80 },
   fireSeatRight: { x: 46, y: 80.5 },
-  lake: { x: 50, y: 54 },
+  lake: { x: 50, y: 59 },
   tent: { x: 54, y: 69.5 },
   rest: { x: 24, y: 81 }
 };
+
+const SCENE_NO_WALK_ZONES = [
+  {
+    id: "lakeWater",
+    padding: 14,
+    points: [
+      { x: 0, y: 0 },
+      { x: 900, y: 0 },
+      { x: 900, y: 740 },
+      { x: 790, y: 742 },
+      { x: 776, y: 679 },
+      { x: 764, y: 651 },
+      { x: 716, y: 625 },
+      { x: 650, y: 618 },
+      { x: 600, y: 636 },
+      { x: 590, y: 662 },
+      { x: 548, y: 695 },
+      { x: 500, y: 750 },
+      { x: 450, y: 800 },
+      { x: 392, y: 875 },
+      { x: 300, y: 885 },
+      { x: 198, y: 865 },
+      { x: 90, y: 825 },
+      { x: 0, y: 790 }
+    ]
+  },
+  {
+    id: "leftTree",
+    padding: 10,
+    points: [
+      { x: 0, y: 0 },
+      { x: 150, y: 0 },
+      { x: 150, y: 805 },
+      { x: 210, y: 980 },
+      { x: 300, y: 1120 },
+      { x: 180, y: 1245 },
+      { x: 0, y: 1205 }
+    ]
+  },
+  {
+    id: "rightShoreRocks",
+    padding: 12,
+    points: [
+      { x: 620, y: 900 },
+      { x: 710, y: 845 },
+      { x: 900, y: 795 },
+      { x: 900, y: 1000 },
+      { x: 730, y: 1055 },
+      { x: 585, y: 1020 }
+    ]
+  }
+];
 
 const ACTIVITY_ZONE_TARGET_PREFIX = "zone:";
 const activityZones = {
@@ -557,7 +609,7 @@ const activityZones = {
     activityId: "fish",
     label: "Lake fishing spot",
     bounds: { x: 36, y: 43, width: 28, height: 16 },
-    target: { x: 47, y: 52.5, activityFacing: "right" }
+    target: { x: 72, y: 43.5, activityFacing: "left" }
   },
   lakeBirdwatch: {
     id: "lakeBirdwatch",
@@ -606,7 +658,8 @@ const activityDefinitions = {
     requires: { area: "lake" },
     gearIds: ["fishingRod"],
     zoneIds: ["lakeFishing"],
-    fallbackTarget: { x: 47, y: 52.5, activityFacing: "right" }
+    fixedTarget: true,
+    fallbackTarget: { x: 78, y: 40.5, activityFacing: "left" }
   },
   birdwatch: {
     id: "birdwatch",
@@ -650,6 +703,7 @@ let camperProfileDraftAppearance = null;
 let camperCardEditingField = "";
 
 const CAMPER_LAYER_SHEET_ROOT = "assets/characters";
+const CAMPER_NIGHT_LAYER_SHEET_ROOT = "assets/characters/night";
 const CAMPER_SHEET_COLUMNS = 7;
 const CAMPER_IDLE_FRAME_NAME = "camper_idle.png";
 const CAMPER_SHEET_FRAME_NAMES = [
@@ -1809,11 +1863,48 @@ function getActivityFallbackTarget(activity) {
   });
 }
 
+function getFixedActivityTarget(activity, preferredTargetId) {
+  if (!activity) {
+    return null;
+  }
+
+  const preferredZoneId = getActivityZoneIdFromTargetId(preferredTargetId);
+  const preferredZone = getActivityZone(preferredZoneId);
+
+  if (preferredZone) {
+    return getActivityTargetFromZone(preferredZone, activity.id);
+  }
+
+  const zoneIds = activity.zoneIds || [];
+
+  for (let index = 0; index < zoneIds.length; index += 1) {
+    const zoneTarget = getActivityTargetFromZone(getActivityZone(zoneIds[index]), activity.id);
+
+    if (zoneTarget) {
+      return zoneTarget;
+    }
+  }
+
+  return getActivityFallbackTarget(activity);
+}
+
 function resolveActivityTarget(activityId, preferredTargetId) {
   const activity = getActivityDefinition(activityId);
 
   if (!activity || !isActivityAvailable(activityId)) {
     return null;
+  }
+
+  if (activity.fixedTarget) {
+    const fixedTarget = getFixedActivityTarget(activity, preferredTargetId);
+    const preferredItem = getGearItem(preferredTargetId);
+
+    if (fixedTarget && preferredItem && itemMatchesActivityGear(preferredItem, activityId)) {
+      fixedTarget.interactionTargetId = preferredItem.id;
+      fixedTarget.ignoreObstacleId = preferredItem.id;
+    }
+
+    return fixedTarget;
   }
 
   const preferredZoneId = getActivityZoneIdFromTargetId(preferredTargetId);
@@ -1861,6 +1952,10 @@ function getGearActionMetadata(item) {
   const activityId = getActivityIdForGear(item);
 
   return activityId ? { activityId: activityId } : {};
+}
+
+function isGearPositionLocked(item) {
+  return Boolean(item && item.scene && item.scene.movable === false);
 }
 
 function isSceneDepthAdjustableItem(item) {
@@ -2155,6 +2250,7 @@ function isBuildDraggableItem(item) {
   return Boolean(
     item &&
     item.scene &&
+    !isGearPositionLocked(item) &&
     item.scene.renderMode !== "campfire" &&
     isGearVisibleInScene(item)
   );
@@ -3649,13 +3745,20 @@ function getCamperLayerAssetSheet(layer, appearance) {
   return option && Object.prototype.hasOwnProperty.call(option, "assetSheet") ? option.assetSheet : layer.sheet;
 }
 
-function getCamperLayerSheetPath(layer, appearance) {
+function isNightFishingFrame(frameName) {
+  const fishFrames = assetPaths.characters.frameNames.activityFrames.fish || [];
+
+  return Boolean(gameState && gameState.isNight && fishFrames.indexOf(frameName) !== -1);
+}
+
+function getCamperLayerSheetPath(layer, appearance, frameName) {
   const assetSheet = getCamperLayerAssetSheet(layer, appearance);
   if (!assetSheet) {
     return "";
   }
 
-  return withVersion(CAMPER_LAYER_SHEET_ROOT + "/" + assetSheet);
+  const sheetRoot = layer.id === "clothes" && isNightFishingFrame(frameName) ? CAMPER_NIGHT_LAYER_SHEET_ROOT : CAMPER_LAYER_SHEET_ROOT;
+  return withVersion(sheetRoot + "/" + assetSheet);
 }
 
 function getCamperHairColorFilter(appearance) {
@@ -3759,7 +3862,7 @@ function renderCamperLayerStack(container, appearance, frameName) {
 
   CAMPER_LAYER_RENDER_ORDER.forEach(function(layer) {
     const element = ensureCamperLayerElement(container, layer);
-    const nextPath = getCamperLayerSheetPath(layer, normalizedAppearance);
+    const nextPath = getCamperLayerSheetPath(layer, normalizedAppearance, activeFrameName);
 
     if (!element) {
       return;
@@ -5160,7 +5263,7 @@ function sanitizeSave(savedGame) {
     const x = Number(savedPosition.x);
     const y = Number(savedPosition.y);
 
-    if (item && item.scene && Number.isFinite(x) && Number.isFinite(y)) {
+    if (item && item.scene && !isGearPositionLocked(item) && Number.isFinite(x) && Number.isFinite(y)) {
       cleanState.userGearPositions[normalizedId] = {
         x: clamp(x, 0, 100),
         y: clamp(y, 0, 100)
@@ -6069,6 +6172,10 @@ function getUserGearMountOffsetMap() {
 }
 
 function getUserGearPosition(item) {
+  if (isGearPositionLocked(item)) {
+    return null;
+  }
+
   const positions = gameState && gameState.userGearPositions ? gameState.userGearPositions : {};
   const position = item && item.id ? positions[item.id] : null;
 
@@ -6091,7 +6198,7 @@ function isMountedGearDetached(item) {
 }
 
 function setUserGearPosition(item, position, shouldSave) {
-  if (!item || !item.scene || !position) {
+  if (!item || !item.scene || isGearPositionLocked(item) || !position) {
     return;
   }
 
@@ -7413,10 +7520,14 @@ function spawnWood() {
     return;
   }
 
+  const woodPoint = getRandomWalkablePercentPoint(
+    { minX: 14, maxX: 68, minY: 67, maxY: 82 },
+    { x: 42, y: 76 }
+  );
   const wood = {
     id: nextWoodId,
-    x: randomBetween(14, 68),
-    y: randomBetween(67, 82),
+    x: woodPoint.x,
+    y: woodPoint.y,
     rotate: randomBetween(-22, 22)
   };
 
@@ -7605,6 +7716,100 @@ function clampScenePoint(point) {
   };
 }
 
+function getPointSegmentDistance(point, segmentStart, segmentEnd) {
+  const dx = segmentEnd.x - segmentStart.x;
+  const dy = segmentEnd.y - segmentStart.y;
+  const lengthSquared = dx * dx + dy * dy;
+
+  if (lengthSquared <= 0) {
+    return getScenePointDistance(point, segmentStart);
+  }
+
+  const ratio = clamp(
+    ((point.x - segmentStart.x) * dx + (point.y - segmentStart.y) * dy) / lengthSquared,
+    0,
+    1
+  );
+  const closestPoint = {
+    x: segmentStart.x + dx * ratio,
+    y: segmentStart.y + dy * ratio
+  };
+
+  return getScenePointDistance(point, closestPoint);
+}
+
+function pointInPolygon(point, polygonPoints) {
+  if (!point || !Array.isArray(polygonPoints) || polygonPoints.length < 3) {
+    return false;
+  }
+
+  let inside = false;
+
+  for (let index = 0, previousIndex = polygonPoints.length - 1; index < polygonPoints.length; previousIndex = index, index += 1) {
+    const currentPoint = polygonPoints[index];
+    const previousPoint = polygonPoints[previousIndex];
+    const intersects = currentPoint.y > point.y !== previousPoint.y > point.y &&
+      point.x < (previousPoint.x - currentPoint.x) * (point.y - currentPoint.y) / (previousPoint.y - currentPoint.y) + currentPoint.x;
+
+    if (intersects) {
+      inside = !inside;
+    }
+  }
+
+  return inside;
+}
+
+function pointNearPolygonEdge(point, polygonPoints, padding) {
+  if (!point || !Array.isArray(polygonPoints) || polygonPoints.length < 2 || padding <= 0) {
+    return false;
+  }
+
+  for (let index = 0; index < polygonPoints.length; index += 1) {
+    const startPoint = polygonPoints[index];
+    const endPoint = polygonPoints[(index + 1) % polygonPoints.length];
+
+    if (getPointSegmentDistance(point, startPoint, endPoint) <= padding) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function isSceneNoWalkPoint(point) {
+  return SCENE_NO_WALK_ZONES.some(function(zone) {
+    const points = zone.points || [];
+    const padding = Math.max(0, Number(zone.padding) || 0);
+
+    return pointInPolygon(point, points) || pointNearPolygonEdge(point, points, padding);
+  });
+}
+
+function isScenePercentPointWalkable(point) {
+  return Boolean(point && !isSceneNoWalkPoint(percentPointToScenePoint(point)));
+}
+
+function getRandomWalkablePercentPoint(bounds, fallbackPoint) {
+  const safeBounds = bounds || {};
+  const fallback = fallbackPoint || {
+    x: (safeBounds.minX + safeBounds.maxX) / 2,
+    y: (safeBounds.minY + safeBounds.maxY) / 2
+  };
+
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const point = {
+      x: randomBetween(safeBounds.minX, safeBounds.maxX),
+      y: randomBetween(safeBounds.minY, safeBounds.maxY)
+    };
+
+    if (isScenePercentPointWalkable(point)) {
+      return point;
+    }
+  }
+
+  return fallback;
+}
+
 function getSceneCollisionObstacles(options) {
   const pathOptions = options || {};
   const ignoreObstacleId = pathOptions.ignoreObstacleId || "";
@@ -7653,7 +7858,7 @@ function pathCellToScenePoint(cell) {
 }
 
 function isScenePointBlocked(point, obstacles) {
-  return obstacles.some(function(obstacle) {
+  return isSceneNoWalkPoint(point) || obstacles.some(function(obstacle) {
     return pointInRect(point, obstacle);
   });
 }
@@ -7833,7 +8038,7 @@ function getCamperMovePath(target, options) {
     startPoint: startPoint
   });
 
-  if (getScenePointDistance(startPoint, targetPoint) <= 1) {
+  if (!isScenePointBlocked(targetPoint, obstacles) && getScenePointDistance(startPoint, targetPoint) <= 1) {
     return {
       points: [startPoint, targetPoint],
       segmentLengths: [0],
@@ -8437,31 +8642,39 @@ function chooseWeightedAction(actionEntries) {
 }
 
 function getRandomObservableGearTarget() {
-  const candidates = getGearItems().filter(function(item) {
-    return item &&
+  const candidates = getGearItems().map(function(item) {
+    if (item &&
       item.scene &&
       item.id !== "campfire" &&
       isGearVisibleInScene(item) &&
-      (isGearPlaced(item.id) || isEquippableGear(item) && getEquippedGearId(item.category) === item.id);
+      (isGearPlaced(item.id) || isEquippableGear(item) && getEquippedGearId(item.category) === item.id)) {
+      const position = getDisplayedGearScenePosition(item);
+
+      if (!position) {
+        return null;
+      }
+
+      return {
+        item: item,
+        target: {
+          x: clamp(sceneXToPercent(position.x) + randomBetween(-4, 4), 16, 76),
+          y: clamp(sceneYToPercent(position.y) + 2, 62, 86),
+          interactionTargetId: item.id,
+          ignoreObstacleId: item.id
+        }
+      };
+    }
+
+    return null;
+  }).filter(function(entry) {
+    return entry && isScenePercentPointWalkable(entry.target);
   });
 
   if (candidates.length === 0) {
     return null;
   }
 
-  const item = candidates[Math.floor(Math.random() * candidates.length)];
-  const position = getDisplayedGearScenePosition(item);
-
-  if (!position) {
-    return null;
-  }
-
-  return {
-    x: clamp(sceneXToPercent(position.x) + randomBetween(-4, 4), 16, 76),
-    y: clamp(sceneYToPercent(position.y) + 2, 62, 86),
-    interactionTargetId: item.id,
-    ignoreObstacleId: item.id
-  };
+  return candidates[Math.floor(Math.random() * candidates.length)].target;
 }
 
 function getRelaxingActionEntries() {
@@ -8552,10 +8765,10 @@ function startActivity(activityId, preferredTargetId) {
 }
 
 function getRandomWanderPoint() {
-  return {
-    x: randomBetween(18, 64),
-    y: randomBetween(68, 80)
-  };
+  return getRandomWalkablePercentPoint(
+    { minX: 18, maxX: 64, minY: 68, maxY: 80 },
+    { x: 43, y: 75 }
+  );
 }
 
 function withIgnoredObstacle(point, item) {
