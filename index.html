@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cozy Camping Idle V3.5</title>
+  <title>Cozy Camping Idle V3.8</title>
   <script>
-    window.APP_VERSION = "3.5";
+    window.APP_VERSION = "3.8";
   </script>
   <link id="appStylesheet" rel="stylesheet" href="style.css?v=3.0">
   <script>
@@ -106,6 +106,11 @@
 
           <button id="soundJournalButton" class="sound-icon-button" type="button" aria-label="Open sound journal">
             <span class="sound-journal-glyph" aria-hidden="true">🔊</span>
+          </button>
+
+          <button id="divinationButton" class="utility-button divination-entry-button" type="button" aria-label="打开今日占营">
+            <span class="utility-glyph" aria-hidden="true">✦</span>
+            <span>占营</span>
           </button>
         </div>
 
@@ -247,6 +252,50 @@
           </section>
         </div>
 
+        <div id="divinationLayer" class="divination-layer hidden" aria-hidden="true" aria-live="polite">
+          <section id="divinationPanel" class="divination-panel" aria-label="今日占营">
+            <div class="divination-header">
+              <div>
+                <p class="eyebrow">Camp Oracle</p>
+                <h2>今日占营</h2>
+              </div>
+              <button id="divinationCloseButton" class="close-button divination-close-button" type="button" aria-label="关闭今日占营">
+                <img src="assets/ui/icon_close.png?v=3.6" alt="">
+              </button>
+            </div>
+
+            <p id="divinationIntro" class="divination-intro"></p>
+            <div id="divinationQuestionList" class="divination-choice-grid" aria-label="选择问题"></div>
+            <div id="divinationMethodList" class="divination-method-grid" aria-label="选择占营方式"></div>
+
+            <div id="divinationStage" class="divination-stage">
+              <div id="divinationCardVisual" class="divination-card-visual" aria-hidden="true">
+                <span id="divinationCardBack" class="divination-card-back">✦</span>
+              </div>
+              <div id="turtleShellVisual" class="turtle-shell-visual hidden" aria-hidden="true">
+                <img id="turtleShellImage" src="assets/divination/turtle_shell/turtle_shell.png?v=3.8" alt="">
+                <div id="turtleLineStack" class="turtle-line-stack"></div>
+              </div>
+            </div>
+
+            <button id="divinationActionButton" class="divination-action-button" type="button"></button>
+
+            <article id="divinationResult" class="divination-result hidden">
+              <div class="divination-result-top">
+                <p id="divinationResultQuestion" class="divination-result-kicker"></p>
+                <h3 id="divinationResultTitle"></h3>
+                <p id="divinationResultSubtitle"></p>
+              </div>
+              <img id="divinationResultImage" class="divination-result-image hidden" src="assets/divination/tarot/tarot_ember.png?v=3.6" alt="">
+              <div id="divinationResultLines" class="divination-result-lines hidden"></div>
+              <p id="divinationResultKeywords" class="divination-result-keywords"></p>
+              <p id="divinationResultReality"></p>
+              <p id="divinationResultAdvice"></p>
+              <p id="divinationResultCamp"></p>
+            </article>
+          </section>
+        </div>
+
         <div id="onboardingLayer" class="onboarding-layer hidden" aria-hidden="true" aria-live="polite">
           <div id="onboardingPointer" class="onboarding-pointer" aria-hidden="true"></div>
           <section id="onboardingPanel" class="onboarding-panel" aria-label="New player guide">
@@ -358,8 +407,12 @@
 
       loadScriptThen("gearCatalog.js", function() {
         loadScriptThen("weatherCatalog.js", function() {
-          loadScriptThen("soundJournalCatalog.js", function() {
-            loadScriptThen("soundManager.js", loadGameScript);
+          loadScriptThen("divinationCatalog.js", function() {
+            loadScriptThen("divinationManager.js", function() {
+              loadScriptThen("soundJournalCatalog.js", function() {
+                loadScriptThen("soundManager.js", loadGameScript);
+              });
+            });
           });
         });
       });

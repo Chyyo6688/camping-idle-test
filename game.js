@@ -1,5 +1,5 @@
 const SAVE_KEY = "cozyCampfireSave";
-const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "3.5";
+const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "3.8";
 
 function withVersion(path) {
   const separator = path.includes("?") ? "&" : "?";
@@ -212,6 +212,24 @@ const defaultGameState = {
     id: "",
     moodIndex: 0
   },
+  todayDivinations: {
+    date: "",
+    active: {
+      method: "",
+      question: ""
+    },
+    records: {
+      tarot: {},
+      turtle: {}
+    },
+    rerollSalt: {
+      tarot: {},
+      turtle: {}
+    }
+  },
+  divinationUnlocks: {
+    turtleShell: false
+  },
   soundJournal: {
     discovered: [],
     enabledAmbient: [],
@@ -247,6 +265,19 @@ function createDefaultGameState() {
     fishing: { ...defaultGameState.fishing },
     cooking: { ...defaultGameState.cooking },
     dailyWeather: { ...defaultGameState.dailyWeather },
+    todayDivinations: {
+      ...defaultGameState.todayDivinations,
+      active: { ...defaultGameState.todayDivinations.active },
+      records: {
+        tarot: { ...defaultGameState.todayDivinations.records.tarot },
+        turtle: { ...defaultGameState.todayDivinations.records.turtle }
+      },
+      rerollSalt: {
+        tarot: { ...defaultGameState.todayDivinations.rerollSalt.tarot },
+        turtle: { ...defaultGameState.todayDivinations.rerollSalt.turtle }
+      }
+    },
+    divinationUnlocks: { ...defaultGameState.divinationUnlocks },
     soundJournal: cloneSoundJournal(defaultGameState.soundJournal),
     camperProfileVersion: defaultGameState.camperProfileVersion,
     activeCamperIndex: defaultGameState.activeCamperIndex,
@@ -429,6 +460,12 @@ let suppressNextBuildClick = false;
 let activityZoneLayer = null;
 let testWeatherOverride = "";
 let dailyCampDrawerExpanded = false;
+let testDivinationOverride = null;
+let selectedDivinationQuestionId = "overall";
+let selectedDivinationMethod = "";
+let turtleShakeLines = [];
+let turtleHoldTimer = null;
+let turtleHoldTriggered = false;
 
 // These variables connect JavaScript to the HTML.
 const cozyPointsAmount = document.getElementById("cozyPointsAmount");
@@ -547,6 +584,30 @@ const dailyWeatherLabel = document.getElementById("dailyWeatherLabel");
 const dailyCampMood = document.getElementById("dailyCampMood");
 const dailyCampActivities = document.getElementById("dailyCampActivities");
 const dailySoundRecommendation = document.getElementById("dailySoundRecommendation");
+const divinationButton = document.getElementById("divinationButton");
+const divinationLayer = document.getElementById("divinationLayer");
+const divinationPanel = document.getElementById("divinationPanel");
+const divinationCloseButton = document.getElementById("divinationCloseButton");
+const divinationIntro = document.getElementById("divinationIntro");
+const divinationQuestionList = document.getElementById("divinationQuestionList");
+const divinationMethodList = document.getElementById("divinationMethodList");
+const divinationStage = document.getElementById("divinationStage");
+const divinationCardVisual = document.getElementById("divinationCardVisual");
+const divinationCardBack = document.getElementById("divinationCardBack");
+const turtleShellVisual = document.getElementById("turtleShellVisual");
+const turtleShellImage = document.getElementById("turtleShellImage");
+const turtleLineStack = document.getElementById("turtleLineStack");
+const divinationActionButton = document.getElementById("divinationActionButton");
+const divinationResult = document.getElementById("divinationResult");
+const divinationResultQuestion = document.getElementById("divinationResultQuestion");
+const divinationResultTitle = document.getElementById("divinationResultTitle");
+const divinationResultSubtitle = document.getElementById("divinationResultSubtitle");
+const divinationResultImage = document.getElementById("divinationResultImage");
+const divinationResultLines = document.getElementById("divinationResultLines");
+const divinationResultKeywords = document.getElementById("divinationResultKeywords");
+const divinationResultReality = document.getElementById("divinationResultReality");
+const divinationResultAdvice = document.getElementById("divinationResultAdvice");
+const divinationResultCamp = document.getElementById("divinationResultCamp");
 
 function setStyleValue(element, property, value) {
   if (!element) {
@@ -811,7 +872,8 @@ const fishingOutcomeTable = [
   { id: "none", weight: 34 },
   { id: "common", weight: 46 },
   { id: "uncommon", weight: 15 },
-  { id: "rare", weight: 5 }
+  { id: "rare", weight: 5 },
+  { id: "turtle", weight: 2 }
 ];
 
 const mealCatalog = {
@@ -1978,6 +2040,238 @@ function sanitizeCookingProgress(progress) {
   };
 }
 
+function getDivinationManager() {
+  return typeof window !== "undefined" && window.CAMP_DIVINATION_MANAGER ? window.CAMP_DIVINATION_MANAGER : null;
+}
+
+function getDivinationCatalog() {
+  return typeof window !== "undefined" && window.CAMP_DIVINATION_CATALOG ? window.CAMP_DIVINATION_CATALOG : null;
+}
+
+function getDivinationDateKey(date) {
+  const manager = getDivinationManager();
+  return manager && manager.getLocalDateKey ? manager.getLocalDateKey(date) : getLocalDateKey(date);
+}
+
+function createEmptyTodayDivinations(dateKey) {
+  const manager = getDivinationManager();
+
+  if (manager && manager.createEmptyTodayDivinations) {
+    return manager.createEmptyTodayDivinations(dateKey || "");
+  }
+
+  return {
+    date: dateKey || "",
+    active: {
+      method: "",
+      question: ""
+    },
+    records: {
+      tarot: {},
+      turtle: {}
+    },
+    rerollSalt: {
+      tarot: {},
+      turtle: {}
+    }
+  };
+}
+
+function sanitizeTodayDivinations(todayDivinations, dateKey, legacyTodayDivination) {
+  const manager = getDivinationManager();
+
+  if (manager && manager.sanitizeSavedDivinations) {
+    return manager.sanitizeSavedDivinations(todayDivinations, dateKey || "", legacyTodayDivination);
+  }
+
+  const source = todayDivinations && typeof todayDivinations === "object" && !Array.isArray(todayDivinations) ? todayDivinations : {};
+  const clean = createEmptyTodayDivinations(dateKey || "");
+
+  if (!source.date || dateKey && source.date !== dateKey) {
+    return clean;
+  }
+
+  clean.date = source.date;
+  ["tarot", "turtle"].forEach(function(method) {
+    const methodRecords = source.records && source.records[method];
+    if (methodRecords && typeof methodRecords === "object" && !Array.isArray(methodRecords)) {
+      Object.keys(methodRecords).forEach(function(questionId) {
+        const record = methodRecords[questionId];
+        if (record && record.date === clean.date && record.method === method && record.question === questionId && record.result) {
+          clean.records[method][questionId] = { ...record };
+        }
+      });
+    }
+
+    const methodRerollSalt = source.rerollSalt && source.rerollSalt[method];
+    if (methodRerollSalt && typeof methodRerollSalt === "object" && !Array.isArray(methodRerollSalt)) {
+      Object.keys(methodRerollSalt).forEach(function(questionId) {
+        const rerollSalt = Math.max(0, Math.floor(Number(methodRerollSalt[questionId]) || 0));
+        if (rerollSalt > 0) {
+          clean.rerollSalt[method][questionId] = rerollSalt;
+        }
+      });
+    }
+  });
+
+  const active = source.active && typeof source.active === "object" ? source.active : {};
+  if (clean.records[active.method] && clean.records[active.method][active.question]) {
+    clean.active = {
+      method: active.method,
+      question: active.question
+    };
+  }
+  return clean;
+}
+
+function sanitizeDivinationUnlocks(unlocks) {
+  const source = unlocks && typeof unlocks === "object" && !Array.isArray(unlocks) ? unlocks : {};
+
+  return {
+    turtleShell: Boolean(source.turtleShell)
+  };
+}
+
+function ensureTodayDivinationsForToday(date, state) {
+  const campState = state || gameState;
+  const dateKey = getDivinationDateKey(date);
+  campState.todayDivinations = sanitizeTodayDivinations(campState.todayDivinations, dateKey, campState.todayDivination);
+  if (Object.prototype.hasOwnProperty.call(campState, "todayDivination")) {
+    delete campState.todayDivination;
+  }
+  return campState.todayDivinations;
+}
+
+function getDivinationUserSeed() {
+  const dailyWeather = ensureDailyWeatherForToday();
+  return dailyWeather.userSeed || "camp-divination";
+}
+
+function getTodayDivinationSalt(method, questionId, state) {
+  const dailyDivinations = ensureTodayDivinationsForToday(new Date(), state);
+  const methodRerollSalt = dailyDivinations.rerollSalt && dailyDivinations.rerollSalt[method];
+  const rerollSalt = Math.max(0, Math.floor(Number(methodRerollSalt && methodRerollSalt[questionId]) || 0));
+  return rerollSalt > 0 ? "daily:" + rerollSalt : "daily";
+}
+
+function getTodayDivinationRecord(method, questionId, state) {
+  const dailyDivinations = ensureTodayDivinationsForToday(new Date(), state);
+  const manager = getDivinationManager();
+
+  if (manager && manager.getSavedDivination) {
+    return manager.getSavedDivination(dailyDivinations, method, questionId);
+  }
+
+  const methodRecords = dailyDivinations.records && dailyDivinations.records[method];
+  const record = methodRecords && methodRecords[questionId];
+  return record && record.result ? record : null;
+}
+
+function getActiveTodayDivination(state) {
+  const dailyDivinations = ensureTodayDivinationsForToday(new Date(), state);
+  const active = dailyDivinations.active || {};
+  return getTodayDivinationRecord(active.method, active.question, state);
+}
+
+function hasTodayDivinationResult(method, questionId, state) {
+  if (isDivinationMethod(method) && questionId) {
+    return Boolean(getTodayDivinationRecord(method, questionId, state));
+  }
+
+  const dailyDivinations = ensureTodayDivinationsForToday(new Date(), state);
+  return ["tarot", "turtle"].some(function(methodId) {
+    const records = dailyDivinations.records && dailyDivinations.records[methodId];
+    return records && Object.keys(records).some(function(id) {
+      return Boolean(records[id] && records[id].result);
+    });
+  });
+}
+
+function getCurrentDivinationResult() {
+  if (testDivinationOverride && testDivinationOverride.result) {
+    return testDivinationOverride.result;
+  }
+
+  const active = getActiveTodayDivination();
+  return active && active.result ? active.result : null;
+}
+
+function getCurrentDivinationEffects() {
+  if (testDivinationOverride && testDivinationOverride.effects) {
+    return testDivinationOverride.effects;
+  }
+
+  const active = getActiveTodayDivination();
+  return active && active.effects && typeof active.effects === "object" ? active.effects : {};
+}
+
+function getCurrentDivinationActivityWeights() {
+  const effects = getCurrentDivinationEffects();
+  return effects && effects.activityWeights ? effects.activityWeights : {};
+}
+
+function getCurrentDivinationActivityLabels() {
+  const effects = getCurrentDivinationEffects();
+  return effects && Array.isArray(effects.activityLabels) ? effects.activityLabels : [];
+}
+
+function getCurrentDivinationSoundRecommendations() {
+  const effects = getCurrentDivinationEffects();
+  return effects && Array.isArray(effects.soundRecommendations) ? effects.soundRecommendations : [];
+}
+
+function getCurrentDivinationMoodLine() {
+  const effects = getCurrentDivinationEffects();
+  return effects && typeof effects.moodLine === "string" ? effects.moodLine : "";
+}
+
+function getCurrentDivinationThoughtLines() {
+  const effects = getCurrentDivinationEffects();
+  return effects && Array.isArray(effects.thoughtLines) ? effects.thoughtLines : [];
+}
+
+function addUniqueText(list, value) {
+  if (value && list.indexOf(value) === -1) {
+    list.push(value);
+  }
+}
+
+function addUniqueSoundRecommendation(list, recommendation) {
+  if (!recommendation || !recommendation.id) {
+    return;
+  }
+
+  const exists = list.some(function(item) {
+    return item && item.id === recommendation.id;
+  });
+
+  if (!exists) {
+    list.push({ ...recommendation });
+  }
+}
+
+function getCurrentCampActivityLabels() {
+  const labels = [];
+  getCurrentWeatherActivityLabels().forEach(function(label) {
+    addUniqueText(labels, label);
+  });
+  getCurrentDivinationActivityLabels().forEach(function(label) {
+    addUniqueText(labels, label);
+  });
+  return labels;
+}
+
+function getCurrentCampSoundRecommendations() {
+  const recommendations = [];
+  getCurrentWeatherSoundRecommendations().forEach(function(recommendation) {
+    addUniqueSoundRecommendation(recommendations, recommendation);
+  });
+  getCurrentDivinationSoundRecommendations().forEach(function(recommendation) {
+    addUniqueSoundRecommendation(recommendations, recommendation);
+  });
+  return recommendations;
+}
+
 function getWeatherCatalog() {
   const catalog = typeof window !== "undefined" ? window.WEATHER_CATALOG : null;
 
@@ -2208,7 +2502,7 @@ function getSoundRecommendationState(recommendation) {
 }
 
 function formatWeatherSoundRecommendations() {
-  const recommendations = getCurrentWeatherSoundRecommendations();
+  const recommendations = getCurrentCampSoundRecommendations();
 
   if (recommendations.length === 0) {
     return "";
@@ -2329,10 +2623,11 @@ function updateDailyCampCard() {
   }
   if (dailyCampMood) {
     const nightMood = gameState.isNight && getWeatherCatalog().night ? getWeatherCatalog().night.moodLine : "";
-    dailyCampMood.textContent = getCurrentWeatherMoodLine() + (nightMood ? " " + nightMood : "");
+    const divinationMood = getCurrentDivinationMoodLine();
+    dailyCampMood.textContent = [getCurrentWeatherMoodLine(), nightMood, divinationMood].filter(Boolean).join(" ");
   }
   if (dailyCampActivities) {
-    const activities = getCurrentWeatherActivityLabels();
+    const activities = getCurrentCampActivityLabels();
     dailyCampActivities.textContent = activities.length > 0 ? "适合：" + activities.join(" / ") : "";
   }
   if (dailySoundRecommendation) {
@@ -2612,16 +2907,44 @@ function chooseFishingResult() {
   if (outcome === "none") {
     return {
       caught: false,
+      type: "none",
       rarity: "none",
+      fishId: ""
+    };
+  }
+
+  if (outcome === "turtle") {
+    return {
+      caught: true,
+      type: "turtle",
+      rarity: "special",
       fishId: ""
     };
   }
 
   return {
     caught: true,
+    type: "fish",
     rarity: outcome,
     fishId: chooseFishIdForRarity(outcome)
   };
+}
+
+function unlockTurtleShellDivination() {
+  if (!gameState.divinationUnlocks || typeof gameState.divinationUnlocks !== "object" || Array.isArray(gameState.divinationUnlocks)) {
+    gameState.divinationUnlocks = sanitizeDivinationUnlocks();
+  }
+
+  if (gameState.divinationUnlocks.turtleShell) {
+    showCamperThought("小乌龟又来湖边看了一眼。");
+    setStatus("小乌龟慢慢游回湖里。");
+    return false;
+  }
+
+  gameState.divinationUnlocks.turtleShell = true;
+  showCamperThought("小乌龟眨眨眼，留下了龟壳占营的灵感。", 4200);
+  setStatus("龟壳占营解锁了。乌龟不会进冷藏箱，也不会成为食材。");
+  return true;
 }
 
 function handleFishingActivityCompletion() {
@@ -2629,6 +2952,13 @@ function handleFishingActivityCompletion() {
   const result = chooseFishingResult();
 
   progress.attempts += 1;
+
+  if (result.type === "turtle") {
+    unlockTurtleShellDivination();
+    updateScreen();
+    saveGame();
+    return;
+  }
 
   if (!result.caught) {
     showCamperThought("湖面安静了一会儿，今天先空手。");
@@ -6046,6 +6376,8 @@ function sanitizeSave(savedGame) {
     cleanState.fishing = sanitizeFishingProgress(savedGame.fishing);
     cleanState.cooking = sanitizeCookingProgress(savedGame.cooking);
     cleanState.dailyWeather = sanitizeDailyWeather(savedGame.dailyWeather);
+    cleanState.todayDivinations = sanitizeTodayDivinations(savedGame.todayDivinations, getDivinationDateKey(), savedGame.todayDivination);
+    cleanState.divinationUnlocks = sanitizeDivinationUnlocks(savedGame.divinationUnlocks);
     cleanState.soundJournal = sanitizeSoundJournal(savedGame.soundJournal);
     cleanState.economyResetTo500Applied = Boolean(savedGame.economyResetTo500Applied);
     cleanState.vehiclePlacementMigrated = Boolean(savedGame.vehiclePlacementMigrated);
@@ -6256,6 +6588,7 @@ function sanitizeSave(savedGame) {
   cleanState.lastSaveTime = Number(cleanState.lastSaveTime) || Date.now();
   cleanState.lastSeen = Number(cleanState.lastSeen) || cleanState.lastSaveTime;
   ensureDailyWeatherForToday(new Date(), cleanState);
+  ensureTodayDivinationsForToday(new Date(), cleanState);
   cleanState.comfort = calculateComfort(cleanState);
 
   return cleanState;
@@ -6282,6 +6615,7 @@ function loadGame() {
   if (!savedText) {
     gameState.comfort = calculateComfort();
     ensureDailyWeatherForToday();
+    ensureTodayDivinationsForToday();
     if (saveWasResetFromUrl) {
       showWelcome("Save reset. A quiet day begins beside the lake.");
     } else {
@@ -6342,6 +6676,7 @@ function applyOfflineEarnings() {
 
 function updateScreen() {
   ensureDailyWeatherForToday();
+  ensureTodayDivinationsForToday();
   gameState.comfort = calculateComfort();
 
   cozyPointsAmount.textContent = formatNumber(gameState.cozyPoints);
@@ -6362,6 +6697,7 @@ function updateScreen() {
   updateCamperProfileControls();
   updateBuildModeControls();
   updateDailyCampCard();
+  syncDivinationEntryState();
 
   updateShopCards();
   updateSceneEquipment();
@@ -9633,6 +9969,12 @@ function getRandomCamperThought(action) {
   const personality = getActiveCamperPersonality();
   const genericThoughts = camperThoughtLines[action] || [];
   const personalityThoughts = personality && personality.bubbles ? personality.bubbles[action] || [] : [];
+  const divinationThoughts = getCurrentDivinationThoughtLines();
+
+  if (Array.isArray(divinationThoughts) && divinationThoughts.length > 0 && Math.random() < 0.28) {
+    return divinationThoughts[Math.floor(Math.random() * divinationThoughts.length)];
+  }
+
   const shouldUsePersonalityThought = personalityThoughts.length > 0 && Math.random() < 0.65;
   const thoughts = shouldUsePersonalityThought ? personalityThoughts : genericThoughts;
 
@@ -9800,6 +10142,7 @@ function getRelaxingActionEntries() {
   const nightBonuses = gameState.isNight && personality && personality.nightWeights ? personality.nightWeights : {};
   const weatherBonuses = getCurrentWeatherActivityWeights();
   const timeBonuses = getCurrentTimeActivityWeights();
+  const divinationBonuses = getCurrentDivinationActivityWeights();
   const entries = [
     { id: "wandering", weight: 4 },
     { id: "lookingAtLake", weight: 4 },
@@ -9835,7 +10178,8 @@ function getRelaxingActionEntries() {
         (Number(bonuses[entry.id]) || 0) +
         (Number(nightBonuses[entry.id]) || 0) +
         (Number(weatherBonuses[entry.id]) || 0) +
-        (Number(timeBonuses[entry.id]) || 0)
+        (Number(timeBonuses[entry.id]) || 0) +
+        (Number(divinationBonuses[entry.id]) || 0)
     };
   });
 }
@@ -10405,6 +10749,719 @@ function discoverSound(id) {
   return true;
 }
 
+function isDivinationPanelOpen() {
+  return Boolean(divinationLayer && !divinationLayer.classList.contains("hidden"));
+}
+
+function getDivinationQuestionIds() {
+  const manager = getDivinationManager();
+  return manager && manager.getQuestionIds ? manager.getQuestionIds() : ["overall", "relationship", "bodyMind", "money"];
+}
+
+function getDivinationQuestion(questionId) {
+  const manager = getDivinationManager();
+  return manager && manager.getQuestion ? manager.getQuestion(questionId) : null;
+}
+
+function getDivinationMethodDefinition(method) {
+  const manager = getDivinationManager();
+  return manager && manager.getMethodDefinition ? manager.getMethodDefinition(method) : null;
+}
+
+function isDivinationMethod(method) {
+  return method === "tarot" || method === "turtle";
+}
+
+function hasDivinationMethodUnlocked(method, state) {
+  const campState = state || gameState;
+
+  if (method === "tarot") {
+    return ownsGear("campBoardGame", campState);
+  }
+
+  if (method === "turtle") {
+    const unlocks = sanitizeDivinationUnlocks(campState.divinationUnlocks);
+    return unlocks.turtleShell;
+  }
+
+  return false;
+}
+
+function getFirstUnlockedDivinationMethod() {
+  if (hasDivinationMethodUnlocked("tarot")) {
+    return "tarot";
+  }
+  if (hasDivinationMethodUnlocked("turtle")) {
+    return "turtle";
+  }
+  return "";
+}
+
+function syncDivinationEntryState() {
+  if (!divinationButton) {
+    return;
+  }
+
+  divinationButton.classList.toggle("has-result", hasTodayDivinationResult());
+  divinationButton.classList.toggle("locked", !hasDivinationMethodUnlocked("tarot") && !hasDivinationMethodUnlocked("turtle"));
+}
+
+function resetDivinationDraft() {
+  selectedDivinationQuestionId = "overall";
+  selectedDivinationMethod = getFirstUnlockedDivinationMethod();
+  turtleShakeLines = [];
+  turtleHoldTriggered = false;
+  if (turtleHoldTimer) {
+    clearInterval(turtleHoldTimer);
+    turtleHoldTimer = null;
+  }
+}
+
+function renderDivinationQuestions() {
+  if (!divinationQuestionList) {
+    return;
+  }
+
+  divinationQuestionList.textContent = "";
+  getDivinationQuestionIds().forEach(function(questionId) {
+    const question = getDivinationQuestion(questionId);
+    const button = document.createElement("button");
+    const label = document.createElement("span");
+    const status = document.createElement("small");
+    const hasResult = hasTodayDivinationResult(selectedDivinationMethod, questionId);
+    button.type = "button";
+    button.className = "divination-choice-button";
+    button.classList.toggle("selected", selectedDivinationQuestionId === questionId);
+    button.classList.toggle("has-result", hasResult);
+    label.textContent = question ? question.label : questionId;
+    status.textContent = hasResult ? "今日已占" : "";
+    button.appendChild(label);
+    button.appendChild(status);
+    button.addEventListener("click", function() {
+      selectedDivinationQuestionId = questionId;
+      turtleShakeLines = [];
+      renderDivinationSetup();
+    });
+    divinationQuestionList.appendChild(button);
+  });
+}
+
+function renderDivinationMethods() {
+  if (!divinationMethodList) {
+    return;
+  }
+
+  divinationMethodList.textContent = "";
+  ["tarot", "turtle"].forEach(function(method) {
+    const definition = getDivinationMethodDefinition(method) || { label: method, lockedHint: "" };
+    const unlocked = hasDivinationMethodUnlocked(method);
+    const hasResult = hasTodayDivinationResult(method, selectedDivinationQuestionId);
+    const button = document.createElement("button");
+    const title = document.createElement("span");
+    const hint = document.createElement("small");
+
+    button.type = "button";
+    button.className = "divination-method-button";
+    button.classList.toggle("selected", selectedDivinationMethod === method);
+    button.classList.toggle("locked", !unlocked);
+    button.classList.toggle("has-result", hasResult);
+    button.disabled = !unlocked;
+    title.textContent = (unlocked ? "" : "🔒 ") + definition.label;
+    hint.textContent = unlocked ? hasResult ? "今日已占 · 查看结果" : "今日可占" : definition.lockedHint;
+    button.appendChild(title);
+    button.appendChild(hint);
+    button.addEventListener("click", function() {
+      selectedDivinationMethod = method;
+      turtleShakeLines = [];
+      renderDivinationSetup();
+    });
+    divinationMethodList.appendChild(button);
+  });
+}
+
+function renderTurtleLines(lines) {
+  if (!turtleLineStack) {
+    return;
+  }
+
+  turtleLineStack.textContent = "";
+  (lines || []).forEach(function(line) {
+    const row = document.createElement("span");
+    row.className = "turtle-line turtle-line-" + (line.type === "yang" ? "yang" : "yin");
+    row.setAttribute("aria-label", line.type === "yang" ? "阳爻" : "阴爻");
+    turtleLineStack.appendChild(row);
+  });
+}
+
+function getTurtleShellFramePath(lineCount) {
+  const count = Math.max(0, Math.floor(Number(lineCount) || 0));
+
+  if (count <= 0) {
+    return "assets/divination/turtle_shell/turtle_shell.png";
+  }
+
+  return "assets/divination/turtle_shell/turtle_shell_shake_" + clamp(count, 1, 6) + ".png";
+}
+
+function renderTurtleShellFrame(lines) {
+  if (!turtleShellImage) {
+    return;
+  }
+
+  setVersionedImageSource(turtleShellImage, getTurtleShellFramePath((lines || []).length));
+}
+
+function playTurtleShellShakeFrame() {
+  if (!turtleShellVisual) {
+    return;
+  }
+
+  turtleShellVisual.classList.remove("is-shaking");
+  void turtleShellVisual.offsetWidth;
+  turtleShellVisual.classList.add("is-shaking");
+}
+
+function renderDivinationSetup() {
+  const method = selectedDivinationMethod;
+  const methodDefinition = getDivinationMethodDefinition(method);
+  const methodUnlocked = method && hasDivinationMethodUnlocked(method);
+  const savedRecord = getTodayDivinationRecord(method, selectedDivinationQuestionId);
+
+  renderDivinationQuestions();
+  renderDivinationMethods();
+
+  if (savedRecord) {
+    renderDivinationResult(savedRecord.result, true);
+    return;
+  }
+
+  if (divinationIntro) {
+    divinationIntro.textContent = "每种方式的每个类别每天各占一次；已占过的结果会保留到明天。";
+  }
+
+  if (divinationQuestionList) {
+    divinationQuestionList.classList.remove("hidden");
+  }
+  if (divinationMethodList) {
+    divinationMethodList.classList.remove("hidden");
+  }
+  if (divinationStage) {
+    divinationStage.classList.remove("hidden");
+  }
+  if (divinationResult) {
+    divinationResult.classList.add("hidden");
+  }
+  if (divinationActionButton) {
+    divinationActionButton.classList.remove("hidden");
+  }
+  if (divinationCardVisual) {
+    divinationCardVisual.classList.toggle("hidden", method === "turtle");
+    divinationCardVisual.classList.remove("shuffling", "revealed");
+    divinationCardVisual.style.backgroundImage = "";
+  }
+  if (turtleShellVisual) {
+    turtleShellVisual.classList.toggle("hidden", method !== "turtle");
+  }
+
+  renderTurtleShellFrame(turtleShakeLines);
+  renderTurtleLines(turtleShakeLines);
+
+  if (divinationActionButton) {
+    divinationActionButton.disabled = !method || !methodUnlocked;
+    if (!method) {
+      divinationActionButton.textContent = "先解锁占营方式";
+    } else if (!methodUnlocked) {
+      divinationActionButton.textContent = methodDefinition && methodDefinition.lockedHint || "还没解锁";
+    } else if (method === "turtle") {
+      divinationActionButton.textContent = turtleShakeLines.length >= 6 ? "看龟壳" : "摇动龟壳 " + turtleShakeLines.length + " / 6";
+    } else {
+      divinationActionButton.textContent = methodDefinition && methodDefinition.actionLabel || "开始占营";
+    }
+  }
+}
+
+function setVersionedImageSource(image, path) {
+  if (image && path) {
+    image.src = withVersion(path);
+  }
+}
+
+function renderDivinationResult(result, fromSaved) {
+  if (!result || !divinationResult) {
+    return;
+  }
+
+  const methodDefinition = getDivinationMethodDefinition(result.method);
+
+  if (divinationIntro) {
+    divinationIntro.textContent = fromSaved ? "这个方式和类别今天已经占过，正在查看固定结果。" : "今日占营完成，今天的营地会按这个倾向轻轻偏移。";
+  }
+  if (divinationQuestionList) {
+    divinationQuestionList.classList.remove("hidden");
+  }
+  if (divinationMethodList) {
+    divinationMethodList.classList.remove("hidden");
+  }
+  if (divinationStage) {
+    divinationStage.classList.add("hidden");
+  }
+  if (divinationActionButton) {
+    divinationActionButton.classList.add("hidden");
+  }
+
+  renderDivinationQuestions();
+  renderDivinationMethods();
+  divinationResult.classList.remove("hidden");
+  if (divinationResultQuestion) {
+    divinationResultQuestion.textContent = (result.questionLabel || "") + " · " + (methodDefinition ? methodDefinition.label : result.method);
+  }
+  if (divinationResultTitle) {
+    divinationResultTitle.textContent = result.title || "";
+  }
+  if (divinationResultSubtitle) {
+    divinationResultSubtitle.textContent = result.subtitle || "";
+  }
+  if (divinationResultImage) {
+    if (result.method === "tarot" && result.image) {
+      setVersionedImageSource(divinationResultImage, result.image);
+      divinationResultImage.classList.remove("hidden");
+    } else {
+      divinationResultImage.classList.add("hidden");
+    }
+  }
+  if (divinationResultLines) {
+    divinationResultLines.textContent = "";
+    if (result.method === "turtle" && Array.isArray(result.lines)) {
+      result.lines.forEach(function(line) {
+        const row = document.createElement("span");
+        row.className = "turtle-line turtle-line-" + (line.type === "yang" ? "yang" : "yin");
+        divinationResultLines.appendChild(row);
+      });
+      divinationResultLines.classList.remove("hidden");
+    } else {
+      divinationResultLines.classList.add("hidden");
+    }
+  }
+  if (divinationResultKeywords) {
+    if (result.method === "turtle") {
+      const goodFor = Array.isArray(result.goodFor) ? result.goodFor.join(" / ") : "";
+      const avoid = Array.isArray(result.avoid) ? result.avoid.join(" / ") : "";
+      divinationResultKeywords.textContent = "宜：" + goodFor + " · 忌：" + avoid;
+    } else {
+      divinationResultKeywords.textContent = Array.isArray(result.keywords) ? result.keywords.join(" / ") : "";
+    }
+  }
+  if (divinationResultReality) {
+    divinationResultReality.textContent = result.reality || "";
+  }
+  if (divinationResultAdvice) {
+    divinationResultAdvice.textContent = result.advice || "";
+  }
+  if (divinationResultCamp) {
+    divinationResultCamp.textContent = result.campImpact || "";
+  }
+}
+
+function completeDivination(method, lines, options) {
+  const manager = getDivinationManager();
+
+  if (!manager || !manager.createResult) {
+    setStatus("占营数据还没准备好。");
+    return null;
+  }
+
+  const dateKey = getDivinationDateKey();
+  const resultSalt = getTodayDivinationSalt(method, selectedDivinationQuestionId);
+  const result = manager.createResult({
+    method: method,
+    questionId: selectedDivinationQuestionId,
+    dateKey: dateKey,
+    userSeed: getDivinationUserSeed(),
+    lines: lines,
+    salt: resultSalt
+  });
+
+  const record = {
+    date: dateKey,
+    method: method,
+    question: selectedDivinationQuestionId,
+    result: result,
+    effects: result.effects || {}
+  };
+  const dailyDivinations = ensureTodayDivinationsForToday();
+  dailyDivinations.records[method][selectedDivinationQuestionId] = record;
+  dailyDivinations.active = {
+    method: method,
+    question: selectedDivinationQuestionId
+  };
+  turtleShakeLines = [];
+  camperThoughtAction = "";
+  if (!options || !options.deferResult) {
+    renderDivinationResult(result, false);
+  }
+  updateDailyCampCard();
+  syncDivinationEntryState();
+  if (result.effects && Array.isArray(result.effects.thoughtLines) && result.effects.thoughtLines.length > 0) {
+    showCamperThought(result.effects.thoughtLines[0], 3600);
+  }
+  saveGame();
+  return result;
+}
+
+function shakeTurtleShellOnce() {
+  if (turtleShakeLines.length >= 6) {
+    return;
+  }
+
+  const manager = getDivinationManager();
+  const resultSalt = getTodayDivinationSalt("turtle", selectedDivinationQuestionId);
+  const allLines = manager && manager.createTurtleLines ? manager.createTurtleLines({
+    questionId: selectedDivinationQuestionId,
+    dateKey: getDivinationDateKey(),
+    userSeed: getDivinationUserSeed(),
+    salt: resultSalt
+  }) : [];
+
+  turtleShakeLines.push(allLines[turtleShakeLines.length] || { index: turtleShakeLines.length, type: Math.random() < 0.5 ? "yin" : "yang" });
+  renderDivinationSetup();
+  playTurtleShellShakeFrame();
+
+  if (turtleShakeLines.length >= 6) {
+    completeDivination("turtle", turtleShakeLines);
+  }
+}
+
+function handleDivinationAction() {
+  const savedRecord = getTodayDivinationRecord(selectedDivinationMethod, selectedDivinationQuestionId);
+
+  if (savedRecord) {
+    renderDivinationResult(savedRecord.result, true);
+    return;
+  }
+
+  if (!selectedDivinationMethod || !hasDivinationMethodUnlocked(selectedDivinationMethod)) {
+    setStatus("这个占营方式还没解锁。");
+    return;
+  }
+
+  if (selectedDivinationMethod === "turtle") {
+    shakeTurtleShellOnce();
+    return;
+  }
+
+  if (divinationActionButton) {
+    divinationActionButton.disabled = true;
+    divinationActionButton.textContent = "洗牌中...";
+  }
+  if (divinationCardVisual) {
+    divinationCardVisual.classList.add("shuffling");
+  }
+
+  window.setTimeout(function() {
+    const result = completeDivination("tarot", null, { deferResult: true });
+    if (divinationCardVisual && result && result.image) {
+      divinationCardVisual.classList.remove("shuffling");
+      divinationCardVisual.classList.add("revealed", "revealing");
+      divinationCardVisual.style.backgroundImage = "url('" + withVersion(result.image) + "')";
+    }
+    if (divinationActionButton) {
+      divinationActionButton.textContent = "翻牌中...";
+    }
+    window.setTimeout(function() {
+      if (divinationCardVisual) {
+        divinationCardVisual.classList.remove("revealing");
+      }
+      renderDivinationResult(result, false);
+    }, 620);
+  }, 520);
+}
+
+function startTurtleHold() {
+  if (selectedDivinationMethod !== "turtle" || !hasDivinationMethodUnlocked("turtle") ||
+      hasTodayDivinationResult("turtle", selectedDivinationQuestionId)) {
+    return;
+  }
+
+  turtleHoldTriggered = false;
+  if (turtleHoldTimer) {
+    clearInterval(turtleHoldTimer);
+  }
+  turtleHoldTimer = window.setInterval(function() {
+    turtleHoldTriggered = true;
+    shakeTurtleShellOnce();
+    if (turtleShakeLines.length >= 6 && turtleHoldTimer) {
+      clearInterval(turtleHoldTimer);
+      turtleHoldTimer = null;
+    }
+  }, 420);
+}
+
+function stopTurtleHold() {
+  if (turtleHoldTimer) {
+    clearInterval(turtleHoldTimer);
+    turtleHoldTimer = null;
+  }
+}
+
+function openDivinationPanel() {
+  if (!divinationLayer) {
+    return;
+  }
+
+  closeShop();
+  closeInventoryPanel();
+  closeSoundJournal();
+  closeSettingsMenu();
+  resetDivinationDraft();
+  divinationLayer.classList.remove("hidden");
+  divinationLayer.setAttribute("aria-hidden", "false");
+  document.body.classList.add("divination-open");
+
+  renderDivinationSetup();
+}
+
+function closeDivinationPanel() {
+  if (!divinationLayer) {
+    return;
+  }
+
+  stopTurtleHold();
+  divinationLayer.classList.add("hidden");
+  divinationLayer.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("divination-open");
+}
+
+function setTestDivination(method) {
+  const manager = getDivinationManager();
+
+  if (!manager || !manager.createResult || !isDivinationMethod(method)) {
+    if (typeof console !== "undefined") {
+      console.warn("setTestDivination only accepts: tarot, turtle");
+    }
+    return false;
+  }
+
+  const dateKey = getDivinationDateKey();
+  const result = manager.createResult({
+    method: method,
+    questionId: selectedDivinationQuestionId || "overall",
+    dateKey: dateKey,
+    userSeed: getDivinationUserSeed() + ":test:" + Date.now(),
+    salt: "test"
+  });
+
+  testDivinationOverride = {
+    result: result,
+    effects: result.effects || {}
+  };
+  camperThoughtAction = "";
+  updateDailyCampCard();
+  if (result.effects && Array.isArray(result.effects.thoughtLines) && result.effects.thoughtLines.length > 0) {
+    showCamperThought(result.effects.thoughtLines[0], 3200);
+  }
+  setStatus("Divination test: " + (result.title || method));
+  return result;
+}
+
+function clearTestDivination() {
+  testDivinationOverride = null;
+  camperThoughtAction = "";
+  updateDailyCampCard();
+  setStatus("Divination test cleared.");
+  return true;
+}
+
+function normalizeTestDivinationMethod(method) {
+  if (method === undefined || method === null || method === "") {
+    return selectedDivinationMethod || "";
+  }
+
+  const value = String(method).trim().toLowerCase();
+
+  if (value === "tarot" || value === "card" || value === "cards" || value === "塔罗") {
+    return "tarot";
+  }
+  if (value === "turtle" || value === "shell" || value === "turtleShell" || value === "turtleshell" || value === "龟壳") {
+    return "turtle";
+  }
+
+  return "";
+}
+
+function normalizeTestDivinationQuestion(question) {
+  if (question === undefined || question === null || question === "") {
+    return selectedDivinationQuestionId || "overall";
+  }
+
+  const raw = String(question).trim();
+  const value = raw.toLowerCase();
+  const aliases = {
+    overall: "overall",
+    today: "overall",
+    fortune: "overall",
+    "今日整体": "overall",
+    "今日运势": "overall",
+    "今日運勢": "overall",
+    "运势": "overall",
+    "運勢": "overall",
+    relationship: "relationship",
+    love: "relationship",
+    emotion: "relationship",
+    "情感": "relationship",
+    bodymind: "bodyMind",
+    body: "bodyMind",
+    mind: "bodyMind",
+    health: "bodyMind",
+    "身心": "bodyMind",
+    money: "money",
+    wealth: "money",
+    finance: "money",
+    "钱财": "money",
+    "錢財": "money",
+    "财运": "money",
+    "財運": "money"
+  };
+  const questionId = aliases[value] || aliases[raw] || raw;
+
+  return getDivinationQuestion(questionId) ? questionId : "";
+}
+
+function refreshAfterDivinationTestReset() {
+  testDivinationOverride = null;
+  camperThoughtAction = "";
+  updateDailyCampCard();
+  syncDivinationEntryState();
+
+  if (isDivinationPanelOpen()) {
+    renderDivinationSetup();
+  }
+
+  saveGame();
+}
+
+function repairActiveTodayDivination(dailyDivinations) {
+  if (!dailyDivinations || !dailyDivinations.records) {
+    return;
+  }
+
+  if (getTodayDivinationRecord(dailyDivinations.active && dailyDivinations.active.method, dailyDivinations.active && dailyDivinations.active.question)) {
+    return;
+  }
+
+  dailyDivinations.active = { method: "", question: "" };
+  ["tarot", "turtle"].some(function(method) {
+    return getDivinationQuestionIds().some(function(questionId) {
+      if (dailyDivinations.records[method] && dailyDivinations.records[method][questionId]) {
+        dailyDivinations.active = { method: method, question: questionId };
+        return true;
+      }
+
+      return false;
+    });
+  });
+}
+
+function getDivinationResultSignature(result) {
+  if (!result || typeof result !== "object") {
+    return "";
+  }
+
+  if (result.method === "turtle" || result.type === "turtle") {
+    const lines = Array.isArray(result.lines) ? result.lines.map(function(line) {
+      return line && (line.type === "yang" || line.value === 1) ? "1" : "0";
+    }).join("") : "";
+    return "turtle:" + (result.turtleResultId || result.title || "") + ":" + lines;
+  }
+
+  return "tarot:" + (result.cardId || result.title || "") + ":" + (result.orientation || "");
+}
+
+function findNextDivinationRerollSalt(method, questionId, currentSalt, previousResult) {
+  const firstSalt = Math.max(0, Math.floor(Number(currentSalt) || 0)) + 1;
+  const previousSignature = getDivinationResultSignature(previousResult);
+  const manager = getDivinationManager();
+
+  if (!previousSignature || !manager || !manager.createResult) {
+    return firstSalt;
+  }
+
+  for (let rerollSalt = firstSalt; rerollSalt < firstSalt + 256; rerollSalt += 1) {
+    const candidate = manager.createResult({
+      method: method,
+      questionId: questionId,
+      dateKey: getDivinationDateKey(),
+      userSeed: getDivinationUserSeed(),
+      salt: "daily:" + rerollSalt
+    });
+    if (getDivinationResultSignature(candidate) !== previousSignature) {
+      return rerollSalt;
+    }
+  }
+
+  return firstSalt;
+}
+
+function resetTodayDivination(method, question) {
+  const normalizedMethod = normalizeTestDivinationMethod(method);
+  const normalizedQuestion = normalizeTestDivinationQuestion(question);
+
+  if (!isDivinationMethod(normalizedMethod) || !normalizedQuestion) {
+    if (typeof console !== "undefined") {
+      console.warn('resetTodayDivination usage: resetTodayDivination("tarot", "money") or resetTodayDivination("turtle", "情感")');
+    }
+    return false;
+  }
+
+  const dailyDivinations = ensureTodayDivinationsForToday();
+  if (!dailyDivinations.records[normalizedMethod]) {
+    dailyDivinations.records[normalizedMethod] = {};
+  }
+  if (!dailyDivinations.rerollSalt) {
+    dailyDivinations.rerollSalt = { tarot: {}, turtle: {} };
+  }
+  if (!dailyDivinations.rerollSalt[normalizedMethod]) {
+    dailyDivinations.rerollSalt[normalizedMethod] = {};
+  }
+
+  const previousRecord = dailyDivinations.records[normalizedMethod][normalizedQuestion];
+  delete dailyDivinations.records[normalizedMethod][normalizedQuestion];
+  dailyDivinations.rerollSalt[normalizedMethod][normalizedQuestion] =
+    findNextDivinationRerollSalt(
+      normalizedMethod,
+      normalizedQuestion,
+      dailyDivinations.rerollSalt[normalizedMethod][normalizedQuestion],
+      previousRecord && previousRecord.result
+    );
+  repairActiveTodayDivination(dailyDivinations);
+  turtleShakeLines = [];
+  refreshAfterDivinationTestReset();
+  setStatus("Divination reset: " + normalizedMethod + " / " + normalizedQuestion);
+  return true;
+}
+
+function resetAllTodayDivinations() {
+  const previous = ensureTodayDivinationsForToday();
+  const reset = createEmptyTodayDivinations(getDivinationDateKey());
+  ["tarot", "turtle"].forEach(function(method) {
+    getDivinationQuestionIds().forEach(function(questionId) {
+      const previousMethodSalt = previous.rerollSalt && previous.rerollSalt[method];
+      const previousRecord = previous.records && previous.records[method] && previous.records[method][questionId];
+      reset.rerollSalt[method][questionId] =
+        findNextDivinationRerollSalt(
+          method,
+          questionId,
+          previousMethodSalt && previousMethodSalt[questionId],
+          previousRecord && previousRecord.result
+        );
+    });
+  });
+  gameState.todayDivinations = reset;
+  turtleShakeLines = [];
+  refreshAfterDivinationTestReset();
+  setStatus("All today divinations reset.");
+  return true;
+}
+
 // Fired when an interaction begins. Discovers + plays the mapped sounds.
 function triggerInteractionSounds(triggerKey) {
   const trigger = getSoundTriggers()[triggerKey];
@@ -10807,6 +11864,37 @@ if (soundVolumeSlider) {
     setSoundMasterVolume((Number(soundVolumeSlider.value) || 0) / 100);
   });
 }
+if (divinationButton) {
+  divinationButton.addEventListener("click", openDivinationPanel);
+}
+if (divinationCloseButton) {
+  divinationCloseButton.addEventListener("click", closeDivinationPanel);
+}
+if (divinationLayer) {
+  divinationLayer.addEventListener("click", function(event) {
+    if (event.target === divinationLayer) {
+      closeDivinationPanel();
+    }
+  });
+}
+if (divinationPanel) {
+  divinationPanel.addEventListener("click", function(event) {
+    event.stopPropagation();
+  });
+}
+if (divinationActionButton) {
+  divinationActionButton.addEventListener("click", function() {
+    if (turtleHoldTriggered) {
+      turtleHoldTriggered = false;
+      return;
+    }
+    handleDivinationAction();
+  });
+  divinationActionButton.addEventListener("pointerdown", startTurtleHold);
+  divinationActionButton.addEventListener("pointerup", stopTurtleHold);
+  divinationActionButton.addEventListener("pointercancel", stopTurtleHold);
+  divinationActionButton.addEventListener("pointerleave", stopTurtleHold);
+}
 if (dailyCampDrawerToggle) {
   dailyCampDrawerToggle.addEventListener("click", toggleDailyCampDrawer);
 }
@@ -10919,6 +12007,10 @@ if (resetSaveButton) {
 if (typeof window !== "undefined") {
   window.setTestWeather = setTestWeather;
   window.clearTestWeather = clearTestWeather;
+  window.setTestDivination = setTestDivination;
+  window.clearTestDivination = clearTestDivination;
+  window.resetTodayDivination = resetTodayDivination;
+  window.resetAllTodayDivinations = resetAllTodayDivinations;
   window.addEventListener("beforeunload", saveGame);
   window.addEventListener("pointermove", updateBuildDrag);
   window.addEventListener("pointerup", finishBuildDrag);
@@ -10932,6 +12024,9 @@ if (typeof window !== "undefined") {
     }
     if (event.key === "Escape" && isSettingsMenuOpen()) {
       closeSettingsMenu();
+    }
+    if (event.key === "Escape" && isDivinationPanelOpen()) {
+      closeDivinationPanel();
     }
     if (event.key === "Escape" && dailyCampDrawerExpanded) {
       setDailyCampDrawerExpanded(false);

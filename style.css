@@ -1273,6 +1273,7 @@ body.ui-hidden .onboarding-layer,
 body.ui-hidden .shop-backdrop,
 body.ui-hidden .shop-drawer,
 body.ui-hidden .inventory-layer,
+body.ui-hidden .divination-layer,
 body.ui-hidden .settings-layer,
 body.ui-hidden .utility-controls {
   opacity: 0;
@@ -1329,6 +1330,21 @@ body.ui-hidden .utility-controls {
 
 .sound-icon-button:active {
   transform: scale(0.94);
+}
+
+.divination-entry-button {
+  grid-template-columns: 18px auto;
+  color: #ffe0a3;
+}
+
+.divination-entry-button.has-result {
+  border-color: rgba(255, 209, 122, 0.62);
+  color: #fff5cf;
+}
+
+.divination-entry-button.locked {
+  color: #c9bd9f;
+  opacity: 0.78;
 }
 
 body.ui-hidden .ui-display-controls {
@@ -1468,6 +1484,10 @@ body.ui-hidden .ui-toggle-button {
 
   .daily-camp-card {
     transition: none;
+  }
+
+  .divination-card-visual.shuffling {
+    animation: none;
   }
 
   .weather-layer {
@@ -2992,6 +3012,41 @@ h2 {
     -webkit-line-clamp: 1;
   }
 
+  .divination-layer {
+    padding: calc(0.52rem + env(safe-area-inset-top, 0px)) calc(0.52rem + env(safe-area-inset-right, 0px)) calc(0.52rem + env(safe-area-inset-bottom, 0px)) calc(0.52rem + env(safe-area-inset-left, 0px));
+  }
+
+  .divination-panel {
+    max-height: calc(100% - 10px);
+    padding: 0.58rem;
+  }
+
+  .divination-choice-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .divination-stage {
+    min-height: 150px;
+    padding: 0.45rem;
+  }
+
+  .divination-card-visual {
+    width: 108px;
+  }
+
+  .turtle-shell-visual {
+    grid-template-columns: 88px minmax(84px, 1fr);
+    gap: 0.52rem;
+  }
+
+  .turtle-shell-visual img {
+    width: 88px;
+  }
+
+  .turtle-line {
+    width: 76px;
+  }
+
   .camper-profile-layer {
     padding: 0.5rem;
   }
@@ -3322,6 +3377,386 @@ body.ui-hidden .sound-journal-layer {
 @media (max-height: 640px) {
   .sound-journal-panel {
     max-height: 88%;
+  }
+}
+
+/* ---- Daily Divination ---------------------------------------------------- */
+.divination-layer {
+  position: absolute;
+  z-index: 118;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: calc(0.72rem + env(safe-area-inset-top, 0px)) calc(0.72rem + env(safe-area-inset-right, 0px)) calc(0.72rem + env(safe-area-inset-bottom, 0px)) calc(0.72rem + env(safe-area-inset-left, 0px));
+  background: rgba(8, 13, 10, 0.36);
+  backdrop-filter: blur(3px);
+}
+
+body.divination-open .daily-camp-card {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.divination-panel {
+  width: min(100%, 430px);
+  max-height: min(92%, 690px);
+  display: flex;
+  flex-direction: column;
+  padding: 0.8rem;
+  border: 1px solid rgba(222, 177, 103, 0.42);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(34, 45, 34, 0.96), rgba(21, 30, 24, 0.97));
+  box-shadow: 0 1rem 2rem rgba(8, 11, 8, 0.36);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.divination-panel::-webkit-scrollbar {
+  display: none;
+}
+
+.divination-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.divination-header h2 {
+  margin: 0;
+  color: #f6dfb2;
+  font-size: 1.15rem;
+  line-height: 1.05;
+}
+
+.divination-close-button {
+  display: grid;
+}
+
+.divination-intro {
+  margin: 0.45rem 0 0;
+  color: #d7c8a2;
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.36;
+}
+
+.divination-choice-grid,
+.divination-method-grid {
+  display: grid;
+  gap: 0.36rem;
+  margin-top: 0.58rem;
+}
+
+.divination-choice-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.divination-method-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.divination-choice-button,
+.divination-method-button,
+.divination-action-button {
+  border: 1px solid rgba(222, 177, 103, 0.28);
+  border-radius: 8px;
+  color: #ead9ad;
+  background: rgba(28, 39, 29, 0.74);
+  box-shadow: inset 0 1px 0 rgba(255, 240, 198, 0.08);
+  cursor: pointer;
+}
+
+.divination-choice-button {
+  min-height: 36px;
+  display: grid;
+  align-content: center;
+  gap: 0.12rem;
+  padding: 0.32rem 0.28rem;
+  font-size: 0.66rem;
+  font-weight: 900;
+  line-height: 1.12;
+}
+
+.divination-choice-button small {
+  min-height: 0.58rem;
+  color: #c7b588;
+  font-size: 0.52rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.divination-choice-button:not(.has-result) small {
+  display: none;
+}
+
+.divination-method-button {
+  min-height: 62px;
+  display: grid;
+  align-content: center;
+  gap: 0.18rem;
+  padding: 0.42rem;
+  text-align: left;
+}
+
+.divination-method-button span {
+  color: #fff1c8;
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.divination-method-button small {
+  color: #bdaf91;
+  font-size: 0.56rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.divination-choice-button.selected,
+.divination-method-button.selected {
+  border-color: rgba(255, 209, 122, 0.82);
+  color: #fff5cf;
+  background: rgba(71, 55, 31, 0.82);
+}
+
+.divination-choice-button.has-result,
+.divination-method-button.has-result {
+  box-shadow: inset 0 -2px 0 rgba(146, 190, 151, 0.38);
+}
+
+.divination-method-button.locked {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.divination-stage {
+  min-height: 0;
+  height: min(31vh, 222px);
+  display: grid;
+  place-items: center;
+  margin-top: 0.68rem;
+  padding: 0.6rem;
+  border: 1px solid rgba(222, 177, 103, 0.18);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255, 209, 122, 0.14), transparent 58%),
+    rgba(11, 18, 13, 0.35);
+  overflow: visible;
+}
+
+.divination-card-visual {
+  width: auto;
+  height: min(27vh, 194px);
+  max-width: 100%;
+  aspect-ratio: 360 / 520;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(234, 190, 111, 0.76);
+  border-radius: 10px;
+  color: #ffd17a;
+  background:
+    linear-gradient(135deg, rgba(45, 58, 40, 0.98), rgba(17, 24, 20, 0.98)),
+    repeating-linear-gradient(45deg, rgba(255, 209, 122, 0.16) 0 7px, transparent 7px 15px);
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 0.7rem 1.4rem rgba(7, 10, 8, 0.34);
+  transform-style: preserve-3d;
+}
+
+.divination-card-back {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 209, 122, 0.44);
+  border-radius: 50%;
+  background: rgba(11, 18, 13, 0.42);
+  font-size: 1.45rem;
+  font-weight: 900;
+}
+
+.divination-card-visual.shuffling {
+  animation: divinationShuffle 0.38s ease-in-out infinite alternate;
+}
+
+.divination-card-visual.revealed .divination-card-back {
+  display: none;
+}
+
+.divination-card-visual.revealing {
+  animation: divinationReveal 0.58s ease both;
+}
+
+.turtle-shell-visual {
+  display: grid;
+  grid-template-columns: 116px minmax(90px, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.turtle-shell-visual img {
+  width: 116px;
+  height: auto;
+  filter: drop-shadow(0 0.35rem 0.45rem rgba(5, 9, 5, 0.3));
+  transform-origin: 50% 62%;
+}
+
+.turtle-shell-visual.is-shaking img {
+  animation: turtleShellShake 0.34s steps(3, end);
+}
+
+.turtle-line-stack,
+.divination-result-lines {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.turtle-line {
+  width: 88px;
+  height: 8px;
+  display: block;
+  border-radius: 999px;
+  background: #d8b56c;
+  box-shadow: inset 0 1px 0 rgba(255, 244, 198, 0.34);
+}
+
+.turtle-line-yin {
+  background: linear-gradient(90deg, #d8b56c 0 42%, transparent 42% 58%, #d8b56c 58% 100%);
+}
+
+.divination-action-button {
+  min-height: 42px;
+  margin-top: 0.58rem;
+  padding: 0.52rem 0.64rem;
+  color: #352918;
+  background: linear-gradient(180deg, #ffd985, #d59c4c);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.divination-action-button:disabled {
+  color: #d4c5a2;
+  background: rgba(48, 51, 43, 0.8);
+  cursor: not-allowed;
+}
+
+.divination-result {
+  min-width: 0;
+  display: grid;
+  gap: 0.44rem;
+  margin-top: 0.66rem;
+}
+
+.divination-result-kicker {
+  margin: 0;
+  color: #d9b477;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.divination-result h3 {
+  margin: 0.16rem 0 0;
+  color: #fff1c8;
+  font-size: 1rem;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.divination-result-top p:last-child,
+.divination-result-keywords,
+.divination-result > p {
+  margin: 0;
+  color: #dfd0aa;
+  font-size: 0.68rem;
+  font-weight: 750;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.divination-result-keywords {
+  color: #b9d7c0;
+}
+
+.divination-result-image {
+  display: block;
+  width: auto;
+  height: min(36vh, 250px);
+  max-width: min(100%, 174px);
+  aspect-ratio: 360 / 520;
+  justify-self: center;
+  border: 1px solid rgba(255, 209, 122, 0.5);
+  border-radius: 9px;
+  object-fit: contain;
+  object-position: center;
+  box-shadow: 0 0.58rem 1rem rgba(6, 10, 7, 0.32);
+}
+
+.divination-result-lines {
+  justify-self: center;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgba(222, 177, 103, 0.22);
+  border-radius: 8px;
+  background: rgba(12, 19, 14, 0.38);
+}
+
+@keyframes divinationShuffle {
+  from {
+    transform: translate3d(-3px, 0, 0) rotate(-2deg);
+  }
+
+  to {
+    transform: translate3d(3px, -2px, 0) rotate(2deg);
+  }
+}
+
+@keyframes divinationReveal {
+  0% {
+    transform: rotateY(90deg) scale(0.96);
+  }
+
+  100% {
+    transform: rotateY(0) scale(1);
+  }
+}
+
+@keyframes turtleShellShake {
+  0% {
+    transform: translate3d(-2px, 1px, 0) rotate(-6deg);
+  }
+
+  45% {
+    transform: translate3d(3px, -1px, 0) rotate(7deg);
+  }
+
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+@media (max-width: 430px), (max-height: 680px) {
+  .divination-panel {
+    max-height: calc(100% - 8px);
+    padding: 0.58rem;
+  }
+
+  .divination-choice-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .divination-stage {
+    height: min(29vh, 188px);
+    padding: 0.42rem;
+  }
+
+  .divination-card-visual {
+    height: min(25vh, 162px);
+  }
+
+  .divination-result-image {
+    height: min(31vh, 210px);
+    max-width: min(100%, 146px);
   }
 }
 
