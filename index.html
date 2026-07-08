@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cozy Camping Idle V3.0</title>
+  <title>Cozy Camping Idle V3.4</title>
   <script>
-    window.APP_VERSION = "3.0";
+    window.APP_VERSION = "3.4";
   </script>
   <link id="appStylesheet" rel="stylesheet" href="style.css?v=3.0">
   <script>
@@ -76,19 +76,21 @@
         </button>
       </nav>
 
-      <nav class="utility-controls" aria-label="Save and help controls">
-        <button id="onboardingHelpButton" class="utility-button help-button" type="button" aria-label="Open guide">
-          <span class="help-mark">?</span>
-          <span>Help</span>
-        </button>
+      <nav class="utility-controls" aria-label="Menu and camper controls">
+        <div class="utility-stack">
+          <button id="onboardingHelpButton" class="utility-button help-button" type="button" aria-label="Open menu" aria-haspopup="true">
+            <span class="help-mark">?</span>
+            <span>Help</span>
+          </button>
+
+          <button id="soundJournalButton" class="sound-icon-button" type="button" aria-label="Open sound journal">
+            <span class="sound-journal-glyph" aria-hidden="true">🔊</span>
+          </button>
+        </div>
 
         <button id="camperProfileButton" class="utility-button camper-profile-toggle" type="button" aria-label="Edit camper profile">
+          <span class="utility-glyph" aria-hidden="true">🧑</span>
           <span>Camper</span>
-        </button>
-
-        <button id="resetSaveButton" class="utility-button" type="button">
-          <img class="button-icon" src="assets/ui/icon_tools.png?v=3.0" alt="">
-          <span>Reset</span>
         </button>
       </nav>
 
@@ -165,6 +167,62 @@
                 <div id="inventoryMealList" class="inventory-list"></div>
               </section>
             </div>
+          </section>
+        </div>
+
+        <div id="settingsLayer" class="settings-layer hidden" aria-hidden="true" aria-live="polite">
+          <section id="settingsPanel" class="settings-panel" aria-label="Menu">
+            <div class="settings-header">
+              <div>
+                <p class="eyebrow">Camp</p>
+                <h2>菜单</h2>
+              </div>
+              <button id="settingsCloseButton" class="close-button settings-close-button" type="button" aria-label="Close menu">
+                <img src="assets/ui/icon_close.png?v=3.3" alt="">
+              </button>
+            </div>
+
+            <div class="settings-menu">
+              <button id="settingsTutorialToggle" class="settings-item" type="button" aria-expanded="false" aria-controls="settingsTutorialList">
+                <span class="settings-item-icon" aria-hidden="true">📖</span>
+                <span class="settings-item-label">Tutorial</span>
+                <span class="settings-caret" aria-hidden="true">▾</span>
+              </button>
+
+              <div id="settingsTutorialList" class="settings-sublist hidden">
+                <button class="settings-subitem" type="button" data-guide="onboarding">新手指引</button>
+                <button class="settings-subitem" type="button" data-guide="buildMode">建造模式</button>
+              </div>
+
+              <button id="settingsResetItem" class="settings-item settings-item-danger" type="button">
+                <span class="settings-item-icon" aria-hidden="true"><img src="assets/ui/icon_tools.png?v=3.3" alt=""></span>
+                <span class="settings-item-label">Reset</span>
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <div id="soundJournalLayer" class="sound-journal-layer hidden" aria-hidden="true" aria-live="polite">
+          <section id="soundJournalPanel" class="sound-journal-panel" aria-label="Sound journal">
+            <div class="sound-journal-header">
+              <div>
+                <p class="eyebrow">Ambient</p>
+                <h2>声音图鉴</h2>
+              </div>
+              <button id="soundJournalCloseButton" class="close-button sound-journal-close-button" type="button" aria-label="Close sound journal">
+                <img src="assets/ui/icon_close.png?v=3.3" alt="">
+              </button>
+            </div>
+
+            <p class="sound-journal-intro">在营地里互动会发现新声音。勾选喜欢的循环声，叠成你的专属白噪音。</p>
+
+            <div class="sound-journal-master">
+              <button id="soundMasterToggle" class="sound-master-toggle" type="button" aria-pressed="false">🔊 开启</button>
+              <label class="sound-volume-label" for="soundVolumeSlider">音量</label>
+              <input id="soundVolumeSlider" class="sound-volume-slider" type="range" min="0" max="100" value="70" aria-label="Master volume">
+            </div>
+
+            <div id="soundJournalList" class="sound-journal-list"></div>
           </section>
         </div>
 
@@ -263,17 +321,25 @@
         image.src = cleanPath + "?v=" + window.APP_VERSION;
       });
 
-      function loadGameScript() {
-        const gameScript = document.createElement("script");
-        gameScript.src = "game.js?v=" + window.APP_VERSION;
-        document.body.appendChild(gameScript);
+      // Load helper modules first, then game.js, so its globals are ready.
+      // Each step falls back to the next even if a script fails to load.
+      function loadScriptThen(src, next) {
+        const script = document.createElement("script");
+        script.src = src + "?v=" + window.APP_VERSION;
+        script.onload = next;
+        script.onerror = next;
+        document.body.appendChild(script);
       }
 
-      const gearCatalogScript = document.createElement("script");
-      gearCatalogScript.src = "gearCatalog.js?v=" + window.APP_VERSION;
-      gearCatalogScript.onload = loadGameScript;
-      gearCatalogScript.onerror = loadGameScript;
-      document.body.appendChild(gearCatalogScript);
+      function loadGameScript() {
+        loadScriptThen("game.js", function() {});
+      }
+
+      loadScriptThen("gearCatalog.js", function() {
+        loadScriptThen("soundJournalCatalog.js", function() {
+          loadScriptThen("soundManager.js", loadGameScript);
+        });
+      });
     })();
   </script>
 </body>

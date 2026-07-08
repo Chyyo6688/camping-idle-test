@@ -932,9 +932,15 @@ body.shop-open .toast-layer {
   z-index: 62;
   top: calc(env(safe-area-inset-top, 0px) + 8.2%);
   left: calc(3.2% + env(safe-area-inset-left, 0px));
+  max-width: calc(94% - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 0.36rem;
+  pointer-events: none;
+}
+
+.utility-controls > * {
   pointer-events: auto;
 }
 
@@ -1013,9 +1019,62 @@ body.ui-hidden .onboarding-layer,
 body.ui-hidden .shop-backdrop,
 body.ui-hidden .shop-drawer,
 body.ui-hidden .inventory-layer,
+body.ui-hidden .settings-layer,
 body.ui-hidden .utility-controls {
   opacity: 0;
   pointer-events: none;
+}
+
+/* Vertical stack: Help on top, sound icon directly beneath it. */
+.utility-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.32rem;
+  pointer-events: none;
+}
+
+.utility-stack > * {
+  pointer-events: auto;
+}
+
+/* Small emoji glyph used where a button has no dedicated PNG icon. */
+.utility-glyph {
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+/* Icon-only sound journal entry (no button chrome). */
+.sound-icon-button {
+  width: 40px;
+  height: 40px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(8, 12, 8, 0.55));
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+.sound-icon-button .sound-journal-glyph {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.sound-icon-button:hover {
+  transform: scale(1.06);
+  filter: brightness(1.1) drop-shadow(0 1px 2px rgba(8, 12, 8, 0.55));
+}
+
+.sound-icon-button:active {
+  transform: scale(0.94);
 }
 
 body.ui-hidden .ui-display-controls {
@@ -2625,4 +2684,442 @@ h2 {
     grid-template-columns: 1fr;
   }
 
+}
+
+/* ---- Sound Journal ------------------------------------------------------- */
+.sound-journal-toggle .sound-journal-glyph {
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+body.ui-hidden .sound-journal-layer {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sound-journal-layer {
+  position: absolute;
+  z-index: 118;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: calc(1rem + env(safe-area-inset-top, 0px)) calc(0.75rem + env(safe-area-inset-right, 0px)) calc(0.75rem + env(safe-area-inset-bottom, 0px)) calc(0.75rem + env(safe-area-inset-left, 0px));
+  background: rgba(10, 16, 12, 0.44);
+  backdrop-filter: blur(5px);
+  pointer-events: auto;
+}
+
+.sound-journal-panel {
+  width: min(100%, 390px);
+  max-height: min(80%, 580px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0.82rem;
+  border: 2px solid rgba(255, 209, 122, 0.66);
+  border-radius: 12px;
+  color: #fff1ca;
+  background: linear-gradient(180deg, rgba(43, 55, 36, 0.98), rgba(22, 31, 23, 0.99));
+  box-shadow:
+    0 0.72rem 1.7rem rgba(6, 10, 7, 0.44),
+    inset 0 1px 0 rgba(255, 238, 186, 0.12);
+}
+
+.sound-journal-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.sound-journal-header h2 {
+  color: #f5dfb3;
+  font-size: clamp(1rem, 2.8vw, 1.24rem);
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.sound-journal-close-button {
+  display: grid;
+  flex: 0 0 auto;
+}
+
+.sound-journal-intro {
+  margin: 0.42rem 0 0;
+  color: #d9c9a4;
+  font-size: clamp(0.56rem, 1.55vw, 0.72rem);
+  font-weight: 800;
+  line-height: 1.32;
+}
+
+.sound-journal-master {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.62rem;
+  padding: 0.42rem 0.5rem;
+  border: 1px solid rgba(230, 188, 107, 0.3);
+  border-radius: 9px;
+  background: rgba(18, 25, 18, 0.55);
+}
+
+.sound-master-toggle {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0.28rem 0.56rem;
+  border: 1px solid rgba(255, 209, 122, 0.5);
+  border-radius: 8px;
+  color: #fff4d3;
+  background: rgba(64, 84, 52, 0.7);
+  font-size: clamp(0.58rem, 1.6vw, 0.72rem);
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sound-master-toggle.muted {
+  color: #d7c8a6;
+  background: rgba(40, 46, 36, 0.7);
+  border-color: rgba(230, 188, 107, 0.28);
+}
+
+.sound-volume-label {
+  color: #d9b477;
+  font-size: clamp(0.54rem, 1.5vw, 0.68rem);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.sound-volume-slider {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 4px;
+  accent-color: #ffd17a;
+  cursor: pointer;
+}
+
+.sound-journal-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.62rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.sound-journal-list::-webkit-scrollbar {
+  display: none;
+}
+
+.sound-journal-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.44rem 0.5rem;
+  border: 1px solid rgba(230, 188, 107, 0.32);
+  border-radius: 9px;
+  background: rgba(18, 25, 18, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 238, 186, 0.08);
+}
+
+.sound-journal-row.locked {
+  border-color: rgba(150, 150, 130, 0.22);
+  background: rgba(16, 20, 16, 0.5);
+  opacity: 0.82;
+}
+
+.sound-journal-icon {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(64, 84, 52, 0.55);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.sound-journal-row.locked .sound-journal-icon {
+  background: rgba(40, 44, 36, 0.55);
+}
+
+.sound-journal-copy {
+  min-width: 0;
+}
+
+.sound-journal-name {
+  margin: 0;
+  color: #fff4d3;
+  font-size: clamp(0.7rem, 1.9vw, 0.86rem);
+  font-weight: 900;
+  line-height: 1.14;
+  overflow-wrap: anywhere;
+  text-transform: none;
+}
+
+.sound-journal-row.locked .sound-journal-name {
+  color: #cabf9f;
+}
+
+.sound-journal-desc {
+  margin: 0.12rem 0 0;
+  color: #d3c39c;
+  font-size: clamp(0.54rem, 1.5vw, 0.68rem);
+  font-weight: 750;
+  line-height: 1.26;
+  overflow-wrap: anywhere;
+}
+
+.sound-journal-control {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+}
+
+.sound-journal-tag {
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+  font-size: clamp(0.5rem, 1.4vw, 0.62rem);
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.sound-journal-tag.found-tag {
+  color: #2c3a20;
+  background: #cfe0a4;
+}
+
+.sound-journal-tag.locked-tag {
+  color: #d7c8a6;
+  background: rgba(70, 74, 60, 0.6);
+}
+
+.sound-journal-toggle {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(230, 188, 107, 0.4);
+  border-radius: 999px;
+  background: rgba(40, 46, 36, 0.85);
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.sound-journal-toggle.on {
+  background: rgba(120, 168, 88, 0.9);
+  border-color: rgba(255, 209, 122, 0.75);
+}
+
+.sound-journal-knob {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: #f6efd8;
+  box-shadow: 0 1px 3px rgba(6, 10, 7, 0.4);
+  transition: left 0.16s ease;
+}
+
+.sound-journal-toggle.on .sound-journal-knob {
+  left: 23px;
+}
+
+.sound-journal-summary {
+  margin: 0.2rem 0 0.1rem;
+  color: #d9b477;
+  font-size: clamp(0.54rem, 1.5vw, 0.68rem);
+  font-weight: 900;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+@media (max-height: 640px) {
+  .sound-journal-panel {
+    max-height: 88%;
+  }
+}
+
+/* ---- Settings menu (from Help) ------------------------------------------ */
+.settings-layer {
+  position: absolute;
+  z-index: 119;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: calc(1rem + env(safe-area-inset-top, 0px)) calc(0.75rem + env(safe-area-inset-right, 0px)) calc(0.75rem + env(safe-area-inset-bottom, 0px)) calc(0.75rem + env(safe-area-inset-left, 0px));
+  background: rgba(10, 16, 12, 0.44);
+  backdrop-filter: blur(5px);
+  pointer-events: auto;
+}
+
+.settings-panel {
+  width: min(100%, 340px);
+  max-height: min(80%, 480px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0.82rem;
+  border: 2px solid rgba(255, 209, 122, 0.66);
+  border-radius: 12px;
+  color: #fff1ca;
+  background: linear-gradient(180deg, rgba(43, 55, 36, 0.98), rgba(22, 31, 23, 0.99));
+  box-shadow:
+    0 0.72rem 1.7rem rgba(6, 10, 7, 0.44),
+    inset 0 1px 0 rgba(255, 238, 186, 0.12);
+}
+
+.settings-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.settings-header h2 {
+  color: #f5dfb3;
+  font-size: clamp(1rem, 2.8vw, 1.24rem);
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.settings-close-button {
+  display: grid;
+  flex: 0 0 auto;
+}
+
+.settings-menu {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 0.42rem;
+  margin-top: 0.72rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.settings-menu::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-item {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.6rem 0.68rem;
+  border: 1px solid rgba(230, 188, 107, 0.32);
+  border-radius: 9px;
+  color: #fff4d3;
+  background: rgba(18, 25, 18, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 238, 186, 0.08);
+  cursor: pointer;
+  text-align: left;
+}
+
+.settings-item:hover {
+  filter: brightness(1.07);
+}
+
+.settings-item-icon {
+  width: 26px;
+  height: 26px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 7px;
+  background: rgba(64, 84, 52, 0.55);
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.settings-item-icon img {
+  width: 18px;
+  height: 18px;
+}
+
+.settings-item-label {
+  min-width: 0;
+  font-size: clamp(0.72rem, 2vw, 0.9rem);
+  font-weight: 900;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.settings-caret {
+  color: #d9b477;
+  font-size: 0.8rem;
+  line-height: 1;
+  transition: transform 0.16s ease;
+}
+
+.settings-item.expanded .settings-caret {
+  transform: rotate(180deg);
+}
+
+.settings-item-danger {
+  color: #ffd0b0;
+  border-color: rgba(224, 138, 96, 0.42);
+}
+
+.settings-item-danger .settings-item-icon {
+  background: rgba(96, 56, 44, 0.55);
+}
+
+.settings-sublist {
+  display: grid;
+  gap: 0.34rem;
+  margin: -0.04rem 0 0.1rem;
+  padding-left: 0.6rem;
+}
+
+.settings-subitem {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.62rem;
+  border: 1px solid rgba(230, 188, 107, 0.26);
+  border-radius: 8px;
+  color: #f0e2bd;
+  background: rgba(24, 32, 23, 0.55);
+  font-size: clamp(0.66rem, 1.8vw, 0.82rem);
+  font-weight: 850;
+  line-height: 1.1;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-subitem::before {
+  content: "▶";
+  margin-right: 0.4rem;
+  color: #d9b477;
+  font-size: 0.6rem;
+}
+
+.settings-subitem:hover {
+  filter: brightness(1.08);
+  border-color: rgba(255, 209, 122, 0.5);
+}
+
+@media (max-height: 640px) {
+  .settings-panel {
+    max-height: 90%;
+  }
 }
