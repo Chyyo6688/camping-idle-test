@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cozy Camping Idle V3.4</title>
+  <title>Cozy Camping Idle V3.5</title>
   <script>
-    window.APP_VERSION = "3.4";
+    window.APP_VERSION = "3.5";
   </script>
   <link id="appStylesheet" rel="stylesheet" href="style.css?v=3.0">
   <script>
@@ -21,6 +21,7 @@
       <img id="sceneBackground" class="scene-asset scene-background" src="assets/backgrounds/campsite_day.png?v=3.0" alt="">
       <img id="treelineImage" class="scene-asset treeline-image" src="assets/backgrounds/treeline_day.png?v=3.0" alt="">
       <img id="lakeImage" class="scene-asset lake-image" src="assets/backgrounds/lake_day.png?v=3.0" alt="">
+      <div id="weatherLayer" class="weather-layer hidden" aria-hidden="true"></div>
 
       <div id="woodLayer" class="wood-layer" aria-label="Fallen branches on the ground"></div>
       <div id="sparkLayer" class="spark-layer" aria-hidden="true"></div>
@@ -62,6 +63,26 @@
           </span>
         </div>
       </header>
+
+      <section id="dailyCampCard" class="daily-camp-card collapsed" aria-label="今日营地卡">
+        <button id="dailyCampDrawerToggle" class="daily-camp-drawer-toggle" type="button" aria-expanded="false" aria-controls="dailyCampDrawerPanel" aria-label="展开今日营地卡">
+          <span id="dailyWeatherTabIcon" class="daily-weather-tab-icon" aria-hidden="true">晴</span>
+          <span class="daily-weather-tab-copy" aria-hidden="true">今日</span>
+          <span id="dailyCampDrawerChevron" class="daily-camp-drawer-chevron" aria-hidden="true">‹</span>
+        </button>
+        <div id="dailyCampDrawerPanel" class="daily-camp-drawer-panel" aria-hidden="true">
+          <div class="daily-camp-card-title">
+            <span id="dailyWeatherIcon" class="daily-weather-icon" aria-hidden="true">晴</span>
+            <div>
+              <p>今日天气</p>
+              <h2 id="dailyWeatherLabel">晴天</h2>
+            </div>
+          </div>
+          <p id="dailyCampMood" class="daily-camp-mood"></p>
+          <p id="dailyCampActivities" class="daily-camp-activities"></p>
+          <p id="dailySoundRecommendation" class="daily-sound-recommendation"></p>
+        </div>
+      </section>
 
       <nav class="mode-controls" aria-label="Camp mode controls">
         <button id="gatherWoodToggle" class="mode-button gather-button active" type="button">
@@ -336,8 +357,10 @@
       }
 
       loadScriptThen("gearCatalog.js", function() {
-        loadScriptThen("soundJournalCatalog.js", function() {
-          loadScriptThen("soundManager.js", loadGameScript);
+        loadScriptThen("weatherCatalog.js", function() {
+          loadScriptThen("soundJournalCatalog.js", function() {
+            loadScriptThen("soundManager.js", loadGameScript);
+          });
         });
       });
     })();

@@ -1,2 +1,4 @@
 .DS_Store
 tools/serve.js
+tmp/weather-browser-*.png
+tmp/weather_previews/

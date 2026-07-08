@@ -249,6 +249,85 @@ body.shop-open .scene-content {
   z-index: 3;
 }
 
+.weather-layer {
+  position: absolute;
+  inset: -5%;
+  z-index: 6;
+  overflow: hidden;
+  opacity: 0.72;
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+}
+
+.weather-layer-image {
+  width: 110%;
+  height: 110%;
+  object-fit: fill;
+  opacity: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
+.weather-layer-sunny {
+  opacity: 1;
+  mix-blend-mode: screen;
+  animation: weatherWarmDrift 7s ease-in-out infinite alternate;
+}
+.weather-layer-sunny .weather-layer-image {
+  left: 0%;
+  top: 0%;
+  width: 200%;
+  height: 200%;
+}
+
+.weather-layer-cloudy {
+  opacity: 1;
+  mix-blend-mode: multiply;
+  animation: weatherSlowDrift 18s ease-in-out infinite alternate;
+}
+
+.weather-layer-breezy {
+  z-index: 27;
+  opacity: 0.72;
+  animation: weatherLeafDrift 7s linear infinite;
+}
+
+.weather-layer-light-rain {
+  opacity: 1;
+  animation: weatherRainDrift 0.3s linear infinite;
+}
+
+.weather-layer-foggy {
+  --fog-opacity-low: 0.3;
+  --fog-opacity-high: 1;
+
+  mix-blend-mode: screen;
+  animation:
+    weatherFogDrift 16s ease-in-out infinite alternate,
+    weatherFogPulse 4s ease-in-out infinite alternate;
+}
+
+body.night .weather-layer-sunny {
+  opacity: 0;
+}
+
+body.night .weather-layer-cloudy {
+  opacity: 1;
+}
+
+body.night .weather-layer-breezy {
+  opacity: 0.56;
+}
+
+body.night .weather-layer-light-rain {
+  opacity: 1;
+}
+
+body.night .weather-layer-foggy {
+  opacity: 1;
+}
+
 .string-lights {
   width: 24%;
   aspect-ratio: 160 / 60;
@@ -335,6 +414,174 @@ body.night .string-lights-glow {
   color: #fff3cf;
   font-size: clamp(0.68rem, 2.2vw, 1rem);
   line-height: 1.12;
+}
+
+.daily-camp-card {
+  --daily-drawer-width: min(82vw, 350px);
+  --daily-drawer-tab-width: 46px;
+  width: var(--daily-drawer-width);
+  position: absolute;
+  z-index: 66;
+  right: env(safe-area-inset-right, 0px);
+  top: calc(env(safe-area-inset-top, 0px) + 14%);
+  display: grid;
+  grid-template-columns: var(--daily-drawer-tab-width) minmax(0, 1fr);
+  align-items: stretch;
+  color: #f3e2bb;
+  transform: translate3d(calc(100% - var(--daily-drawer-tab-width)), 0, 0);
+  transition: opacity 0.2s ease, transform 0.24s ease;
+  pointer-events: none;
+}
+
+.daily-camp-card.open {
+  transform: translate3d(0, 0, 0);
+}
+
+.daily-camp-drawer-toggle {
+  min-width: 0;
+  min-height: 88px;
+  align-self: start;
+  display: grid;
+  grid-template-rows: auto auto auto;
+  place-items: center;
+  gap: 0.18rem;
+  padding: 0.38rem 0.22rem;
+  border: 1px solid rgba(230, 188, 107, 0.52);
+  border-right: 0;
+  border-radius: 10px 0 0 10px;
+  color: #fff1c5;
+  background:
+    linear-gradient(180deg, rgba(36, 49, 34, 0.88), rgba(22, 31, 25, 0.82));
+  box-shadow: 0 0.36rem 0.9rem rgba(10, 15, 10, 0.2);
+  backdrop-filter: blur(7px);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.daily-camp-drawer-toggle:hover {
+  filter: brightness(1.06);
+}
+
+.daily-camp-drawer-toggle:active {
+  transform: translateX(-1px);
+}
+
+.daily-weather-tab-icon,
+.daily-weather-icon {
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 224, 154, 0.3);
+  border-radius: 8px;
+  color: #342610;
+  background: linear-gradient(180deg, #ffd983, #c9903e);
+  box-shadow: inset 0 1px 0 rgba(255, 245, 199, 0.34), 0 0.24rem 0.42rem rgba(10, 13, 8, 0.18);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.daily-weather-tab-icon {
+  width: 1.64rem;
+  height: 1.64rem;
+  font-size: 0.72rem;
+}
+
+.daily-weather-tab-copy {
+  color: #d7c69b;
+  font-size: 0.54rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.daily-camp-drawer-chevron {
+  color: #ffd983;
+  font-size: 1.05rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.daily-camp-drawer-panel {
+  min-width: 0;
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.5rem 0.62rem;
+  border: 1px solid rgba(230, 188, 107, 0.34);
+  border-right: 0;
+  border-radius: 8px 0 0 8px;
+  background:
+    linear-gradient(180deg, rgba(31, 42, 31, 0.78), rgba(22, 31, 25, 0.66));
+  box-shadow: 0 0.5rem 1.15rem rgba(10, 15, 10, 0.2);
+  backdrop-filter: blur(7px);
+  pointer-events: none;
+}
+
+.daily-camp-card.open .daily-camp-drawer-panel {
+  pointer-events: auto;
+}
+
+.daily-camp-card-title {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.daily-weather-icon {
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.9rem;
+}
+
+.daily-camp-card-title h2 {
+  margin: 0.28rem;
+  overflow-wrap: anywhere;
+}
+.daily-camp-card-title p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.daily-camp-mood,
+.daily-camp-activities,
+.daily-sound-recommendation {
+  margin: 0rem;
+  overflow-wrap: anywhere;
+}
+
+.daily-camp-card-title p {
+  color: #d4c299;
+  font-size: 0.58rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.daily-camp-card-title h2 {
+  color: #fff1c5;
+  font-size: 0.86rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.daily-camp-mood {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #f2dfb8;
+  font-size: 0.68rem;
+  font-weight: 750;
+  line-height: 1.28;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.daily-camp-activities,
+.daily-sound-recommendation {
+  color: #d8c89e;
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1.22;
+}
+
+.daily-sound-recommendation {
+  color: #b9d7c0;
 }
 
 .gain-layer {
@@ -879,7 +1126,7 @@ body.camper-in-tent .camper-attachment {
   position: absolute;
   z-index: 64;
   left: 50%;
-  top: calc(env(safe-area-inset-top, 0px) + 14.5%);
+  top: calc(env(safe-area-inset-top, 0px) + 25.5%);
   width: min(78%, 360px);
   display: grid;
   gap: 0.35rem;
@@ -924,6 +1171,12 @@ body.camper-in-tent .camper-attachment {
 body.shop-open .toast-layer {
   opacity: 0;
   transform: translate(-50%, -0.35rem);
+  pointer-events: none;
+}
+
+body.shop-open .daily-camp-card {
+  opacity: 0;
+  transform: translate3d(110%, -0.35rem, 0);
   pointer-events: none;
 }
 
@@ -1014,6 +1267,7 @@ body.shop-open .toast-layer {
 body.ui-hidden .top-bar,
 body.ui-hidden .mode-controls,
 body.ui-hidden .floating-controls,
+body.ui-hidden .daily-camp-card,
 body.ui-hidden .toast-layer,
 body.ui-hidden .onboarding-layer,
 body.ui-hidden .shop-backdrop,
@@ -1209,6 +1463,14 @@ body.ui-hidden .ui-toggle-button {
 
 @media (prefers-reduced-motion: reduce) {
   .onboarding-pointer {
+    animation: none;
+  }
+
+  .daily-camp-card {
+    transition: none;
+  }
+
+  .weather-layer {
     animation: none;
   }
 }
@@ -2573,6 +2835,65 @@ h2 {
   }
 }
 
+@keyframes weatherRainDrift {
+  from {
+    transform: translate3d(-1.8%, -2.4%, 0);
+  }
+
+  to {
+    transform: translate3d(1.4%, 2.8%, 0);
+  }
+}
+
+@keyframes weatherFogDrift {
+  from {
+    transform: translate3d(-5%, 0, 0);
+  }
+
+  to {
+    transform: translate3d(5%, -2%, 0);
+  }
+}
+@keyframes weatherFogPulse {
+  from {
+    opacity: var(--fog-opacity-low);
+  }
+
+  to {
+    opacity: var(--fog-opacity-high);
+  }
+}
+
+@keyframes weatherSlowDrift {
+  from {
+    transform: translate3d(-1.6%, -0.2%, 0);
+  }
+
+  to {
+    transform: translate3d(1.6%, 0.4%, 0);
+  }
+}
+
+@keyframes weatherWarmDrift {
+  from {
+    transform: translate3d(1%, 1%, 0);
+  }
+
+  to {
+    transform: translate3d(-10%, 0.5%, 0);
+  }
+}
+
+@keyframes weatherLeafDrift {
+  from {
+    transform: translate3d(-4%, -2%, 0);
+  }
+
+  to {
+    transform: translate3d(4%, 2%, 0);
+  }
+}
+
 @keyframes camperBob {
   from {
     transform: translate3d(var(--object-anchor-x), var(--object-anchor-y), 0) scaleX(var(--object-scale-x));
@@ -2617,8 +2938,58 @@ h2 {
   }
 
   .toast-layer {
-    top: calc(env(safe-area-inset-top, 0px) + 15.2%);
+    top: calc(env(safe-area-inset-top, 0px) + 27%);
     width: min(82%, 330px);
+  }
+
+  .daily-camp-card {
+    --daily-drawer-width: min(84vw, 320px);
+    --daily-drawer-tab-width: 44px;
+    top: calc(env(safe-area-inset-top, 0px) + 14.4%);
+  }
+
+  .daily-camp-drawer-toggle {
+    min-height: 82px;
+    padding: 0.34rem 0.18rem;
+  }
+
+  .daily-camp-drawer-panel {
+    gap: 0.22rem;
+    padding: 0.42rem 0.5rem;
+  }
+
+  .daily-weather-tab-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    font-size: 0.66rem;
+  }
+
+  .daily-camp-card-title {
+    grid-template-columns: 1.72rem minmax(0, 1fr);
+    gap: 0.42rem;
+  }
+
+  .daily-weather-icon {
+    width: 1.72rem;
+    height: 1.72rem;
+    font-size: 0.78rem;
+  }
+
+  .daily-camp-card-title h2 {
+    font-size: 0.78rem;
+  }
+
+  .daily-camp-mood {
+    font-size: 0.62rem;
+  }
+
+  .daily-camp-activities,
+  .daily-sound-recommendation {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.52rem;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
   }
 
   .camper-profile-layer {
