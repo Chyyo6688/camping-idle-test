@@ -1,5 +1,5 @@
 const SAVE_KEY = "cozyCampfireSave";
-const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "2.9";
+const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "3.0";
 
 function withVersion(path) {
   const separator = path.includes("?") ? "&" : "?";
@@ -193,6 +193,19 @@ const defaultGameState = {
   userGearPositions: {},
   userGearMountOffsets: {},
   activityStats: {},
+  inventory: {
+    fish: {},
+    meals: {}
+  },
+  fishing: {
+    attempts: 0,
+    caught: 0,
+    released: 0,
+    firstStoredFishGuideSeen: false
+  },
+  cooking: {
+    cooked: 0
+  },
   camperProfileVersion: 0,
   activeCamperIndex: 0,
   campers: [],
@@ -218,6 +231,9 @@ function createDefaultGameState() {
     userGearPositions: { ...defaultGameState.userGearPositions },
     userGearMountOffsets: { ...defaultGameState.userGearMountOffsets },
     activityStats: { ...defaultGameState.activityStats },
+    inventory: cloneInventory(defaultGameState.inventory),
+    fishing: { ...defaultGameState.fishing },
+    cooking: { ...defaultGameState.cooking },
     camperProfileVersion: defaultGameState.camperProfileVersion,
     activeCamperIndex: defaultGameState.activeCamperIndex,
     campers: defaultGameState.campers.map(function(camperProfile) {
@@ -383,6 +399,8 @@ let selectedActionTargetKey = "";
 let selectedBuildItemKey = "";
 let camperThoughtAction = "";
 let camperThoughtText = "";
+let forcedCamperThoughtText = "";
+let forcedCamperThoughtUntil = 0;
 let camperMotionFrameId = null;
 let sceneDepthControlLayer = null;
 let sceneDepthControlPanel = null;
@@ -478,6 +496,12 @@ const camperRetakeQuizButton = document.getElementById("camperRetakeQuizButton")
 const camperRecustomizeButton = document.getElementById("camperRecustomizeButton");
 const camperProfilePrimaryButton = document.getElementById("camperProfilePrimaryButton");
 const camperProfileSecondaryButton = document.getElementById("camperProfileSecondaryButton");
+const inventoryLayer = document.getElementById("inventoryLayer");
+const inventoryPanel = document.getElementById("inventoryPanel");
+const inventoryCloseButton = document.getElementById("inventoryCloseButton");
+const inventoryFishList = document.getElementById("inventoryFishList");
+const inventoryMealList = document.getElementById("inventoryMealList");
+const inventoryStatsLine = document.getElementById("inventoryStatsLine");
 const resetSaveButton = document.getElementById("resetSaveButton");
 const campfireLevelAmount = document.getElementById("campfireLevelAmount");
 const cozyRateAmount = document.getElementById("cozyRateAmount");
@@ -632,18 +656,18 @@ const activityDefinitions = {
     id: "cook",
     label: "Cook",
     actionLabel: "Cooking at camp",
-    targetLabel: "camp kitchen",
+    targetLabel: "stove or camp kitchen",
     durationSeconds: 4.2,
     weight: 2.6,
     pose: "activityCook",
     targetOffset: { x: 0, y: 2.2 },
     targetPoint: { ratioX: 0.5, ratioY: 1 },
     requires: {
-      anyGearCategory: ["stove", "table", "cooler"],
-      anyGearId: ["kitchenCarryCase"]
+      anyGearCategory: ["stove"],
+      anyGearId: ["igtCampKitchenSet", "kitchenCarryCase"]
     },
-    gearCategories: ["stove", "table", "cooler"],
-    gearIds: ["kitchenCarryCase"]
+    gearCategories: ["stove"],
+    gearIds: ["igtCampKitchenSet", "kitchenCarryCase"]
   },
   fish: {
     id: "fish",
@@ -677,6 +701,90 @@ const activityDefinitions = {
     fallbackTarget: { x: 32, y: 56, activityFacing: "left" }
   }
 };
+
+const fishCatalog = {
+  minnow: {
+    id: "minnow",
+    displayName: "小银鱼",
+    rarity: "common",
+    rarityLabel: "普通鱼",
+    image: "assets/inventory/fish/minnow.png"
+  },
+  bluegill: {
+    id: "bluegill",
+    displayName: "蓝鳃鱼",
+    rarity: "common",
+    rarityLabel: "普通鱼",
+    image: "assets/inventory/fish/bluegill.png"
+  },
+  yellowPerch: {
+    id: "yellowPerch",
+    displayName: "黄鲈",
+    rarity: "common",
+    rarityLabel: "普通鱼",
+    image: "assets/inventory/fish/yellow_perch.png"
+  },
+  pumpkinseed: {
+    id: "pumpkinseed",
+    displayName: "南瓜籽太阳鱼",
+    rarity: "common",
+    rarityLabel: "普通鱼",
+    image: "assets/inventory/fish/pumpkinseed.png"
+  },
+  brookTrout: {
+    id: "brookTrout",
+    displayName: "溪鳟",
+    rarity: "uncommon",
+    rarityLabel: "稍稀有鱼",
+    image: "assets/inventory/fish/brook_trout.png"
+  },
+  channelCatfish: {
+    id: "channelCatfish",
+    displayName: "沟鲶",
+    rarity: "uncommon",
+    rarityLabel: "稍稀有鱼",
+    image: "assets/inventory/fish/channel_catfish.png"
+  },
+  goldenKoi: {
+    id: "goldenKoi",
+    displayName: "金色锦鲤",
+    rarity: "rare",
+    rarityLabel: "稀有鱼",
+    image: "assets/inventory/fish/golden_koi.png"
+  },
+  moonCarp: {
+    id: "moonCarp",
+    displayName: "月光鲤",
+    rarity: "rare",
+    rarityLabel: "稀有鱼",
+    image: "assets/inventory/fish/moon_carp.png"
+  }
+};
+
+const fishIdsByRarity = {
+  common: ["minnow", "bluegill", "yellowPerch", "pumpkinseed"],
+  uncommon: ["brookTrout", "channelCatfish"],
+  rare: ["goldenKoi", "moonCarp"]
+};
+
+const fishingOutcomeTable = [
+  { id: "none", weight: 34 },
+  { id: "common", weight: 46 },
+  { id: "uncommon", weight: 15 },
+  { id: "rare", weight: 5 }
+];
+
+const mealCatalog = {
+  simpleGrilledFish: {
+    id: "simpleGrilledFish",
+    displayName: "烤湖鱼",
+    detail: "+1 Comfort",
+    image: "assets/inventory/fish/brook_trout.png"
+  }
+};
+
+const cookingComfortMealCap = 8;
+const cookingCozyReward = 5;
 
 let activeShopFilter = "all";
 let statusToastTimer = null;
@@ -1761,6 +1869,340 @@ function recordActivityCompletion(activityId) {
 
 function getActivityCompletionCount(activityId) {
   return getActivityStats(activityId).completed;
+}
+
+function cloneCountMap(counts) {
+  const cleanCounts = {};
+  const sourceCounts = counts && typeof counts === "object" && !Array.isArray(counts) ? counts : {};
+
+  Object.keys(sourceCounts).forEach(function(id) {
+    const count = Math.max(0, Math.floor(Number(sourceCounts[id]) || 0));
+
+    if (count > 0) {
+      cleanCounts[id] = count;
+    }
+  });
+
+  return cleanCounts;
+}
+
+function cloneInventory(inventory) {
+  const sourceInventory = inventory && typeof inventory === "object" && !Array.isArray(inventory) ? inventory : {};
+
+  return {
+    fish: cloneCountMap(sourceInventory.fish),
+    meals: cloneCountMap(sourceInventory.meals)
+  };
+}
+
+function sanitizeCountMap(counts, catalog) {
+  const cleanCounts = {};
+  const sourceCounts = counts && typeof counts === "object" && !Array.isArray(counts) ? counts : {};
+
+  Object.keys(catalog || {}).forEach(function(id) {
+    const count = Math.max(0, Math.floor(Number(sourceCounts[id]) || 0));
+
+    if (count > 0) {
+      cleanCounts[id] = count;
+    }
+  });
+
+  return cleanCounts;
+}
+
+function sanitizeInventory(inventory) {
+  const sourceInventory = inventory && typeof inventory === "object" && !Array.isArray(inventory) ? inventory : {};
+
+  return {
+    fish: sanitizeCountMap(sourceInventory.fish, fishCatalog),
+    meals: sanitizeCountMap(sourceInventory.meals, mealCatalog)
+  };
+}
+
+function sanitizeFishingProgress(progress) {
+  const sourceProgress = progress && typeof progress === "object" && !Array.isArray(progress) ? progress : {};
+
+  return {
+    attempts: Math.max(0, Math.floor(Number(sourceProgress.attempts) || 0)),
+    caught: Math.max(0, Math.floor(Number(sourceProgress.caught) || 0)),
+    released: Math.max(0, Math.floor(Number(sourceProgress.released) || 0)),
+    firstStoredFishGuideSeen: Boolean(sourceProgress.firstStoredFishGuideSeen)
+  };
+}
+
+function sanitizeCookingProgress(progress) {
+  const sourceProgress = progress && typeof progress === "object" && !Array.isArray(progress) ? progress : {};
+
+  return {
+    cooked: Math.max(0, Math.floor(Number(sourceProgress.cooked) || 0))
+  };
+}
+
+function getInventory(state) {
+  const campState = state || gameState;
+
+  if (!campState.inventory || typeof campState.inventory !== "object" || Array.isArray(campState.inventory)) {
+    campState.inventory = cloneInventory(defaultGameState.inventory);
+  }
+
+  if (!campState.inventory.fish || typeof campState.inventory.fish !== "object" || Array.isArray(campState.inventory.fish)) {
+    campState.inventory.fish = {};
+  }
+
+  if (!campState.inventory.meals || typeof campState.inventory.meals !== "object" || Array.isArray(campState.inventory.meals)) {
+    campState.inventory.meals = {};
+  }
+
+  return campState.inventory;
+}
+
+function getInventoryBucket(type, state) {
+  const inventory = getInventory(state);
+  const bucketName = type === "meals" ? "meals" : "fish";
+
+  return inventory[bucketName];
+}
+
+function getInventoryCatalog(type) {
+  return type === "meals" ? mealCatalog : fishCatalog;
+}
+
+function getInventoryItemCount(type, id, state) {
+  const bucket = getInventoryBucket(type, state);
+  return Math.max(0, Math.floor(Number(bucket[id]) || 0));
+}
+
+function getInventoryTotal(type, state) {
+  const bucket = getInventoryBucket(type, state);
+
+  return Object.keys(bucket).reduce(function(total, id) {
+    return total + Math.max(0, Math.floor(Number(bucket[id]) || 0));
+  }, 0);
+}
+
+function addInventoryItem(type, id, count, state) {
+  const catalog = getInventoryCatalog(type);
+
+  if (!catalog[id]) {
+    return false;
+  }
+
+  const bucket = getInventoryBucket(type, state);
+  const addCount = Math.max(1, Math.floor(Number(count) || 1));
+  bucket[id] = getInventoryItemCount(type, id, state) + addCount;
+  return true;
+}
+
+function removeInventoryItem(type, id, count, state) {
+  const bucket = getInventoryBucket(type, state);
+  const removeCount = Math.max(1, Math.floor(Number(count) || 1));
+  const currentCount = getInventoryItemCount(type, id, state);
+
+  if (currentCount < removeCount) {
+    return false;
+  }
+
+  const nextCount = currentCount - removeCount;
+
+  if (nextCount > 0) {
+    bucket[id] = nextCount;
+  } else {
+    delete bucket[id];
+  }
+
+  return true;
+}
+
+function getFishDefinition(id) {
+  return id && fishCatalog[id] ? fishCatalog[id] : null;
+}
+
+function getMealDefinition(id) {
+  return id && mealCatalog[id] ? mealCatalog[id] : null;
+}
+
+function getFishingProgress(state) {
+  const campState = state || gameState;
+
+  if (!campState.fishing || typeof campState.fishing !== "object" || Array.isArray(campState.fishing)) {
+    campState.fishing = sanitizeFishingProgress();
+  }
+
+  campState.fishing = sanitizeFishingProgress(campState.fishing);
+  return campState.fishing;
+}
+
+function getCookingProgress(state) {
+  const campState = state || gameState;
+
+  if (!campState.cooking || typeof campState.cooking !== "object" || Array.isArray(campState.cooking)) {
+    campState.cooking = sanitizeCookingProgress();
+  }
+
+  campState.cooking = sanitizeCookingProgress(campState.cooking);
+  return campState.cooking;
+}
+
+function isCoolerItem(item) {
+  return Boolean(item && item.category === "cooler");
+}
+
+function getCoolerItems() {
+  return getGearItems().filter(isCoolerItem);
+}
+
+function hasInventoryStorageUnlocked(state) {
+  return getCoolerItems().some(function(item) {
+    return ownsGear(item.id, state);
+  });
+}
+
+function hasPlacedInventoryCooler(state) {
+  return getCoolerItems().some(function(item) {
+    return ownsGear(item.id, state) && isGearPlaced(item.id, state);
+  });
+}
+
+function canOpenInventoryFromCooler(item, state) {
+  return Boolean(isCoolerItem(item) && ownsGear(item.id, state) && isGearPlaced(item.id, state));
+}
+
+function isCookingStationItem(item) {
+  return Boolean(item && (item.category === "stove" || item.id === "igtCampKitchenSet" || item.id === "kitchenCarryCase"));
+}
+
+function hasCookingStationAvailable(state) {
+  return getGearItems().some(function(item) {
+    return isCookingStationItem(item) && ownsGear(item.id, state) && isGearPlaced(item.id, state);
+  });
+}
+
+function getFirstAvailableFishId(state) {
+  return Object.keys(fishCatalog).find(function(id) {
+    return getInventoryItemCount("fish", id, state) > 0;
+  }) || "";
+}
+
+function hasCookableFish(state) {
+  return Boolean(getFirstAvailableFishId(state));
+}
+
+function calculateCookingComfortBonus(state) {
+  return Math.min(cookingComfortMealCap, getInventoryTotal("meals", state));
+}
+
+function chooseFishIdForRarity(rarity) {
+  const fishIds = fishIdsByRarity[rarity] || fishIdsByRarity.common;
+
+  return fishIds[Math.floor(Math.random() * fishIds.length)];
+}
+
+function chooseFishingResult() {
+  const outcome = chooseWeightedAction(fishingOutcomeTable);
+
+  if (outcome === "none") {
+    return {
+      caught: false,
+      rarity: "none",
+      fishId: ""
+    };
+  }
+
+  return {
+    caught: true,
+    rarity: outcome,
+    fishId: chooseFishIdForRarity(outcome)
+  };
+}
+
+function handleFishingActivityCompletion() {
+  const progress = getFishingProgress();
+  const result = chooseFishingResult();
+
+  progress.attempts += 1;
+
+  if (!result.caught) {
+    showCamperThought("湖面安静了一会儿，今天先空手。");
+    saveGame();
+    return;
+  }
+
+  const fish = getFishDefinition(result.fishId);
+
+  if (!fish) {
+    saveGame();
+    return;
+  }
+
+  progress.caught += 1;
+
+  if (!hasInventoryStorageUnlocked()) {
+    progress.released += 1;
+    showCamperThought("钓到" + fish.displayName + "，但没有冷藏箱，只好放回湖里。");
+    saveGame();
+    return;
+  }
+
+  addInventoryItem("fish", fish.id, 1);
+  showCamperThought("钓到" + fish.displayName + "。");
+
+  if (!progress.firstStoredFishGuideSeen && hasPlacedInventoryCooler()) {
+    progress.firstStoredFishGuideSeen = true;
+    setStatus("第一条鱼进冷藏箱了。点击已放置的冷藏箱查看库存。");
+  } else {
+    setStatus(fish.rarityLabel + "：" + fish.displayName + " 已放进冷藏箱。");
+  }
+
+  updateScreen();
+  saveGame();
+}
+
+function getNoFoodCookingMessage() {
+  if (!hasInventoryStorageUnlocked()) {
+    return "没有可用食材。先准备冷藏箱，再把钓到的鱼存起来。";
+  }
+
+  return "没有可用食材。先去湖边钓一条鱼吧。";
+}
+
+function handleCookingActivityCompletion() {
+  const fishId = getFirstAvailableFishId();
+  const fish = getFishDefinition(fishId);
+
+  if (!hasCookingStationAvailable()) {
+    setStatus("需要炉具或 camp kitchen 才能做饭。");
+    showCamperThought("还没有能做饭的地方。");
+    saveGame();
+    return;
+  }
+
+  if (!fish || !removeInventoryItem("fish", fishId, 1)) {
+    const message = getNoFoodCookingMessage();
+    setStatus(message);
+    showCamperThought("没有可用食材。");
+    saveGame();
+    return;
+  }
+
+  addInventoryItem("meals", "simpleGrilledFish", 1);
+  getCookingProgress().cooked += 1;
+  gameState.cozyPoints += cookingCozyReward;
+
+  showCamperThought("把" + fish.displayName + "烤得香香的。");
+  setStatus("做出烤湖鱼：+" + cookingCozyReward + " Cozy Points，Comfort +1。");
+  updateScreen();
+  saveGame();
+}
+
+function handleActivityCompletionResult(activityId) {
+  if (activityId === "fish") {
+    handleFishingActivityCompletion();
+    return;
+  }
+
+  if (activityId === "cook") {
+    handleCookingActivityCompletion();
+  }
 }
 
 function itemMatchesActivityGear(item, activityId) {
@@ -2856,6 +3298,12 @@ function handleGearActionClick(event, element, item) {
     return;
   }
 
+  if (actionType === "inventory") {
+    clearSelectedActionTarget();
+    openInventoryPanel();
+    return;
+  }
+
   if (hasQueuedAction(actionType, item.id, actionMetadata)) {
     clearSelectedActionTarget();
     queueGearAction(item);
@@ -3059,6 +3507,10 @@ function isGearQueueInteractive(item) {
     return false;
   }
 
+  if (canOpenInventoryFromCooler(item)) {
+    return true;
+  }
+
   if (item.category === "chair" && item.interactions && item.interactions.seatable) {
     return true;
   }
@@ -3071,6 +3523,10 @@ function isGearQueueInteractive(item) {
 }
 
 function getGearActionType(item) {
+  if (canOpenInventoryFromCooler(item)) {
+    return "inventory";
+  }
+
   if (getActivityIdForGear(item)) {
     return "activity";
   }
@@ -3090,7 +3546,7 @@ function queueGearAction(item) {
   const actionType = getGearActionType(item);
   const actionMetadata = getGearActionMetadata(item);
 
-  if (!actionType || !isGearVisibleInScene(item)) {
+  if (!actionType || actionType === "inventory" || !isGearVisibleInScene(item)) {
     return;
   }
 
@@ -4388,6 +4844,8 @@ function startCamperProfileFlow(mode) {
     closeShop();
   }
 
+  closeInventoryPanel();
+
   if (isBuildModeActive()) {
     exitBuildMode();
   }
@@ -4921,6 +5379,8 @@ function calculateComfort(state) {
     comfort += Number(item.comfort) || 0;
   });
 
+  comfort += calculateCookingComfortBonus(state);
+
   return comfort;
 }
 
@@ -5073,6 +5533,9 @@ function sanitizeSave(savedGame) {
       cleanState.buildModeGuideSeen = Boolean(savedGame.buildModeGuideSeen);
     }
     cleanState.activityStats = sanitizeActivityStats(savedGame.activityStats);
+    cleanState.inventory = sanitizeInventory(savedGame.inventory);
+    cleanState.fishing = sanitizeFishingProgress(savedGame.fishing);
+    cleanState.cooking = sanitizeCookingProgress(savedGame.cooking);
     cleanState.economyResetTo500Applied = Boolean(savedGame.economyResetTo500Applied);
     cleanState.vehiclePlacementMigrated = Boolean(savedGame.vehiclePlacementMigrated);
     if (savedGame.lastSeen !== undefined) {
@@ -5387,6 +5850,7 @@ function updateScreen() {
 
   updateShopCards();
   updateSceneEquipment();
+  syncInventoryPanel();
   updateOnboardingView();
   maybeStartBuildModeGuide();
 }
@@ -5822,12 +6286,7 @@ function configureGearActionTarget(element, item) {
   };
   element.onkeydown = function(event) {
     if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      if (isBuildModeActive()) {
-        return;
-      }
-      clearSelectedActionTarget();
-      queueGearAction(item);
+      handleGearActionClick(event, element, item);
     }
   };
 }
@@ -7302,6 +7761,7 @@ function handleGearAction(id) {
 }
 
 function openShop() {
+  closeInventoryPanel();
   document.body.classList.add("shop-open");
   shopDrawer.setAttribute("aria-hidden", "false");
   setShopFilter(activeShopFilter);
@@ -7314,6 +7774,126 @@ function openShop() {
 function closeShop() {
   document.body.classList.remove("shop-open");
   shopDrawer.setAttribute("aria-hidden", "true");
+}
+
+function isInventoryPanelOpen() {
+  return Boolean(inventoryLayer && !inventoryLayer.classList.contains("hidden"));
+}
+
+function createInventoryEmptyRow(message) {
+  const row = document.createElement("p");
+  row.className = "inventory-empty";
+  row.textContent = message;
+  return row;
+}
+
+function createInventoryItemRow(item, count) {
+  const row = document.createElement("article");
+  const image = document.createElement("img");
+  const copy = document.createElement("div");
+  const name = document.createElement("h3");
+  const detail = document.createElement("p");
+  const countBadge = document.createElement("strong");
+
+  row.className = "inventory-item";
+  image.className = "inventory-item-icon";
+  image.src = withVersion(item.image);
+  image.alt = "";
+  copy.className = "inventory-item-copy";
+  name.textContent = item.displayName;
+  detail.textContent = item.rarityLabel || item.detail || "";
+  countBadge.className = "inventory-item-count";
+  countBadge.textContent = "x" + count;
+
+  copy.appendChild(name);
+  copy.appendChild(detail);
+  row.appendChild(image);
+  row.appendChild(copy);
+  row.appendChild(countBadge);
+  return row;
+}
+
+function renderInventoryGroup(container, type, emptyMessage) {
+  const bucket = getInventoryBucket(type);
+  const catalog = getInventoryCatalog(type);
+  let renderedCount = 0;
+
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = "";
+
+  Object.keys(catalog).forEach(function(id) {
+    const count = Math.max(0, Math.floor(Number(bucket[id]) || 0));
+
+    if (count <= 0) {
+      return;
+    }
+
+    container.appendChild(createInventoryItemRow(catalog[id], count));
+    renderedCount += 1;
+  });
+
+  if (renderedCount === 0) {
+    container.appendChild(createInventoryEmptyRow(emptyMessage));
+  }
+}
+
+function renderInventoryPanel() {
+  if (!inventoryLayer) {
+    return;
+  }
+
+  renderInventoryGroup(inventoryFishList, "fish", "还没有存放的鱼。");
+  renderInventoryGroup(inventoryMealList, "meals", "还没有做好的料理。");
+
+  if (inventoryStatsLine) {
+    const fishing = getFishingProgress();
+    const cooking = getCookingProgress();
+    inventoryStatsLine.textContent = "Fishing " + fishing.attempts + " / caught " + fishing.caught +
+      " / released " + fishing.released + " · Cooked " + cooking.cooked;
+  }
+}
+
+function openInventoryPanel() {
+  if (!inventoryLayer) {
+    return;
+  }
+
+  if (!hasPlacedInventoryCooler()) {
+    setStatus("放置一个冷藏箱后才能查看 inventory。");
+    return;
+  }
+
+  closeShop();
+  renderInventoryPanel();
+  inventoryLayer.classList.remove("hidden");
+  inventoryLayer.setAttribute("aria-hidden", "false");
+  document.body.classList.add("inventory-open");
+}
+
+function closeInventoryPanel() {
+  if (!inventoryLayer) {
+    return;
+  }
+
+  inventoryLayer.classList.add("hidden");
+  inventoryLayer.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("inventory-open");
+}
+
+function syncInventoryPanel() {
+  if (!isInventoryPanelOpen()) {
+    return;
+  }
+
+  if (!hasPlacedInventoryCooler()) {
+    closeInventoryPanel();
+    return;
+  }
+
+  renderInventoryPanel();
 }
 
 function toggleShop() {
@@ -7477,6 +8057,7 @@ function enterBuildMode() {
   }
 
   closeShop();
+  closeInventoryPanel();
   clearSelectedActionTarget();
   clearSelectedBuildTarget();
   buildModeActive = true;
@@ -8579,9 +9160,26 @@ function updateCamperThoughtPosition() {
   camperThoughtBubble.style.top = sceneY + "px";
 }
 
+function showCamperThought(message, durationMs) {
+  if (!message) {
+    return;
+  }
+
+  forcedCamperThoughtText = message;
+  forcedCamperThoughtUntil = Date.now() + (Number(durationMs) || 2800);
+  updateCamperThought();
+}
+
 function updateCamperThought() {
-  const thought = getCamperThoughtText(camper.currentAction);
-  const shouldShowThought = !isBuildModeActive() && !gameState.gatherWoodMode && thought;
+  const now = Date.now();
+  const hasForcedThought = forcedCamperThoughtText && forcedCamperThoughtUntil > now;
+  const thought = hasForcedThought ? forcedCamperThoughtText : getCamperThoughtText(camper.currentAction);
+  const shouldShowThought = !isBuildModeActive() && (hasForcedThought || !gameState.gatherWoodMode) && thought;
+
+  if (forcedCamperThoughtText && forcedCamperThoughtUntil <= now) {
+    forcedCamperThoughtText = "";
+    forcedCamperThoughtUntil = 0;
+  }
 
   camperThoughtBubble.textContent = shouldShowThought ? thought : "";
   updateCamperThoughtPosition();
@@ -8699,6 +9297,10 @@ function getRelaxingActionEntries() {
 
   getActivityIds().forEach(function(activityId) {
     const activity = getActivityDefinition(activityId);
+
+    if (activityId === "cook" && !hasCookableFish()) {
+      return;
+    }
 
     if (activity && isActivityAvailable(activityId)) {
       entries.push({ id: activityId, weight: activity.weight });
@@ -8842,7 +9444,14 @@ function executeQueuedActivityAction(action) {
   const activity = getActivityDefinition(activityId);
 
   if (!activity || !isActivityAvailable(activityId)) {
-    setStatus("That activity is not available yet.");
+    setStatus(activityId === "cook" ? "需要炉具或 camp kitchen 才能做饭。" : "That activity is not available yet.");
+    completeActiveQueuedAction();
+    return;
+  }
+
+  if (activityId === "cook" && !hasCookableFish()) {
+    setStatus(getNoFoodCookingMessage());
+    showCamperThought("没有可用食材。");
     completeActiveQueuedAction();
     return;
   }
@@ -8988,7 +9597,9 @@ function finishCurrentAction() {
   }
 
   if (camper.currentActivityId) {
-    recordActivityCompletion(camper.currentActivityId);
+    const completedActivityId = camper.currentActivityId;
+    recordActivityCompletion(completedActivityId);
+    handleActivityCompletionResult(completedActivityId);
     camper.currentActivityId = "";
 
     if (activeQueuedAction) {
@@ -9095,6 +9706,21 @@ function createCozySpark() {
 shopToggle.addEventListener("click", toggleShop);
 closeShopButton.addEventListener("click", closeShop);
 shopBackdrop.addEventListener("click", closeShop);
+if (inventoryCloseButton) {
+  inventoryCloseButton.addEventListener("click", closeInventoryPanel);
+}
+if (inventoryLayer) {
+  inventoryLayer.addEventListener("click", function(event) {
+    if (event.target === inventoryLayer) {
+      closeInventoryPanel();
+    }
+  });
+}
+if (inventoryPanel) {
+  inventoryPanel.addEventListener("click", function(event) {
+    event.stopPropagation();
+  });
+}
 campScene.addEventListener("click", handleCampSceneClick);
 if (sceneContent) {
   sceneContent.addEventListener("pointerdown", handleBuildScenePointerDown);
@@ -9168,6 +9794,11 @@ if (typeof window !== "undefined") {
   window.addEventListener("pointermove", updateBuildDrag);
   window.addEventListener("pointerup", finishBuildDrag);
   window.addEventListener("pointercancel", finishBuildDrag);
+  window.addEventListener("keydown", function(event) {
+    if (event.key === "Escape" && isInventoryPanelOpen()) {
+      closeInventoryPanel();
+    }
+  });
   window.addEventListener("resize", function() {
     syncSceneScale();
     positionOnboardingLayer();
