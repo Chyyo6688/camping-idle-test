@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cozy Camping Idle V3.8</title>
+  <title>Cozy Camping Idle V4.7</title>
   <script>
-    window.APP_VERSION = "3.8";
+    window.APP_VERSION = "4.7";
   </script>
   <link id="appStylesheet" rel="stylesheet" href="style.css?v=3.0">
   <script>
@@ -272,8 +272,14 @@
               <div id="divinationCardVisual" class="divination-card-visual" aria-hidden="true">
                 <span id="divinationCardBack" class="divination-card-back">✦</span>
               </div>
-              <div id="turtleShellVisual" class="turtle-shell-visual hidden" aria-hidden="true">
-                <img id="turtleShellImage" src="assets/divination/turtle_shell/turtle_shell.png?v=3.8" alt="">
+              <div id="turtleCoinVisual" class="turtle-coin-visual hidden">
+                <div class="turtle-cast-object">
+                  <button id="turtleShellButton" class="turtle-shell-button" type="button" aria-label="摇动龟壳">
+                    <img id="turtleShellImage" src="assets/divination/turtle_shell/turtle_shell.png?v=4.7" alt="">
+                  </button>
+                  <div id="turtleCoinTray" class="turtle-coin-tray hidden" aria-hidden="true"></div>
+                </div>
+                <p id="turtleCastReadout" class="turtle-cast-readout">三枚铜钱，一爻一掷</p>
                 <div id="turtleLineStack" class="turtle-line-stack"></div>
               </div>
             </div>
@@ -281,17 +287,67 @@
             <button id="divinationActionButton" class="divination-action-button" type="button"></button>
 
             <article id="divinationResult" class="divination-result hidden">
-              <div class="divination-result-top">
-                <p id="divinationResultQuestion" class="divination-result-kicker"></p>
+              <p id="divinationResultQuestion" class="divination-result-kicker"></p>
+              <div id="divinationResultTop" class="divination-result-top">
                 <h3 id="divinationResultTitle"></h3>
                 <p id="divinationResultSubtitle"></p>
               </div>
-              <img id="divinationResultImage" class="divination-result-image hidden" src="assets/divination/tarot/tarot_ember.png?v=3.6" alt="">
-              <div id="divinationResultLines" class="divination-result-lines hidden"></div>
-              <p id="divinationResultKeywords" class="divination-result-keywords"></p>
-              <p id="divinationResultReality"></p>
-              <p id="divinationResultAdvice"></p>
-              <p id="divinationResultCamp"></p>
+
+              <div id="divinationTarotResultBody" class="divination-tarot-result-body">
+                <img id="divinationResultImage" class="divination-result-image hidden" src="assets/divination/tarot/tarot_ember.png?v=3.6" alt="">
+                <p id="divinationResultKeywords" class="divination-result-keywords"></p>
+                <p id="divinationResultReality"></p>
+                <p id="divinationResultAdvice"></p>
+                <p id="divinationResultCamp"></p>
+              </div>
+
+              <div id="divinationTurtleResultBody" class="iching-oracle-result hidden">
+                <section class="iching-oracle-summary">
+                  <div class="iching-oracle-names">
+                    <strong id="divinationTurtlePrimaryName"></strong>
+                    <p id="divinationTurtleMovingCount"></p>
+                  </div>
+                  <div id="divinationTurtleKeywords" class="iching-oracle-keywords"></div>
+                </section>
+
+                <section class="iching-oracle-visual">
+                  <strong id="divinationTurtleFortune" class="iching-fortune-mark"></strong>
+                  <div id="divinationResultLines" class="divination-result-lines hidden"></div>
+                </section>
+
+                <section class="iching-oracle-copy">
+                  <h4>卦象概括</h4>
+                  <p id="divinationTurtleSummary"></p>
+                </section>
+                <section class="iching-oracle-copy">
+                  <h4>解曰</h4>
+                  <p id="divinationTurtleInterpretation"></p>
+                </section>
+
+                <div class="iching-oracle-guidance">
+                  <section>
+                    <h4>宜</h4>
+                    <ul id="divinationTurtleGoodFor"></ul>
+                  </section>
+                  <section>
+                    <h4>忌</h4>
+                    <ul id="divinationTurtleAvoid"></ul>
+                  </section>
+                </div>
+
+                <p id="divinationTurtleConclusion" class="iching-oracle-conclusion"></p>
+
+                <details id="divinationTurtleDetails" class="iching-oracle-details">
+                  <summary>查看详细卦象</summary>
+                  <div class="iching-oracle-details-body">
+                    <p id="divinationResultBasis" class="divination-result-basis"></p>
+                    <p id="divinationResultJudgments"></p>
+                    <p id="divinationResultCastDetails"></p>
+                    <p id="divinationResultLineDetails"></p>
+                    <p id="divinationResultDetailReading"></p>
+                  </div>
+                </details>
+              </div>
             </article>
           </section>
         </div>
@@ -407,10 +463,12 @@
 
       loadScriptThen("gearCatalog.js", function() {
         loadScriptThen("weatherCatalog.js", function() {
-          loadScriptThen("divinationCatalog.js", function() {
-            loadScriptThen("divinationManager.js", function() {
-              loadScriptThen("soundJournalCatalog.js", function() {
-                loadScriptThen("soundManager.js", loadGameScript);
+          loadScriptThen("ichingCatalog.js", function() {
+            loadScriptThen("divinationCatalog.js", function() {
+              loadScriptThen("divinationManager.js", function() {
+                loadScriptThen("soundJournalCatalog.js", function() {
+                  loadScriptThen("soundManager.js", loadGameScript);
+                });
               });
             });
           });

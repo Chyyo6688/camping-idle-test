@@ -378,125 +378,8 @@
     }
   ];
 
-  const turtleResults = [
-    {
-      id: "brightShore",
-      name: "明岸",
-      fortune: "大吉",
-      minScore: 5,
-      goodFor: ["主动尝试", "轻沟通", "煮点热的"],
-      avoid: ["贪多", "把好状态用光"],
-      reality: "今天适合顺着明亮的方向做一点小行动，但不必一次做满。",
-      advice: "有余力时可以主动一点，保留收尾的力气。",
-      campImpact: "营地会更主动，钓鱼、做饭、观鸟的权重都会提高。",
-      effects: {
-        activityLabels: ["主动一点", "钓鱼", "做饭"],
-        activityWeights: { fish: 0.35, cook: 0.35, birdwatch: 0.35 },
-        soundRecommendations: [
-          { id: "lake_water_loop", label: "湖水声" },
-          { id: "birds_morning_loop", label: "鸟鸣声" }
-        ],
-        moodLine: "占营龟壳：明岸，大吉。今天适合做一点会让营地亮起来的事。",
-        thoughtLines: ["今天可以主动一点", "岸边很亮", "先做一件小事"]
-      }
-    },
-    {
-      id: "warmPot",
-      name: "温釜",
-      fortune: "吉",
-      minScore: 4,
-      goodFor: ["照顾日常", "小额尝试", "围炉"],
-      avoid: ["空腹硬撑", "冲动加购"],
-      reality: "把基础照顾好，今天就会顺很多。",
-      advice: "消费可以小额试探，不适合为了情绪一口气买太多。",
-      campImpact: "营地偏向做饭、围炉、整理小物。",
-      effects: {
-        activityLabels: ["做饭", "围炉"],
-        activityWeights: { cook: 0.55, sittingByFire: 0.4, observingGear: 0.1 },
-        soundRecommendations: [
-          { id: "cooking_sizzle_loop", label: "煎鱼声" },
-          { id: "campfire_crackle_loop", label: "篝火声" }
-        ],
-        moodLine: "占营龟壳：温釜，吉。今天把锅热起来，心也会稳一点。",
-        thoughtLines: ["锅热起来了", "先照顾日常", "小额就好"]
-      }
-    },
-    {
-      id: "openTrail",
-      name: "开径",
-      fortune: "小吉",
-      minScore: 3,
-      goodFor: ["走一步", "整理方向", "轻探索"],
-      avoid: ["一次决定太多", "赶进度"],
-      reality: "路已经露出一点，不必全程看清也可以先走一小段。",
-      advice: "今天适合小步推进，不适合把所有选择一次定死。",
-      campImpact: "营地更偏散步、观鸟和看湖。",
-      effects: {
-        activityLabels: ["散步", "观鸟"],
-        activityWeights: { wandering: 0.35, birdwatch: 0.25, lookingAtLake: 0.25 },
-        soundRecommendations: [{ id: "birds_morning_loop", label: "鸟鸣声" }],
-        moodLine: "占营龟壳：开径，小吉。今天走一小段，路会慢慢出来。",
-        thoughtLines: ["路会慢慢出来", "先走一小段", "方向不用一次定完"]
-      }
-    },
-    {
-      id: "stillStone",
-      name: "止石",
-      fortune: "平",
-      minScore: 2,
-      goodFor: ["观望", "复盘", "坐下想想"],
-      avoid: ["硬推", "立刻表态"],
-      reality: "今天不算坏，只是节奏偏慢，适合把事情看稳。",
-      advice: "先观望，能不急的就等一等。",
-      campImpact: "营地偏安静，看湖、坐下、休息权重提高。",
-      effects: {
-        activityLabels: ["观望", "坐一会儿"],
-        activityWeights: { sittingOnFurniture: 0.35, lookingAtLake: 0.35, resting: 0.25 },
-        soundRecommendations: [{ id: "lake_water_loop", label: "湖水声" }],
-        moodLine: "占营龟壳：止石，平。今天稳住比推进更重要。",
-        thoughtLines: ["先稳住", "坐下想想", "等一等也好"]
-      }
-    },
-    {
-      id: "mistDelay",
-      name: "雾缓",
-      fortune: "小凶",
-      minScore: 1,
-      goodFor: ["暂缓判断", "休息", "减少购物"],
-      avoid: ["冲动决定", "硬解释"],
-      reality: "今天信息不够清楚，越想马上解决越容易绕远。",
-      advice: "不适合冲动消费；需要花钱时只做必要的小额决定。",
-      campImpact: "营地减少折腾，休息、看湖和帐篷休息提高。",
-      effects: {
-        activityLabels: ["暂缓", "休息"],
-        activityWeights: { observingGear: -0.45, resting: 0.45, tentRest: 0.35, lookingAtLake: 0.25 },
-        soundRecommendations: [{ id: "lake_water_loop", label: "湖水声" }],
-        moodLine: "占营龟壳：雾缓，小凶。今天别在看不清时硬闯。",
-        thoughtLines: ["先别硬闯", "雾有点厚", "少折腾一点"]
-      }
-    },
-    {
-      id: "closedShell",
-      name: "闭壳",
-      fortune: "凶",
-      minScore: 0,
-      goodFor: ["收缩范围", "休息", "保护边界"],
-      avoid: ["冲动购物", "强行推进", "情绪硬碰硬"],
-      reality: "今天适合收壳，不适合把自己推到消耗大的场面里。",
-      advice: "能观望就观望，能延后就延后；真正重要的事留给更稳的时候。",
-      campImpact: "营地会明显偏休息、帐篷和坐下，降低折腾装备的倾向。",
-      effects: {
-        activityLabels: ["收壳休息", "不冲动"],
-        activityWeights: { observingGear: -0.65, wandering: -0.25, resting: 0.6, tentRest: 0.55, sittingOnFurniture: 0.3 },
-        soundRecommendations: [{ id: "campfire_crackle_loop", label: "篝火声" }],
-        moodLine: "占营龟壳：闭壳，凶。今天先保护自己，不和消耗硬碰硬。",
-        thoughtLines: ["今天先收壳", "不硬碰", "保护边界"]
-      }
-    }
-  ];
-
   const catalog = {
-    version: 2,
+    version: 3,
     questionIds: questionIds,
     questions: questions,
     methods: {
@@ -509,17 +392,18 @@
       },
       turtle: {
         id: "turtle",
-        label: "龟壳",
+        label: "铜钱筮占",
         unlockedBy: "湖边乌龟",
         lockedHint: "钓鱼时遇到小乌龟后解锁。乌龟不会进冷藏箱，也不会成为食材。",
-        actionLabel: "摇动龟壳"
+        actionLabel: "摇三枚铜钱"
       }
     },
     tarotCards: tarotCards,
-    turtleResults: turtleResults,
     turtleLineLabels: {
-      yin: "阴",
-      yang: "阳"
+      oldYin: "老阴 · 6 · 动",
+      youngYang: "少阳 · 7",
+      youngYin: "少阴 · 8",
+      oldYang: "老阳 · 9 · 动"
     }
   };
 

@@ -1,5 +1,5 @@
 const SAVE_KEY = "cozyCampfireSave";
-const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "3.8";
+const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "4.7";
 
 function withVersion(path) {
   const separator = path.includes("?") ? "&" : "?";
@@ -463,9 +463,12 @@ let dailyCampDrawerExpanded = false;
 let testDivinationOverride = null;
 let selectedDivinationQuestionId = "overall";
 let selectedDivinationMethod = "";
-let turtleShakeLines = [];
+let turtleCastLines = [];
 let turtleHoldTimer = null;
 let turtleHoldTriggered = false;
+let turtleCastPending = false;
+let turtleCastPhase = "idle";
+let turtlePendingLine = null;
 
 // These variables connect JavaScript to the HTML.
 const cozyPointsAmount = document.getElementById("cozyPointsAmount");
@@ -594,20 +597,41 @@ const divinationMethodList = document.getElementById("divinationMethodList");
 const divinationStage = document.getElementById("divinationStage");
 const divinationCardVisual = document.getElementById("divinationCardVisual");
 const divinationCardBack = document.getElementById("divinationCardBack");
-const turtleShellVisual = document.getElementById("turtleShellVisual");
+const turtleCoinVisual = document.getElementById("turtleCoinVisual");
+const turtleShellButton = document.getElementById("turtleShellButton");
 const turtleShellImage = document.getElementById("turtleShellImage");
+const turtleCoinTray = document.getElementById("turtleCoinTray");
+const turtleCastReadout = document.getElementById("turtleCastReadout");
 const turtleLineStack = document.getElementById("turtleLineStack");
 const divinationActionButton = document.getElementById("divinationActionButton");
 const divinationResult = document.getElementById("divinationResult");
 const divinationResultQuestion = document.getElementById("divinationResultQuestion");
+const divinationResultTop = document.getElementById("divinationResultTop");
 const divinationResultTitle = document.getElementById("divinationResultTitle");
 const divinationResultSubtitle = document.getElementById("divinationResultSubtitle");
+const divinationTarotResultBody = document.getElementById("divinationTarotResultBody");
+const divinationTurtleResultBody = document.getElementById("divinationTurtleResultBody");
 const divinationResultImage = document.getElementById("divinationResultImage");
 const divinationResultLines = document.getElementById("divinationResultLines");
 const divinationResultKeywords = document.getElementById("divinationResultKeywords");
+const divinationResultBasis = document.getElementById("divinationResultBasis");
 const divinationResultReality = document.getElementById("divinationResultReality");
 const divinationResultAdvice = document.getElementById("divinationResultAdvice");
 const divinationResultCamp = document.getElementById("divinationResultCamp");
+const divinationTurtleFortune = document.getElementById("divinationTurtleFortune");
+const divinationTurtlePrimaryName = document.getElementById("divinationTurtlePrimaryName");
+const divinationTurtleMovingCount = document.getElementById("divinationTurtleMovingCount");
+const divinationTurtleKeywords = document.getElementById("divinationTurtleKeywords");
+const divinationTurtleSummary = document.getElementById("divinationTurtleSummary");
+const divinationTurtleInterpretation = document.getElementById("divinationTurtleInterpretation");
+const divinationTurtleGoodFor = document.getElementById("divinationTurtleGoodFor");
+const divinationTurtleAvoid = document.getElementById("divinationTurtleAvoid");
+const divinationTurtleConclusion = document.getElementById("divinationTurtleConclusion");
+const divinationTurtleDetails = document.getElementById("divinationTurtleDetails");
+const divinationResultJudgments = document.getElementById("divinationResultJudgments");
+const divinationResultCastDetails = document.getElementById("divinationResultCastDetails");
+const divinationResultLineDetails = document.getElementById("divinationResultLineDetails");
+const divinationResultDetailReading = document.getElementById("divinationResultDetailReading");
 
 function setStyleValue(element, property, value) {
   if (!element) {
@@ -2942,8 +2966,8 @@ function unlockTurtleShellDivination() {
   }
 
   gameState.divinationUnlocks.turtleShell = true;
-  showCamperThought("小乌龟眨眨眼，留下了龟壳占营的灵感。", 4200);
-  setStatus("龟壳占营解锁了。乌龟不会进冷藏箱，也不会成为食材。");
+    showCamperThought("小乌龟拨开湖边石缝，露出三枚旧铜钱。", 4200);
+    setStatus("铜钱筮占解锁了。乌龟不会进冷藏箱，也不会成为食材。");
   return true;
 }
 
@@ -10806,10 +10830,23 @@ function syncDivinationEntryState() {
   divinationButton.classList.toggle("locked", !hasDivinationMethodUnlocked("tarot") && !hasDivinationMethodUnlocked("turtle"));
 }
 
+function resetTurtleCastAnimationState() {
+  turtleCastPending = false;
+  turtleCastPhase = "idle";
+  turtlePendingLine = null;
+  if (turtleCoinVisual) {
+    turtleCoinVisual.classList.remove("is-revealing");
+  }
+  if (turtleShellButton) {
+    turtleShellButton.classList.remove("is-shaking");
+  }
+}
+
 function resetDivinationDraft() {
   selectedDivinationQuestionId = "overall";
   selectedDivinationMethod = getFirstUnlockedDivinationMethod();
-  turtleShakeLines = [];
+  turtleCastLines = [];
+  resetTurtleCastAnimationState();
   turtleHoldTriggered = false;
   if (turtleHoldTimer) {
     clearInterval(turtleHoldTimer);
@@ -10839,7 +10876,8 @@ function renderDivinationQuestions() {
     button.appendChild(status);
     button.addEventListener("click", function() {
       selectedDivinationQuestionId = questionId;
-      turtleShakeLines = [];
+      turtleCastLines = [];
+      resetTurtleCastAnimationState();
       renderDivinationSetup();
     });
     divinationQuestionList.appendChild(button);
@@ -10872,7 +10910,8 @@ function renderDivinationMethods() {
     button.appendChild(hint);
     button.addEventListener("click", function() {
       selectedDivinationMethod = method;
-      turtleShakeLines = [];
+      turtleCastLines = [];
+      resetTurtleCastAnimationState();
       renderDivinationSetup();
     });
     divinationMethodList.appendChild(button);
@@ -10885,40 +10924,100 @@ function renderTurtleLines(lines) {
   }
 
   turtleLineStack.textContent = "";
-  (lines || []).forEach(function(line) {
-    const row = document.createElement("span");
-    row.className = "turtle-line turtle-line-" + (line.type === "yang" ? "yang" : "yin");
-    row.setAttribute("aria-label", line.type === "yang" ? "阳爻" : "阴爻");
+  (lines || []).slice().reverse().forEach(function(line) {
+    const row = document.createElement("div");
+    const mark = document.createElement("span");
+    const label = document.createElement("small");
+    const yinYang = line && (line.yinYang === "yang" || line.type === "yang") ? "yang" : "yin";
+    row.className = "turtle-line-row";
+    mark.className = "turtle-line turtle-line-" + yinYang;
+    mark.classList.toggle("moving", Boolean(line && line.moving));
+    mark.setAttribute("aria-label", yinYang === "yang" ? "阳爻" : "阴爻");
+    label.textContent = getTurtleLineLabel(line);
+    row.appendChild(mark);
+    row.appendChild(label);
     turtleLineStack.appendChild(row);
   });
 }
 
-function getTurtleShellFramePath(lineCount) {
-  const count = Math.max(0, Math.floor(Number(lineCount) || 0));
-
-  if (count <= 0) {
-    return "assets/divination/turtle_shell/turtle_shell.png";
+function getTurtleLineLabel(line) {
+  if (!line) {
+    return "";
   }
 
-  return "assets/divination/turtle_shell/turtle_shell_shake_" + clamp(count, 1, 6) + ".png";
+  const catalog = getDivinationCatalog();
+  const labels = catalog && catalog.turtleLineLabels || {};
+  if (labels[line.type]) {
+    return "第" + line.position + "爻 · " + labels[line.type];
+  }
+
+  return "第" + (line.position || line.index + 1) + "爻 · " + (line.yinYang === "yang" || line.type === "yang" ? "阳" : "阴");
 }
 
-function renderTurtleShellFrame(lines) {
-  if (!turtleShellImage) {
+function renderTurtleCoins(line) {
+  if (!turtleCoinTray) {
     return;
   }
 
-  setVersionedImageSource(turtleShellImage, getTurtleShellFramePath((lines || []).length));
-}
-
-function playTurtleShellShakeFrame() {
-  if (!turtleShellVisual) {
+  turtleCoinTray.textContent = "";
+  turtleCoinTray.classList.toggle("hidden", !line);
+  if (!line || !Array.isArray(line.coins)) {
+    if (turtleCastReadout) {
+      turtleCastReadout.textContent = turtleCastPhase === "shaking" ? "龟壳摇动中..." : "点击龟壳，一爻一掷";
+    }
     return;
   }
 
-  turtleShellVisual.classList.remove("is-shaking");
-  void turtleShellVisual.offsetWidth;
-  turtleShellVisual.classList.add("is-shaking");
+  const coins = line.coins;
+  coins.forEach(function(coin, index) {
+    const holder = document.createElement("span");
+    const image = document.createElement("img");
+    const side = coin && coin.side === "yin" ? "yin" : "yang";
+    holder.className = "turtle-coin turtle-coin-" + (index + 1);
+    holder.classList.toggle("waiting", !line);
+    image.alt = "";
+    setVersionedImageSource(image, "assets/divination/coins/coin_" + side + ".png");
+    holder.appendChild(image);
+    turtleCoinTray.appendChild(holder);
+  });
+
+  if (turtleCastReadout) {
+    turtleCastReadout.textContent = getTurtleLineLabel(line) + " · 合计 " + line.total;
+  }
+}
+
+function getTurtleShellFramePath(castNumber) {
+  const frame = Math.max(0, Math.min(6, Math.floor(Number(castNumber) || 0)));
+  return frame > 0
+    ? "assets/divination/turtle_shell/turtle_shell_shake_" + frame + ".png"
+    : "assets/divination/turtle_shell/turtle_shell.png";
+}
+
+function renderTurtleShellFrame(castNumber) {
+  if (turtleShellImage) {
+    setVersionedImageSource(turtleShellImage, getTurtleShellFramePath(castNumber));
+  }
+}
+
+function playTurtleShellShake(castNumber) {
+  if (!turtleShellButton) {
+    return;
+  }
+
+  renderTurtleShellFrame(castNumber);
+  turtleShellButton.classList.remove("is-shaking");
+  void turtleShellButton.offsetWidth;
+  turtleShellButton.classList.add("is-shaking");
+}
+
+function playTurtleCoinReveal() {
+  if (!turtleCoinVisual) {
+    return;
+  }
+
+  turtleCoinVisual.classList.remove("is-revealing");
+  void turtleCoinVisual.offsetWidth;
+  turtleCoinVisual.classList.add("is-revealing");
 }
 
 function renderDivinationSetup() {
@@ -10959,21 +11058,30 @@ function renderDivinationSetup() {
     divinationCardVisual.classList.remove("shuffling", "revealed");
     divinationCardVisual.style.backgroundImage = "";
   }
-  if (turtleShellVisual) {
-    turtleShellVisual.classList.toggle("hidden", method !== "turtle");
+  if (turtleCoinVisual) {
+    turtleCoinVisual.classList.toggle("hidden", method !== "turtle");
+  }
+  if (turtleShellButton) {
+    turtleShellButton.disabled = method !== "turtle" || !methodUnlocked || turtleCastPending;
+    if (turtleCastPhase !== "shaking") {
+      turtleShellButton.classList.remove("is-shaking");
+    }
   }
 
-  renderTurtleShellFrame(turtleShakeLines);
-  renderTurtleLines(turtleShakeLines);
+  renderTurtleShellFrame(turtleCastPhase === "shaking" ? turtleCastLines.length + 1 : 0);
+  renderTurtleCoins(turtleCastPhase === "shaking" ? null : turtleCastLines[turtleCastLines.length - 1]);
+  renderTurtleLines(turtleCastLines);
 
   if (divinationActionButton) {
-    divinationActionButton.disabled = !method || !methodUnlocked;
+    divinationActionButton.disabled = !method || !methodUnlocked || turtleCastPending;
     if (!method) {
       divinationActionButton.textContent = "先解锁占营方式";
     } else if (!methodUnlocked) {
       divinationActionButton.textContent = methodDefinition && methodDefinition.lockedHint || "还没解锁";
     } else if (method === "turtle") {
-      divinationActionButton.textContent = turtleShakeLines.length >= 6 ? "看龟壳" : "摇动龟壳 " + turtleShakeLines.length + " / 6";
+      divinationActionButton.textContent = turtleCastPending
+        ? turtleCastPhase === "shaking" ? "龟壳摇动中..." : turtleCastLines.length >= 6 ? "六爻已成，解卦中..." : "铜钱落定..."
+        : "摇动龟壳 · 第 " + (turtleCastLines.length + 1) + " / 6 爻";
     } else {
       divinationActionButton.textContent = methodDefinition && methodDefinition.actionLabel || "开始占营";
     }
@@ -10986,6 +11094,152 @@ function setVersionedImageSource(image, path) {
   }
 }
 
+function appendIChingHexagramCard(container, label, hexagram, lineValues, movingPositions) {
+  if (!container || !hexagram) {
+    return;
+  }
+
+  const card = document.createElement("section");
+  const kicker = document.createElement("small");
+  const heading = document.createElement("strong");
+  const lines = document.createElement("div");
+  card.className = "iching-hexagram-card";
+  kicker.textContent = label + (hexagram.upperTrigram && hexagram.lowerTrigram
+    ? " · 上" + hexagram.upperTrigram.name + " 下" + hexagram.lowerTrigram.name
+    : "");
+  heading.textContent = hexagram.name;
+  lines.className = "iching-hexagram-lines";
+
+  (lineValues || []).map(function(value, index) {
+    return { value: value, position: index + 1 };
+  }).reverse().forEach(function(line) {
+    const row = document.createElement("div");
+    const mark = document.createElement("span");
+    const position = document.createElement("small");
+    const yinYang = line.value === "yang" || line.value === 1 ? "yang" : "yin";
+    row.className = "turtle-line-row";
+    mark.className = "turtle-line turtle-line-" + yinYang;
+    if ((movingPositions || []).indexOf(line.position) !== -1) {
+      mark.classList.add("moving");
+    }
+    position.textContent = String(line.position);
+    row.appendChild(mark);
+    row.appendChild(position);
+    lines.appendChild(row);
+  });
+
+  card.appendChild(kicker);
+  card.appendChild(heading);
+  card.appendChild(lines);
+  container.appendChild(card);
+}
+
+function renderIChingResultLines(result) {
+  if (!divinationResultLines) {
+    return;
+  }
+
+  divinationResultLines.textContent = "";
+  divinationResultLines.classList.add("iching-result-hexagrams");
+  appendIChingHexagramCard(
+    divinationResultLines,
+    "本卦",
+    result.primaryHexagram,
+    result.primaryLines,
+    result.movingLines
+  );
+
+  const arrow = document.createElement("span");
+  arrow.className = "iching-change-arrow";
+  arrow.textContent = "→";
+  divinationResultLines.appendChild(arrow);
+
+  appendIChingHexagramCard(
+    divinationResultLines,
+    "变卦",
+    result.changedHexagram,
+    result.changedLines,
+    []
+  );
+  divinationResultLines.classList.remove("hidden");
+}
+
+function renderOraclePhraseList(list, phrases) {
+  if (!list) {
+    return;
+  }
+
+  list.textContent = "";
+  (phrases || []).slice(0, 3).forEach(function(phrase) {
+    const item = document.createElement("li");
+    item.textContent = phrase;
+    list.appendChild(item);
+  });
+}
+
+function renderModernIChingResult(result) {
+  if (divinationTurtleFortune) {
+    divinationTurtleFortune.textContent = result.fortune || "平";
+    divinationTurtleFortune.dataset.fortune = result.fortune || "平";
+  }
+  if (divinationTurtlePrimaryName) {
+    divinationTurtlePrimaryName.textContent = result.primaryHexagram.name;
+  }
+  if (divinationTurtleMovingCount) {
+    const movingCount = Array.isArray(result.movingLines) ? result.movingLines.length : 0;
+    divinationTurtleMovingCount.textContent = "本卦 " + result.primaryHexagram.name + " · " + movingCount + " 个动爻 · 变卦 " + result.changedHexagram.name;
+  }
+  if (divinationTurtleKeywords) {
+    divinationTurtleKeywords.textContent = "";
+    (result.keywords || []).slice(0, 4).forEach(function(keyword) {
+      const word = document.createElement("span");
+      word.textContent = keyword;
+      divinationTurtleKeywords.appendChild(word);
+    });
+  }
+  if (divinationTurtleSummary) {
+    divinationTurtleSummary.textContent = result.summary || result.reality || "";
+  }
+  if (divinationTurtleInterpretation) {
+    divinationTurtleInterpretation.textContent = result.interpretation || "";
+  }
+  renderOraclePhraseList(divinationTurtleGoodFor, result.goodFor);
+  renderOraclePhraseList(divinationTurtleAvoid, result.avoid);
+  if (divinationTurtleConclusion) {
+    divinationTurtleConclusion.textContent = result.conclusion || result.campImpact || "";
+  }
+  if (divinationTurtleDetails) {
+    divinationTurtleDetails.removeAttribute("open");
+  }
+
+  renderIChingResultLines(result);
+
+  if (divinationResultBasis) {
+    const movingDetails = (result.lines || []).filter(function(line) {
+      return line && line.moving;
+    }).map(function(line) {
+      return "第" + line.position + "爻（" + getTurtleLineLabel(line).split(" · ").slice(1).join(" · ") + "）";
+    }).join("、");
+    divinationResultBasis.textContent = "动爻：" + (movingDetails || "无") + "。主占依据：" + result.readingBasis.summary;
+  }
+  if (divinationResultJudgments) {
+    divinationResultJudgments.textContent = "本卦卦辞：" + result.primaryHexagram.judgment + " 变卦卦辞：" + result.changedHexagram.judgment;
+  }
+  if (divinationResultCastDetails) {
+    divinationResultCastDetails.textContent = "六次铜钱：" + (result.lines || []).map(function(line) {
+      return "第" + line.position + "爻 " + line.total + "（" + getTurtleLineLabel(line).split(" · ").slice(1).join(" · ") + "）";
+    }).join("；");
+  }
+  if (divinationResultLineDetails) {
+    divinationResultLineDetails.textContent = "爻位细目：" + (result.readingBasis.items || []).map(function(item) {
+      return [item.source, item.label, item.keyword, item.text].filter(Boolean).join(" · ");
+    }).join("；");
+  }
+  if (divinationResultDetailReading) {
+    divinationResultDetailReading.textContent = result.detailInterpretation || "";
+  }
+}
+
 function renderDivinationResult(result, fromSaved) {
   if (!result || !divinationResult) {
     return;
@@ -10993,8 +11247,12 @@ function renderDivinationResult(result, fromSaved) {
 
   const methodDefinition = getDivinationMethodDefinition(result.method);
 
+  const isModernIChingResult = result.method === "turtle" && result.primaryHexagram && result.changedHexagram && result.readingBasis;
+
   if (divinationIntro) {
-    divinationIntro.textContent = fromSaved ? "这个方式和类别今天已经占过，正在查看固定结果。" : "今日占营完成，今天的营地会按这个倾向轻轻偏移。";
+    divinationIntro.textContent = result.method === "turtle"
+      ? fromSaved ? "今日卦签已定。" : "六爻已成，卦签落定。"
+      : fromSaved ? "今日牌面已定。" : "牌面已翻开，今日倾向已经落定。";
   }
   if (divinationQuestionList) {
     divinationQuestionList.classList.remove("hidden");
@@ -11012,9 +11270,25 @@ function renderDivinationResult(result, fromSaved) {
   renderDivinationQuestions();
   renderDivinationMethods();
   divinationResult.classList.remove("hidden");
+  divinationResult.classList.toggle("iching-result-active", isModernIChingResult);
   if (divinationResultQuestion) {
     divinationResultQuestion.textContent = (result.questionLabel || "") + " · " + (methodDefinition ? methodDefinition.label : result.method);
   }
+  if (divinationResultTop) {
+    divinationResultTop.classList.toggle("hidden", isModernIChingResult);
+  }
+  if (divinationTarotResultBody) {
+    divinationTarotResultBody.classList.toggle("hidden", isModernIChingResult);
+  }
+  if (divinationTurtleResultBody) {
+    divinationTurtleResultBody.classList.toggle("hidden", !isModernIChingResult);
+  }
+
+  if (isModernIChingResult) {
+    renderModernIChingResult(result);
+    return;
+  }
+
   if (divinationResultTitle) {
     divinationResultTitle.textContent = result.title || "";
   }
@@ -11029,27 +11303,8 @@ function renderDivinationResult(result, fromSaved) {
       divinationResultImage.classList.add("hidden");
     }
   }
-  if (divinationResultLines) {
-    divinationResultLines.textContent = "";
-    if (result.method === "turtle" && Array.isArray(result.lines)) {
-      result.lines.forEach(function(line) {
-        const row = document.createElement("span");
-        row.className = "turtle-line turtle-line-" + (line.type === "yang" ? "yang" : "yin");
-        divinationResultLines.appendChild(row);
-      });
-      divinationResultLines.classList.remove("hidden");
-    } else {
-      divinationResultLines.classList.add("hidden");
-    }
-  }
   if (divinationResultKeywords) {
-    if (result.method === "turtle") {
-      const goodFor = Array.isArray(result.goodFor) ? result.goodFor.join(" / ") : "";
-      const avoid = Array.isArray(result.avoid) ? result.avoid.join(" / ") : "";
-      divinationResultKeywords.textContent = "宜：" + goodFor + " · 忌：" + avoid;
-    } else {
-      divinationResultKeywords.textContent = Array.isArray(result.keywords) ? result.keywords.join(" / ") : "";
-    }
+    divinationResultKeywords.textContent = Array.isArray(result.keywords) ? result.keywords.join(" / ") : "";
   }
   if (divinationResultReality) {
     divinationResultReality.textContent = result.reality || "";
@@ -11094,7 +11349,8 @@ function completeDivination(method, lines, options) {
     method: method,
     question: selectedDivinationQuestionId
   };
-  turtleShakeLines = [];
+  turtleCastLines = [];
+  resetTurtleCastAnimationState();
   camperThoughtAction = "";
   if (!options || !options.deferResult) {
     renderDivinationResult(result, false);
@@ -11108,27 +11364,80 @@ function completeDivination(method, lines, options) {
   return result;
 }
 
-function shakeTurtleShellOnce() {
-  if (turtleShakeLines.length >= 6) {
+function createFallbackTurtleLine(index) {
+  const coins = [0, 1, 2].map(function(coinIndex) {
+    const yang = Math.random() >= 0.5;
+    return {
+      index: coinIndex,
+      side: yang ? "yang" : "yin",
+      value: yang ? 3 : 2
+    };
+  });
+  const total = coins.reduce(function(sum, coin) { return sum + coin.value; }, 0);
+  const typeByTotal = { 6: "oldYin", 7: "youngYang", 8: "youngYin", 9: "oldYang" };
+  const yinYang = total === 7 || total === 9 ? "yang" : "yin";
+  const moving = total === 6 || total === 9;
+  return {
+    index: index,
+    position: index + 1,
+    coins: coins,
+    total: total,
+    type: typeByTotal[total],
+    yinYang: yinYang,
+    moving: moving,
+    changedYinYang: moving ? yinYang === "yang" ? "yin" : "yang" : yinYang
+  };
+}
+
+function castTurtleCoinsOnce() {
+  if (turtleCastPending || turtleCastLines.length >= 6) {
     return;
   }
 
   const manager = getDivinationManager();
   const resultSalt = getTodayDivinationSalt("turtle", selectedDivinationQuestionId);
-  const allLines = manager && manager.createTurtleLines ? manager.createTurtleLines({
+  const lineIndex = turtleCastLines.length;
+  const line = manager && manager.createTurtleLine ? manager.createTurtleLine({
     questionId: selectedDivinationQuestionId,
     dateKey: getDivinationDateKey(),
     userSeed: getDivinationUserSeed(),
     salt: resultSalt
-  }) : [];
+  }, lineIndex) : createFallbackTurtleLine(lineIndex);
 
-  turtleShakeLines.push(allLines[turtleShakeLines.length] || { index: turtleShakeLines.length, type: Math.random() < 0.5 ? "yin" : "yang" });
+  turtlePendingLine = line;
+  turtleCastPending = true;
+  turtleCastPhase = "shaking";
   renderDivinationSetup();
-  playTurtleShellShakeFrame();
+  playTurtleShellShake(lineIndex + 1);
 
-  if (turtleShakeLines.length >= 6) {
-    completeDivination("turtle", turtleShakeLines);
-  }
+  window.setTimeout(function() {
+    if (!turtlePendingLine) {
+      return;
+    }
+
+    turtleCastLines.push(turtlePendingLine);
+    turtlePendingLine = null;
+    turtleCastPhase = "revealing";
+    if (turtleCastLines.length >= 6 && turtleHoldTimer) {
+      clearInterval(turtleHoldTimer);
+      turtleHoldTimer = null;
+    }
+    renderDivinationSetup();
+    playTurtleCoinReveal();
+
+    window.setTimeout(function() {
+      turtleCastPending = false;
+      turtleCastPhase = "idle";
+      if (turtleCoinVisual) {
+        turtleCoinVisual.classList.remove("is-revealing");
+      }
+      if (turtleCastLines.length >= 6) {
+        completeDivination("turtle", turtleCastLines.slice());
+      } else {
+        renderDivinationSetup();
+      }
+    }, 520);
+  }, 430);
 }
 
 function handleDivinationAction() {
@@ -11145,7 +11454,7 @@ function handleDivinationAction() {
   }
 
   if (selectedDivinationMethod === "turtle") {
-    shakeTurtleShellOnce();
+    castTurtleCoinsOnce();
     return;
   }
 
@@ -11188,12 +11497,12 @@ function startTurtleHold() {
   }
   turtleHoldTimer = window.setInterval(function() {
     turtleHoldTriggered = true;
-    shakeTurtleShellOnce();
-    if (turtleShakeLines.length >= 6 && turtleHoldTimer) {
+    castTurtleCoinsOnce();
+    if (turtleCastLines.length >= 6 && turtleHoldTimer) {
       clearInterval(turtleHoldTimer);
       turtleHoldTimer = null;
     }
-  }, 420);
+  }, 1100);
 }
 
 function stopTurtleHold() {
@@ -11368,7 +11677,10 @@ function getDivinationResultSignature(result) {
 
   if (result.method === "turtle" || result.type === "turtle") {
     const lines = Array.isArray(result.lines) ? result.lines.map(function(line) {
-      return line && (line.type === "yang" || line.value === 1) ? "1" : "0";
+      const coins = line && Array.isArray(line.coins) ? line.coins.map(function(coin) {
+        return coin && coin.side === "yang" ? "Y" : "N";
+      }).join("") : "";
+      return String(line && line.total || "") + coins;
     }).join("") : "";
     return "turtle:" + (result.turtleResultId || result.title || "") + ":" + lines;
   }
@@ -11433,7 +11745,8 @@ function resetTodayDivination(method, question) {
       previousRecord && previousRecord.result
     );
   repairActiveTodayDivination(dailyDivinations);
-  turtleShakeLines = [];
+  turtleCastLines = [];
+  resetTurtleCastAnimationState();
   refreshAfterDivinationTestReset();
   setStatus("Divination reset: " + normalizedMethod + " / " + normalizedQuestion);
   return true;
@@ -11456,7 +11769,8 @@ function resetAllTodayDivinations() {
     });
   });
   gameState.todayDivinations = reset;
-  turtleShakeLines = [];
+  turtleCastLines = [];
+  resetTurtleCastAnimationState();
   refreshAfterDivinationTestReset();
   setStatus("All today divinations reset.");
   return true;
@@ -11894,6 +12208,15 @@ if (divinationActionButton) {
   divinationActionButton.addEventListener("pointerup", stopTurtleHold);
   divinationActionButton.addEventListener("pointercancel", stopTurtleHold);
   divinationActionButton.addEventListener("pointerleave", stopTurtleHold);
+}
+if (turtleShellButton) {
+  turtleShellButton.addEventListener("click", function() {
+    if (selectedDivinationMethod === "turtle" &&
+        hasDivinationMethodUnlocked("turtle") &&
+        !hasTodayDivinationResult("turtle", selectedDivinationQuestionId)) {
+      castTurtleCoinsOnce();
+    }
+  });
 }
 if (dailyCampDrawerToggle) {
   dailyCampDrawerToggle.addEventListener("click", toggleDailyCampDrawer);

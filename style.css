@@ -1,3 +1,17 @@
+@font-face {
+  font-family: "ZCOOL XiaoWei";
+  src: url("assets/ui/font/ZCOOL_XiaoWei/ZCOOLXiaoWei-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Zen Antique";
+  src: url("assets/ui/font/Zen_Antique/ZenAntique-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
 :root {
   --ink: #efe2c4;
   --gold: #d9ad62;
@@ -3034,15 +3048,6 @@ h2 {
     width: 108px;
   }
 
-  .turtle-shell-visual {
-    grid-template-columns: 88px minmax(84px, 1fr);
-    gap: 0.52rem;
-  }
-
-  .turtle-shell-visual img {
-    width: 88px;
-  }
-
   .turtle-line {
     width: 76px;
   }
@@ -3588,22 +3593,123 @@ body.divination-open .daily-camp-card {
   animation: divinationReveal 0.58s ease both;
 }
 
-.turtle-shell-visual {
+.turtle-coin-visual {
   display: grid;
-  grid-template-columns: 116px minmax(90px, 1fr);
+  grid-template-columns: minmax(178px, 1fr) 126px;
+  grid-template-rows: auto auto;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.38rem 0.72rem;
+  width: min(100%, 330px);
 }
 
-.turtle-shell-visual img {
-  width: 116px;
-  height: auto;
-  filter: drop-shadow(0 0.35rem 0.45rem rgba(5, 9, 5, 0.3));
-  transform-origin: 50% 62%;
+.turtle-cast-object {
+  position: relative;
+  width: 184px;
+  height: 120px;
+  justify-self: center;
 }
 
-.turtle-shell-visual.is-shaking img {
-  animation: turtleShellShake 0.34s steps(3, end);
+.turtle-shell-button {
+  position: absolute;
+  z-index: 2;
+  top: -5px;
+  left: 50%;
+  width: 126px;
+  height: 100px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  transform: translateX(-50%);
+  transform-origin: 50% 60%;
+}
+
+.turtle-shell-button:disabled {
+  cursor: default;
+}
+
+.turtle-shell-button:focus-visible {
+  outline: 2px solid rgba(255, 209, 122, 0.72);
+  outline-offset: 2px;
+}
+
+.turtle-shell-button img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 0.35rem 0.45rem rgba(5, 9, 5, 0.34));
+}
+
+.turtle-shell-button.is-shaking img {
+  animation: turtleShellShake 0.43s steps(4, end);
+}
+
+.turtle-coin-tray {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: -3px;
+  width: 172px;
+  height: 72px;
+  perspective: 460px;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.turtle-coin {
+  position: absolute;
+  top: 7px;
+  width: 62px;
+  height: 62px;
+  display: block;
+  transform-origin: 50% 50%;
+}
+
+.turtle-coin img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 0.3rem 0.35rem rgba(5, 9, 5, 0.42));
+}
+
+.turtle-coin-1 {
+  left: 7px;
+  transform: rotate(-11deg);
+}
+
+.turtle-coin-2 {
+  left: 55px;
+  z-index: 4;
+  transform: translateY(-5px) rotate(4deg);
+}
+
+.turtle-coin-3 {
+  right: 7px;
+  transform: rotate(12deg);
+}
+
+.turtle-coin-visual.is-revealing .turtle-coin img {
+  animation: turtleCoinDrop 0.5s cubic-bezier(0.2, 0.72, 0.24, 1);
+}
+
+.turtle-coin-visual.is-revealing .turtle-coin-2 img {
+  animation-delay: 0.04s;
+}
+
+.turtle-coin-visual.is-revealing .turtle-coin-3 img {
+  animation-delay: 0.08s;
+}
+
+.turtle-cast-readout {
+  grid-column: 1;
+  margin: 0;
+  color: #d9bd84;
+  font-size: 0.61rem;
+  font-weight: 850;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .turtle-line-stack,
@@ -3612,7 +3718,28 @@ body.divination-open .daily-camp-card {
   gap: 0.22rem;
 }
 
+.turtle-line-stack {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+}
+
+.turtle-line-row {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.turtle-line-row small {
+  color: #c7b68e;
+  font-size: 0.5rem;
+  font-weight: 800;
+  line-height: 1.12;
+}
+
 .turtle-line {
+  position: relative;
   width: 88px;
   height: 8px;
   display: block;
@@ -3623,6 +3750,18 @@ body.divination-open .daily-camp-card {
 
 .turtle-line-yin {
   background: linear-gradient(90deg, #d8b56c 0 42%, transparent 42% 58%, #d8b56c 58% 100%);
+}
+
+.turtle-line.moving::after {
+  content: "○";
+  position: absolute;
+  top: 50%;
+  right: -15px;
+  color: #f0a968;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  transform: translateY(-52%);
 }
 
 .divination-action-button {
@@ -3652,7 +3791,7 @@ body.divination-open .daily-camp-card {
   margin: 0;
   color: #d9b477;
   font-size: 0.62rem;
-  font-weight: 900;
+  font-weight: 400;
   line-height: 1.1;
 }
 
@@ -3666,17 +3805,42 @@ body.divination-open .daily-camp-card {
 
 .divination-result-top p:last-child,
 .divination-result-keywords,
-.divination-result > p {
+.divination-result > p,
+.divination-tarot-result-body > p {
   margin: 0;
   color: #dfd0aa;
   font-size: 0.68rem;
-  font-weight: 750;
+  font-weight: 450;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
+.divination-tarot-result-body,
+.iching-oracle-result {
+  display: grid;
+  gap: 0.48rem;
+}
+/*龟卜的字体库*/
+.divination-result.iching-result-active,
+.iching-oracle-result {
+  font-family: "Zen Antique", "Songti SC", var(--font-family-cjk), serif, "ZCOOL XiaoWei";
+}
+
+
 .divination-result-keywords {
   color: #b9d7c0;
+}
+
+.divination-result-basis {
+  color: #efc77f !important;
+}
+
+.divination-result-good {
+  color: #b9d7c0 !important;
+}
+
+.divination-result-avoid {
+  color: #e2b39b !important;
 }
 
 .divination-result-image {
@@ -3701,6 +3865,274 @@ body.divination-open .daily-camp-card {
   background: rgba(12, 19, 14, 0.38);
 }
 
+.divination-result-lines.iching-result-hexagrams {
+  display: contents;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.iching-hexagram-card {
+  min-width: 0;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  align-content: space-between;
+  gap: 0.4rem;
+  padding: 0.52rem;
+  border: 1px solid rgba(222, 177, 103, 0.3);
+  border-radius: 7px;
+  background: rgba(12, 22, 16, 0.58);
+}
+/*本卦 上下 变卦 上下*/
+.iching-hexagram-card > small {
+  color: #fff0c4;
+  font-size: 0.6rem;
+  font-weight: 400;
+}
+/*卦牌里的卦名*/
+.iching-hexagram-card > strong {
+  color: #fff0c4;
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1;
+  text-align: right;
+  font-family: "ZCOOL XiaoWei";
+}
+
+
+.iching-hexagram-lines {
+  display: grid;
+  gap: 0.23rem;
+}
+
+.iching-hexagram-lines .turtle-line-row {
+  grid-template-columns: minmax(38px, 72%) 12px;
+  justify-content: center;
+  gap: 0.24rem;
+}
+
+.iching-hexagram-lines .turtle-line {
+  width: 100%;
+  height: 7px;
+}
+
+.iching-hexagram-lines .turtle-line.moving::after {
+  right: -13px;
+  font-size: 0.62rem;
+}
+
+.iching-hexagram-lines .turtle-line-row small {
+  text-align: right;
+}
+
+.iching-change-arrow {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 66.666%;
+  color: #d6ac67;
+  font-size: 1.15rem;
+  font-weight: 400;
+  line-height: 1;
+  transform: translate(-50%, -50%);
+}
+
+.iching-oracle-summary {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 94px;
+  align-items: end;
+  gap: 0.7rem;
+  padding: 0.18rem 0 0.38rem;
+  border-top: 1px solid rgba(222, 177, 103, 0.2);
+  border-bottom: 0;
+}
+/*吉凶牌*/
+.iching-fortune-mark {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(222, 177, 103, 0.3);
+  border-radius: 7px;
+  background: rgba(55, 38, 34, 0.62);
+  color: #f4d99d;
+  font-size: 3.2rem;
+  font-weight: 400;
+  line-height: 1;
+  text-align: center;
+  font-family: "ZCOOL XiaoWei";
+}
+
+.iching-fortune-mark[data-fortune="大吉"],
+.iching-fortune-mark[data-fortune="吉"] {
+  color: #eed99f;
+}
+
+.iching-fortune-mark[data-fortune="慎"],
+.iching-fortune-mark[data-fortune="凶"] {
+  color: #ddb08f;
+}
+
+
+.iching-oracle-names {
+  min-width: 0;
+  display: grid;
+  gap: 0.18rem;
+}
+/*最上面的本卦标题*/
+.iching-oracle-names strong {
+  color: #fff0c4;
+  font-size: 1.48rem;
+  font-weight: 400;
+  line-height: 1.05;
+  font-family: "ZCOOL XiaoWei";
+}
+/*本卦 变卦 动爻 关键词*/
+.iching-oracle-names p {
+  margin: 0;
+  color: #c9b788;
+  font-size: 0.68rem;
+  font-weight: 400;
+  line-height: 1.25;
+}
+
+.iching-oracle-keywords {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  justify-content: end;
+  gap: 0.24rem 0.28rem;
+  align-self: center;
+}
+
+.iching-oracle-keywords span {
+  color: #d9c594;
+  font-size: 0.8rem;
+  font-weight: 300;
+  line-height: 1.15;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.iching-oracle-visual {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.iching-oracle-copy {
+  display: grid;
+  gap: 0.16rem;
+}
+
+.iching-oracle-copy h4,
+.iching-oracle-guidance h4 {
+  margin: 0;
+  color: #caa76a;
+  font-size: 0.62rem;
+  font-weight: 300;
+  letter-spacing: 0;
+}
+
+.iching-oracle-copy p {
+  margin: 0;
+  color: #e7d8b3;
+  font-size: 0.67rem;
+  font-weight: 350;
+  line-height: 1.38;
+}
+
+.iching-oracle-guidance {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.72rem;
+  padding: 0.48rem 0;
+  border-top: 1px solid rgba(222, 177, 103, 0.14);
+  border-bottom: 1px solid rgba(222, 177, 103, 0.14);
+}
+
+.iching-oracle-guidance section {
+  min-width: 0;
+}
+
+.iching-oracle-guidance section + section {
+  padding-left: 0.72rem;
+  border-left: 1px solid rgba(222, 177, 103, 0.15);
+}
+
+.iching-oracle-guidance ul {
+  display: grid;
+  gap: 0.14rem;
+  margin: 0.24rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.iching-oracle-guidance li {
+  color: #d9caa6;
+  font-size: 0.67rem;
+  font-weight: 350;
+  line-height: 1.25;
+}
+
+.iching-oracle-guidance li::before {
+  content: "·";
+  margin-right: 0.25rem;
+  color: #b9d7c0;
+}
+
+.iching-oracle-guidance section:last-child li::before {
+  color: #d5a78d;
+}
+
+.iching-oracle-conclusion {
+  justify-self: end;
+  max-width: 86%;
+  margin: 0;
+  color: #ab9e80;
+  font-size: 0.55rem;
+  font-weight: 350;
+  line-height: 1.3;
+  text-align: right;
+}
+
+.iching-oracle-details {
+  border-top: 1px solid rgba(222, 177, 103, 0.17);
+}
+
+.iching-oracle-details summary {
+  padding: 0.5rem 0 0.1rem;
+  color: #c5ad7d;
+  font-size: 0.62rem;
+  font-weight: 350;
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.iching-oracle-details-body {
+  display: grid;
+  gap: 0.38rem;
+  padding-top: 0.48rem;
+}
+
+.iching-oracle-details-body > p {
+  margin: 0;
+  color: #918c81;
+  font-size: 0.62rem;
+  font-weight: 300;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.iching-oracle-details-body .divination-result-basis {
+  color: #d7b777 !important;
+}
+
 @keyframes divinationShuffle {
   from {
     transform: translate3d(-3px, 0, 0) rotate(-2deg);
@@ -3723,15 +4155,36 @@ body.divination-open .daily-camp-card {
 
 @keyframes turtleShellShake {
   0% {
-    transform: translate3d(-2px, 1px, 0) rotate(-6deg);
+    transform: translate3d(-3px, 1px, 0) rotate(-7deg);
   }
 
-  45% {
-    transform: translate3d(3px, -1px, 0) rotate(7deg);
+  35% {
+    transform: translate3d(4px, -2px, 0) rotate(8deg);
+  }
+
+  70% {
+    transform: translate3d(-2px, 1px, 0) rotate(-5deg);
   }
 
   100% {
     transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+@keyframes turtleCoinDrop {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -52px, 0) rotateX(190deg) rotateZ(-14deg) scale(0.66);
+  }
+
+  72% {
+    opacity: 1;
+    transform: translate3d(0, 5px, 0) rotateX(340deg) rotateZ(5deg) scale(1.04);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotateX(360deg) rotateZ(0deg) scale(1);
   }
 }
 
@@ -3757,6 +4210,111 @@ body.divination-open .daily-camp-card {
   .divination-result-image {
     height: min(31vh, 210px);
     max-width: min(100%, 146px);
+  }
+
+  .iching-oracle-summary {
+    grid-template-columns: minmax(0, 1fr) 84px;
+    gap: 0.46rem;
+    padding: 0.14rem 0 0.34rem;
+  }
+
+  .iching-oracle-names {
+    gap: 0.14rem;
+  }
+
+  .iching-oracle-names strong {
+    font-size: 1.24rem;
+  }
+
+  .iching-oracle-keywords {
+    gap: 0.18rem 0.22rem;
+  }
+
+  .iching-oracle-keywords span {
+    font-size: 0.6rem;
+    text-align: right;
+  }
+
+  .iching-oracle-visual {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.34rem;
+  }
+
+  .iching-fortune-mark {
+    font-size: 2.55rem;
+  }
+
+  .iching-hexagram-card {
+    gap: 0.3rem;
+    padding: 0.38rem;
+  }
+
+  .iching-hexagram-card > strong {
+    font-size: 1.22rem;
+  }
+
+  .iching-hexagram-card > small {
+    font-size: 0.44rem;
+  }
+
+  .iching-hexagram-lines {
+    gap: 0.18rem;
+  }
+
+  .iching-hexagram-lines .turtle-line {
+    height: 6px;
+  }
+
+  .turtle-coin-visual {
+    grid-template-columns: minmax(154px, 1fr) 106px;
+    gap: 0.28rem 0.42rem;
+  }
+
+  .turtle-cast-object {
+    width: 160px;
+    height: 108px;
+  }
+
+  .turtle-shell-button {
+    width: 110px;
+    height: 88px;
+  }
+
+  .turtle-coin-tray {
+    width: 148px;
+    height: 64px;
+  }
+
+  .turtle-coin {
+    width: 54px;
+    height: 54px;
+  }
+
+  .turtle-coin-1 {
+    left: 6px;
+  }
+
+  .turtle-coin-2 {
+    left: 47px;
+  }
+
+  .turtle-coin-3 {
+    right: 6px;
+  }
+
+  .turtle-line-row {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .turtle-line {
+    width: 76px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .turtle-shell-button.is-shaking img,
+  .turtle-coin-visual.is-revealing .turtle-coin img {
+    animation: none;
   }
 }
 

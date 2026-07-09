@@ -41,6 +41,13 @@
         name: "清晨鸟鸣",
         description: "林间此起彼伏的鸟叫，带着晨雾的空气感。",
         file: "assets/sounds/birds_morning_loop.wav",
+        files: [
+          "assets/sounds/birds_morning_loop.wav",
+          "assets/sounds/birds_morning_loop_02.wav",
+          "assets/sounds/birds_morning_loop_03.wav",
+          "assets/sounds/birds_morning_loop_04.wav"
+        ],
+        randomizeLoop: true,
         lockedHint: "拿起望远镜观鸟时会发现。",
         category: "ambient"
       },
