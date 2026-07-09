@@ -904,13 +904,13 @@ const mealCatalog = {
   simpleGrilledFish: {
     id: "simpleGrilledFish",
     displayName: "烤湖鱼",
-    detail: "+1 Comfort",
+    detail: "营地料理",
     image: "assets/inventory/fish/brook_trout.png"
   }
 };
 
-const cookingComfortMealCap = 8;
-const cookingCozyReward = 5;
+const cookingComfortMealCap = 0;
+const cookingCozyReward = 0;
 
 let activeShopFilter = "all";
 let statusToastTimer = null;

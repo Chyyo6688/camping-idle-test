@@ -42,10 +42,10 @@
         description: "林间此起彼伏的鸟叫，带着晨雾的空气感。",
         file: "assets/sounds/birds_morning_loop.wav",
         files: [
-          "assets/sounds/birds_morning_loop.wav",
-          "assets/sounds/birds_morning_loop_02.wav",
-          "assets/sounds/birds_morning_loop_03.wav",
-          "assets/sounds/birds_morning_loop_04.wav"
+          { file: "assets/sounds/birds_morning_loop.wav", weight: 1 },
+          { file: "assets/sounds/birds_morning_loop_02.wav", weight: 0.04 },
+          { file: "assets/sounds/birds_morning_loop_03.wav", weight: 1 },
+          { file: "assets/sounds/birds_morning_loop_04.wav", weight: 0.01 }
         ],
         randomizeLoop: true,
         lockedHint: "拿起望远镜观鸟时会发现。",

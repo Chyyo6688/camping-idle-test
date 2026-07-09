@@ -96,6 +96,66 @@
     return muted ? 0 : masterVolume;
   }
 
+  function getEntryFiles(entry) {
+    const rawFiles = entry && Array.isArray(entry.files) && entry.files.length > 0
+      ? entry.files
+      : entry && entry.file
+        ? [entry.file]
+        : [];
+  
+    return rawFiles.map(function (item) {
+      if (typeof item === "string") {
+        return {
+          file: item,
+          weight: 1
+        };
+      }
+  
+      if (item && typeof item.file === "string" && item.file) {
+        return {
+          file: item.file,
+          weight: typeof item.weight === "number" ? Math.max(0, item.weight) : 1
+        };
+      }
+  
+      return null;
+    }).filter(function (item) {
+      return item && item.file && item.weight > 0;
+    });
+  }
+  
+  function pickRandomFile(files, avoidFile) {
+    if (!files.length) {
+      return "";
+    }
+    if (files.length === 1) {
+      return files[0].file;
+    }
+  
+    let pool = files.filter(function (item) {
+      return item.file !== avoidFile;
+    });
+    if (!pool.length) {
+      pool = files;
+    }
+  
+    const totalWeight = pool.reduce(function (sum, item) {
+      return sum + item.weight;
+    }, 0);
+  
+    let roll = Math.random() * totalWeight;
+  
+    for (let i = 0; i < pool.length; i += 1) {
+      roll -= pool[i].weight;
+      if (roll <= 0) {
+        return pool[i].file;
+      }
+    }
+  
+    return pool[pool.length - 1].file;
+  }
+  
+
   // ---- public config -------------------------------------------------------
   SoundManager.configure = function (options) {
     const opts = options || {};
@@ -163,45 +223,53 @@
   }
 
   // ---- buffer loading (Web Audio) ------------------------------------------
-  function loadBuffer(id) {
-    if (bufferCache[id]) {
-      return Promise.resolve(bufferCache[id]);
-    }
-    if (bufferPromises[id]) {
-      return bufferPromises[id];
-    }
-    const entry = catalogById[id];
-    const ctx = ensureContext();
-    if (!entry || !entry.file || !ctx) {
-      return Promise.reject(new Error("sound unavailable: " + id));
-    }
+function loadBufferForFile(id, file) {
+  const cacheKey = id + "::" + file;
 
-    const promise = fetch(versioned(entry.file))
-      .then(function (response) {
-        if (!response.ok) {
-          throw new Error("http " + response.status + " for " + entry.file);
-        }
-        return response.arrayBuffer();
-      })
-      .then(function (data) {
-        return new Promise(function (resolve, reject) {
-          // callback form for Safari compatibility
-          ctx.decodeAudioData(data, resolve, reject);
-        });
-      })
-      .then(function (buffer) {
-        bufferCache[id] = buffer;
-        delete bufferPromises[id];
-        return buffer;
-      })
-      .catch(function (error) {
-        delete bufferPromises[id];
-        throw error;
-      });
-
-    bufferPromises[id] = promise;
-    return promise;
+  if (bufferCache[cacheKey]) {
+    return Promise.resolve(bufferCache[cacheKey]);
   }
+  if (bufferPromises[cacheKey]) {
+    return bufferPromises[cacheKey];
+  }
+
+  const ctx = ensureContext();
+  if (!file || !ctx) {
+    return Promise.reject(new Error("sound unavailable: " + id));
+  }
+
+  const promise = fetch(versioned(file))
+    .then(function (response) {
+      if (!response.ok) {
+        throw new Error("http " + response.status + " for " + file);
+      }
+      return response.arrayBuffer();
+    })
+    .then(function (data) {
+      return new Promise(function (resolve, reject) {
+        // callback form for Safari compatibility
+        ctx.decodeAudioData(data, resolve, reject);
+      });
+    })
+    .then(function (buffer) {
+      bufferCache[cacheKey] = buffer;
+      delete bufferPromises[cacheKey];
+      return buffer;
+    })
+    .catch(function (error) {
+      delete bufferPromises[cacheKey];
+      throw error;
+    });
+
+  bufferPromises[cacheKey] = promise;
+  return promise;
+}
+
+function loadBuffer(id) {
+  const entry = catalogById[id];
+  const files = getEntryFiles(entry);
+  return loadBufferForFile(id, files[0] && files[0].file);
+}
 
   SoundManager.preload = function (id) {
     if (shouldUseHtmlFallback()) {
@@ -230,18 +298,48 @@
     if (htmlLoops[id]) {
       return;
     }
+  
     const entry = catalogById[id];
-    if (!entry || !entry.file || typeof Audio === "undefined") {
+    const files = getEntryFiles(entry);
+  
+    if (!entry || !files.length || typeof Audio === "undefined") {
       return;
     }
+  
     try {
-      const audio = new Audio(versioned(entry.file));
-      audio.loop = true;
+      const audio = new Audio();
       audio.volume = clamp01(effectiveVolume());
       htmlLoops[id] = audio;
-      const playback = audio.play();
-      if (playback && typeof playback.catch === "function") {
-        playback.catch(function () {});
+  
+      if (entry.randomizeLoop && files.length > 1) {
+        let currentFile = "";
+  
+        const playNext = function () {
+          if (!htmlLoops[id]) {
+            return;
+          }
+  
+          currentFile = pickRandomFile(files, currentFile);
+          audio.src = versioned(currentFile);
+          audio.currentTime = 0;
+  
+          const playback = audio.play();
+          if (playback && typeof playback.catch === "function") {
+            playback.catch(function () {});
+          }
+        };
+  
+        audio.loop = false;
+        audio.addEventListener("ended", playNext);
+        playNext();
+      } else {
+        audio.src = versioned(files[0].file);
+        audio.loop = true;
+  
+        const playback = audio.play();
+        if (playback && typeof playback.catch === "function") {
+          playback.catch(function () {});
+        }
       }
     } catch (e) {
       delete htmlLoops[id];
@@ -313,7 +411,74 @@
   SoundManager.isLoopPlaying = function (id) {
     return Boolean(activeLoops[id] || htmlLoops[id]);
   };
-
+  function startRandomizedLoop(id) {
+    const entry = catalogById[id];
+    const files = getEntryFiles(entry);
+    const ctx = ensureContext();
+  
+    if (!entry || !files.length || !ctx) {
+      return;
+    }
+  
+    const nodeGain = ctx.createGain();
+    nodeGain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    nodeGain.gain.exponentialRampToValueAtTime(1, ctx.currentTime + 0.35);
+    nodeGain.connect(masterGain);
+  
+    activeLoops[id] = {
+      source: null,
+      gain: nodeGain,
+      currentFile: ""
+    };
+  
+    function playNext() {
+      const loop = activeLoops[id];
+  
+      if (!loop || ctx.state !== "running") {
+        return;
+      }
+  
+      const file = pickRandomFile(files, loop.currentFile);
+      loop.currentFile = file;
+  
+      loadBufferForFile(id, file).then(function (buffer) {
+        const currentLoop = activeLoops[id];
+  
+        if (!currentLoop || ctx.state !== "running") {
+          return;
+        }
+  
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.loop = false;
+        source.connect(nodeGain);
+  
+        currentLoop.source = source;
+  
+        source.onended = function () {
+          try {
+            source.disconnect();
+          } catch (e) {}
+  
+          playNext();
+        };
+  
+        source.start(0);
+      }).catch(function () {
+        delete activeLoops[id];
+  
+        try {
+          nodeGain.disconnect();
+        } catch (e) {}
+  
+        webAudioBroken = true;
+        noteFallback("random-loop-load-failed");
+        startLoopHtml(id);
+      });
+    }
+  
+    playNext();
+  }
   SoundManager.startLoop = function (id) {
     if (activeLoops[id] || htmlLoops[id]) {
       return; // already playing, never restart (keeps layers uninterrupted)
@@ -336,7 +501,13 @@
       }
       return;
     }
-
+    const entry = catalogById[id];
+    const files = getEntryFiles(entry);
+    
+    if (entry && entry.randomizeLoop && files.length > 1) {
+      startRandomizedLoop(id);
+      return;
+    }
     loadBuffer(id).then(function (buffer) {
       if (activeLoops[id] || ctx.state !== "running") {
         return;
@@ -380,13 +551,23 @@
         loop.gain.gain.cancelScheduledValues(now);
         loop.gain.gain.setValueAtTime(Math.max(0.0001, loop.gain.gain.value), now);
         loop.gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
-        loop.source.stop(now + 0.3);
-      } else {
+      
+        if (loop.source) {
+          loop.source.stop(now + 0.3);
+        }
+      } else if (loop.source) {
         loop.source.stop();
       }
     } catch (e) {}
     setTimeout(function () {
-      try { loop.source.disconnect(); loop.gain.disconnect(); } catch (e) {}
+      try {
+        if (loop.source) {
+          loop.source.disconnect();
+        }
+        if (loop.gain) {
+          loop.gain.disconnect();
+        }
+      } catch (e) {}
     }, 400);
   };
 
