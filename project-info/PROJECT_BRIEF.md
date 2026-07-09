@@ -2,9 +2,10 @@
 
 ## 当前状态
 
-- 当前入口版本：V2.7，见 `index.html` 里的 `window.APP_VERSION = "2.7"`。
+- 当前入口版本：V3.3，见 `index.html` 里的 `window.APP_VERSION = "3.3"`。
 - 项目形态：纯静态浏览器游戏；没有 `package.json`、lockfile、bundler 配置、后端或安装步骤。
-- 运行文件：`index.html`、`style.css`、`gearCatalog.js`、`game.js`、`assets/`。
+- 运行文件：`index.html`、`style.css`、`gearCatalog.js`、`soundJournalCatalog.js`、`soundManager.js`、`game.js`、`assets/`。
+- 脚本加载顺序（`index.html` 动态注入）：gearCatalog → soundJournalCatalog → soundManager → game.js。
 - 发布时直接把当前根目录静态包上传到 GitHub。
 - 当前未提交的玩法代码改动在 `game.js` 和 `style.css`；整理文档时不要覆盖这些改动。
 
@@ -33,6 +34,7 @@ Wood 是场景物，不是顶部货币。
 - `equippedGear`：tent、tarp、vehicle 等 replacement 槽位。
 - `userGearPositions`、`userDepthOffsetY`、`userGearMountOffsets`：Build Mode 的位置/层级/挂载调整。
 - `onboardingSeen`、`interactionGuideSeen`、`buildModeGuideSeen`：引导状态。
+- `soundJournal`：`{ discovered[], enabledAmbient[], masterVolume, muted }`，声音图鉴/白噪音状态；旧存档缺省安全迁移为空数组。
 
 新存档：Gather Off、Level 1 熄灭 campfire、散落木头、基础装饰、starter tent 已装备。
 
@@ -46,6 +48,7 @@ Wood 是场景物，不是顶部货币。
 - 手动 action queue 支持树枝和可互动 gear；Gather On 仍走自动收集。
 - Night Mode 由 light gear 解锁，只改变氛围，不改变布局。
 - Camper 运行素材已切到 `assets/characters/polished/frames/`，原始角色帧仍保留在 `assets/characters/`。
+- Sound Journal / 白噪音系统：真实音频在 `assets/sounds/`（程序生成的无缝循环 WAV + 短音效）。声音数据在 `soundJournalCatalog.js`，播放引擎（Web Audio、循环叠加、master 音量/静音、autoplay 处理）在 `soundManager.js`，图鉴/发现/存档/UI 在 `game.js`。解锁时机是“互动开始”（`startActing` 里的 fish/cook/birdwatch/campfire、`openInventoryPanel` 里的 cooler），不是活动完成。UI 入口是 utility 栏的 🔊 Sounds 按钮。
 
 ## 约束
 

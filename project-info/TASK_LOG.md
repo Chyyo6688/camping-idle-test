@@ -1,10 +1,10 @@
 # Cozy Camping Idle - Task Log
 
-## 当前 V2.7 状态
+## 当前 V3.3 状态
 
-- `index.html` 和 `game.js` 已指向 app version `2.7`。
+- `index.html` 和 `game.js` 已指向 app version `3.3`。
 - 包检查：没有 npm package、lockfile、bundler、第三方 runtime script 或外部依赖。
-- 当前运行包就是根目录静态 app：`index.html`、`style.css`、`gearCatalog.js`、`game.js`、`assets/`。
+- 当前运行包就是根目录静态 app：`index.html`、`style.css`、`gearCatalog.js`、`soundJournalCatalog.js`、`soundManager.js`、`game.js`、`assets/`。
 - Camper 运行素材已切到 `assets/characters/polished/frames/`。
 - 后续直接上传根目录静态包到 GitHub。
 - 当前未提交代码改动在 `game.js` 和 `style.css`。
@@ -18,6 +18,8 @@
 - V2.5：Shop UI polish、place/pack、tarp/vehicle replacement、rooftop mount、headlamp layers。
 - V2.6：onboarding/help、手动 action queue、UI 显示切换、Build Mode 拖动/层级存档。
 - V2.7：camper polished 角色帧接入运行素材。
+- V3.x：钓鱼/做饭/冷藏箱/inventory、activity zone、camper 档案卡。
+- V3.3：Sound Journal / 白噪音系统重做——真实可听音频（`assets/sounds/`）、`soundJournalCatalog.js` + `soundManager.js`、互动开始即解锁并播放、可勾选循环叠加、master 音量/静音、`soundJournal` 存档与旧档迁移。
 
 ## 维护规则
 

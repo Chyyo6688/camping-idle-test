@@ -1,5 +1,5 @@
 const SAVE_KEY = "cozyCampfireSave";
-const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "2.8";
+const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "4.7";
 
 function withVersion(path) {
   const separator = path.includes("?") ? "&" : "?";
@@ -71,7 +71,10 @@ const CAMPER_BODY_RECTS = {
   sittingChair: { ratioX: 0.22, ratioY: 0.3, ratioWidth: 0.56, ratioHeight: 0.58 },
   resting: { ratioX: 0.16, ratioY: 0.45, ratioWidth: 0.68, ratioHeight: 0.38 },
   tentRest: { ratioX: 0.16, ratioY: 0.45, ratioWidth: 0.68, ratioHeight: 0.38 },
-  lookingLakeBack: { ratioX: 0.3, ratioY: 0.14, ratioWidth: 0.4, ratioHeight: 0.78 }
+  lookingLakeBack: { ratioX: 0.3, ratioY: 0.14, ratioWidth: 0.4, ratioHeight: 0.78 },
+  activityCook: { ratioX: 0.28, ratioY: 0.12, ratioWidth: 0.44, ratioHeight: 0.8 },
+  activityFish: { ratioX: 0.22, ratioY: 0.12, ratioWidth: 0.56, ratioHeight: 0.8 },
+  activityBirdwatch: { ratioX: 0.24, ratioY: 0.12, ratioWidth: 0.52, ratioHeight: 0.8 }
 };
 const CAMPER_THOUGHT_RECTS = {
   default: { ratioX: 0.5, ratioY: 0.06 },
@@ -81,7 +84,10 @@ const CAMPER_THOUGHT_RECTS = {
   sittingChair: { ratioX: 0.5, ratioY: 0.24 },
   resting: { ratioX: 0.5, ratioY: 0.4 },
   tentRest: { ratioX: 0.5, ratioY: 0.4 },
-  lookingLakeBack: { ratioX: 0.5, ratioY: 0.06 }
+  lookingLakeBack: { ratioX: 0.5, ratioY: 0.06 },
+  activityCook: { ratioX: 0.5, ratioY: 0.05 },
+  activityFish: { ratioX: 0.5, ratioY: 0.05 },
+  activityBirdwatch: { ratioX: 0.5, ratioY: 0.05 }
 };
 const DEFAULT_COLLISION_FOOTPRINTS = {
   vehicle: { ratioX: 0.14, ratioY: 0.62, ratioWidth: 0.72, ratioHeight: 0.28 },
@@ -186,6 +192,50 @@ const defaultGameState = {
   userDepthOffsetY: {},
   userGearPositions: {},
   userGearMountOffsets: {},
+  activityStats: {},
+  inventory: {
+    fish: {},
+    meals: {}
+  },
+  fishing: {
+    attempts: 0,
+    caught: 0,
+    released: 0,
+    firstStoredFishGuideSeen: false
+  },
+  cooking: {
+    cooked: 0
+  },
+  dailyWeather: {
+    userSeed: "",
+    dateKey: "",
+    id: "",
+    moodIndex: 0
+  },
+  todayDivinations: {
+    date: "",
+    active: {
+      method: "",
+      question: ""
+    },
+    records: {
+      tarot: {},
+      turtle: {}
+    },
+    rerollSalt: {
+      tarot: {},
+      turtle: {}
+    }
+  },
+  divinationUnlocks: {
+    turtleShell: false
+  },
+  soundJournal: {
+    discovered: [],
+    enabledAmbient: [],
+    masterVolume: 0.7,
+    muted: false
+  },
   camperProfileVersion: 0,
   activeCamperIndex: 0,
   campers: [],
@@ -210,6 +260,25 @@ function createDefaultGameState() {
     userDepthOffsetY: { ...defaultGameState.userDepthOffsetY },
     userGearPositions: { ...defaultGameState.userGearPositions },
     userGearMountOffsets: { ...defaultGameState.userGearMountOffsets },
+    activityStats: { ...defaultGameState.activityStats },
+    inventory: cloneInventory(defaultGameState.inventory),
+    fishing: { ...defaultGameState.fishing },
+    cooking: { ...defaultGameState.cooking },
+    dailyWeather: { ...defaultGameState.dailyWeather },
+    todayDivinations: {
+      ...defaultGameState.todayDivinations,
+      active: { ...defaultGameState.todayDivinations.active },
+      records: {
+        tarot: { ...defaultGameState.todayDivinations.records.tarot },
+        turtle: { ...defaultGameState.todayDivinations.records.turtle }
+      },
+      rerollSalt: {
+        tarot: { ...defaultGameState.todayDivinations.rerollSalt.tarot },
+        turtle: { ...defaultGameState.todayDivinations.rerollSalt.turtle }
+      }
+    },
+    divinationUnlocks: { ...defaultGameState.divinationUnlocks },
+    soundJournal: cloneSoundJournal(defaultGameState.soundJournal),
     camperProfileVersion: defaultGameState.camperProfileVersion,
     activeCamperIndex: defaultGameState.activeCamperIndex,
     campers: defaultGameState.campers.map(function(camperProfile) {
@@ -250,6 +319,7 @@ const maxOfflineEarningsSeconds = 2 * 60 * 60;
 const economyResetCozyPoints = 500;
 const maxWoodItems = 5;
 const camperFrameDurationMs = 120;
+const camperActivityFrameDurationMs = 280;
 const camperSpriteRefreshMs = 100;
 const DEV_SCENE_PLACEHOLDER_SIZE = 64;
 
@@ -288,7 +358,25 @@ const assetPaths = versionAssetPaths({
       sitGround: "camper_sit_ground.png",
       sitChair: "camper_sit_chair.png",
       lookLakeBack: "camper_look_lake_back.png",
-      rest: "camper_rest.png"
+      rest: "camper_rest.png",
+      activityFrames: {
+        cook: [
+          "camper_activity_cook_01.png",
+          "camper_activity_cook_02.png",
+          "camper_activity_cook_03.png"
+        ],
+        fish: [
+          "camper_activity_fish_01.png",
+          "camper_activity_fish_02.png",
+          "camper_activity_fish_03.png",
+          "camper_activity_fish_04.png"
+        ],
+        birdwatch: [
+          "camper_activity_birdwatch_01.png",
+          "camper_activity_birdwatch_02.png",
+          "camper_activity_birdwatch_03.png",
+        ]
+      }
     }
   },
   campfire: {
@@ -330,6 +418,7 @@ let camper = {
   target: null,
   actionAfterArrival: null,
   currentAction: null,
+  currentActivityId: "",
   actionTimer: 0,
   targetWoodId: null,
   woodCollectionSource: null,
@@ -355,6 +444,8 @@ let selectedActionTargetKey = "";
 let selectedBuildItemKey = "";
 let camperThoughtAction = "";
 let camperThoughtText = "";
+let forcedCamperThoughtText = "";
+let forcedCamperThoughtUntil = 0;
 let camperMotionFrameId = null;
 let sceneDepthControlLayer = null;
 let sceneDepthControlPanel = null;
@@ -366,6 +457,18 @@ let buildDragState = null;
 let buildHitCanvas = null;
 let buildHitCanvasContext = null;
 let suppressNextBuildClick = false;
+let activityZoneLayer = null;
+let testWeatherOverride = "";
+let dailyCampDrawerExpanded = false;
+let testDivinationOverride = null;
+let selectedDivinationQuestionId = "overall";
+let selectedDivinationMethod = "";
+let turtleCastLines = [];
+let turtleHoldTimer = null;
+let turtleHoldTriggered = false;
+let turtleCastPending = false;
+let turtleCastPhase = "idle";
+let turtlePendingLine = null;
 
 // These variables connect JavaScript to the HTML.
 const cozyPointsAmount = document.getElementById("cozyPointsAmount");
@@ -381,6 +484,7 @@ const campScene = document.getElementById("campScene");
 const sceneBackground = document.getElementById("sceneBackground");
 const treelineImage = document.getElementById("treelineImage");
 const lakeImage = document.getElementById("lakeImage");
+const weatherLayer = document.getElementById("weatherLayer");
 const woodLayer = document.getElementById("woodLayer");
 const sceneContent = document.getElementById("sceneContent");
 const gearLayer = document.getElementById("gearLayer");
@@ -449,11 +553,85 @@ const camperRetakeQuizButton = document.getElementById("camperRetakeQuizButton")
 const camperRecustomizeButton = document.getElementById("camperRecustomizeButton");
 const camperProfilePrimaryButton = document.getElementById("camperProfilePrimaryButton");
 const camperProfileSecondaryButton = document.getElementById("camperProfileSecondaryButton");
+const inventoryLayer = document.getElementById("inventoryLayer");
+const inventoryPanel = document.getElementById("inventoryPanel");
+const inventoryCloseButton = document.getElementById("inventoryCloseButton");
+const inventoryFishList = document.getElementById("inventoryFishList");
+const inventoryMealList = document.getElementById("inventoryMealList");
+const inventoryStatsLine = document.getElementById("inventoryStatsLine");
+const soundJournalButton = document.getElementById("soundJournalButton");
+const soundJournalLayer = document.getElementById("soundJournalLayer");
+const soundJournalPanel = document.getElementById("soundJournalPanel");
+const soundJournalCloseButton = document.getElementById("soundJournalCloseButton");
+const soundJournalList = document.getElementById("soundJournalList");
+const soundMasterToggle = document.getElementById("soundMasterToggle");
+const soundVolumeSlider = document.getElementById("soundVolumeSlider");
+const settingsLayer = document.getElementById("settingsLayer");
+const settingsPanel = document.getElementById("settingsPanel");
+const settingsCloseButton = document.getElementById("settingsCloseButton");
+const settingsTutorialToggle = document.getElementById("settingsTutorialToggle");
+const settingsTutorialList = document.getElementById("settingsTutorialList");
+const settingsResetItem = document.getElementById("settingsResetItem");
 const resetSaveButton = document.getElementById("resetSaveButton");
 const campfireLevelAmount = document.getElementById("campfireLevelAmount");
 const cozyRateAmount = document.getElementById("cozyRateAmount");
 const offlineCapAmount = document.getElementById("offlineCapAmount");
 const statusLine = document.getElementById("statusLine");
+const dailyCampCard = document.getElementById("dailyCampCard");
+const dailyCampDrawerToggle = document.getElementById("dailyCampDrawerToggle");
+const dailyCampDrawerPanel = document.getElementById("dailyCampDrawerPanel");
+const dailyCampDrawerChevron = document.getElementById("dailyCampDrawerChevron");
+const dailyWeatherTabIcon = document.getElementById("dailyWeatherTabIcon");
+const dailyWeatherIcon = document.getElementById("dailyWeatherIcon");
+const dailyWeatherLabel = document.getElementById("dailyWeatherLabel");
+const dailyCampMood = document.getElementById("dailyCampMood");
+const dailyCampActivities = document.getElementById("dailyCampActivities");
+const dailySoundRecommendation = document.getElementById("dailySoundRecommendation");
+const divinationButton = document.getElementById("divinationButton");
+const divinationLayer = document.getElementById("divinationLayer");
+const divinationPanel = document.getElementById("divinationPanel");
+const divinationCloseButton = document.getElementById("divinationCloseButton");
+const divinationIntro = document.getElementById("divinationIntro");
+const divinationQuestionList = document.getElementById("divinationQuestionList");
+const divinationMethodList = document.getElementById("divinationMethodList");
+const divinationStage = document.getElementById("divinationStage");
+const divinationCardVisual = document.getElementById("divinationCardVisual");
+const divinationCardBack = document.getElementById("divinationCardBack");
+const turtleCoinVisual = document.getElementById("turtleCoinVisual");
+const turtleShellButton = document.getElementById("turtleShellButton");
+const turtleShellImage = document.getElementById("turtleShellImage");
+const turtleCoinTray = document.getElementById("turtleCoinTray");
+const turtleCastReadout = document.getElementById("turtleCastReadout");
+const turtleLineStack = document.getElementById("turtleLineStack");
+const divinationActionButton = document.getElementById("divinationActionButton");
+const divinationResult = document.getElementById("divinationResult");
+const divinationResultQuestion = document.getElementById("divinationResultQuestion");
+const divinationResultTop = document.getElementById("divinationResultTop");
+const divinationResultTitle = document.getElementById("divinationResultTitle");
+const divinationResultSubtitle = document.getElementById("divinationResultSubtitle");
+const divinationTarotResultBody = document.getElementById("divinationTarotResultBody");
+const divinationTurtleResultBody = document.getElementById("divinationTurtleResultBody");
+const divinationResultImage = document.getElementById("divinationResultImage");
+const divinationResultLines = document.getElementById("divinationResultLines");
+const divinationResultKeywords = document.getElementById("divinationResultKeywords");
+const divinationResultBasis = document.getElementById("divinationResultBasis");
+const divinationResultReality = document.getElementById("divinationResultReality");
+const divinationResultAdvice = document.getElementById("divinationResultAdvice");
+const divinationResultCamp = document.getElementById("divinationResultCamp");
+const divinationTurtleFortune = document.getElementById("divinationTurtleFortune");
+const divinationTurtlePrimaryName = document.getElementById("divinationTurtlePrimaryName");
+const divinationTurtleMovingCount = document.getElementById("divinationTurtleMovingCount");
+const divinationTurtleKeywords = document.getElementById("divinationTurtleKeywords");
+const divinationTurtleSummary = document.getElementById("divinationTurtleSummary");
+const divinationTurtleInterpretation = document.getElementById("divinationTurtleInterpretation");
+const divinationTurtleGoodFor = document.getElementById("divinationTurtleGoodFor");
+const divinationTurtleAvoid = document.getElementById("divinationTurtleAvoid");
+const divinationTurtleConclusion = document.getElementById("divinationTurtleConclusion");
+const divinationTurtleDetails = document.getElementById("divinationTurtleDetails");
+const divinationResultJudgments = document.getElementById("divinationResultJudgments");
+const divinationResultCastDetails = document.getElementById("divinationResultCastDetails");
+const divinationResultLineDetails = document.getElementById("divinationResultLineDetails");
+const divinationResultDetailReading = document.getElementById("divinationResultDetailReading");
 
 function setStyleValue(element, property, value) {
   if (!element) {
@@ -516,10 +694,223 @@ const campSpots = {
   fire: { x: 39, y: 79 },
   fireSeat: { x: 33, y: 80 },
   fireSeatRight: { x: 46, y: 80.5 },
-  lake: { x: 50, y: 54 },
+  lake: { x: 50, y: 59 },
   tent: { x: 54, y: 69.5 },
   rest: { x: 24, y: 81 }
 };
+
+const SCENE_NO_WALK_ZONES = [
+  {
+    id: "lakeWater",
+    padding: 14,
+    points: [
+      { x: 0, y: 0 },
+      { x: 900, y: 0 },
+      { x: 900, y: 740 },
+      { x: 790, y: 742 },
+      { x: 776, y: 679 },
+      { x: 764, y: 651 },
+      { x: 716, y: 625 },
+      { x: 650, y: 618 },
+      { x: 600, y: 636 },
+      { x: 590, y: 662 },
+      { x: 548, y: 695 },
+      { x: 500, y: 750 },
+      { x: 450, y: 800 },
+      { x: 392, y: 875 },
+      { x: 300, y: 885 },
+      { x: 198, y: 865 },
+      { x: 90, y: 825 },
+      { x: 0, y: 790 }
+    ]
+  },
+  {
+    id: "leftTree",
+    padding: 10,
+    points: [
+      { x: 0, y: 0 },
+      { x: 150, y: 0 },
+      { x: 150, y: 805 },
+      { x: 210, y: 980 },
+      { x: 300, y: 1120 },
+      { x: 180, y: 1245 },
+      { x: 0, y: 1205 }
+    ]
+  },
+  {
+    id: "rightShoreRocks",
+    padding: 12,
+    points: [
+      { x: 620, y: 900 },
+      { x: 710, y: 845 },
+      { x: 900, y: 795 },
+      { x: 900, y: 1000 },
+      { x: 730, y: 1055 },
+      { x: 585, y: 1020 }
+    ]
+  }
+];
+
+const ACTIVITY_ZONE_TARGET_PREFIX = "zone:";
+const activityZones = {
+  lakeFishing: {
+    id: "lakeFishing",
+    activityId: "fish",
+    label: "Lake fishing spot",
+    bounds: { x: 36, y: 43, width: 28, height: 16 },
+    target: { x: 72, y: 43.5, activityFacing: "left" }
+  },
+  lakeBirdwatch: {
+    id: "lakeBirdwatch",
+    activityId: "birdwatch",
+    label: "Lake birdwatching spot",
+    bounds: { x: 58, y: 47, width: 22, height: 18 },
+    target: { x: 62, y: 58, activityFacing: "left" }
+  },
+  treelineBirdwatch: {
+    id: "treelineBirdwatch",
+    activityId: "birdwatch",
+    label: "Treeline birdwatching spot",
+    bounds: { x: 15, y: 34, width: 28, height: 22 },
+    target: { x: 32, y: 56, activityFacing: "left" }
+  }
+};
+
+const activityDefinitions = {
+  cook: {
+    id: "cook",
+    label: "Cook",
+    actionLabel: "Cooking at camp",
+    targetLabel: "stove or camp kitchen",
+    durationSeconds: 4.2,
+    weight: 2.6,
+    pose: "activityCook",
+    targetOffset: { x: 0, y: 2.2 },
+    targetPoint: { ratioX: 0.5, ratioY: 1 },
+    requires: {
+      anyGearCategory: ["stove"],
+      anyGearId: ["igtCampKitchenSet", "kitchenCarryCase"]
+    },
+    gearCategories: ["stove"],
+    gearIds: ["igtCampKitchenSet", "kitchenCarryCase"]
+  },
+  fish: {
+    id: "fish",
+    label: "Fish",
+    actionLabel: "Fishing by the lake",
+    targetLabel: "the lake",
+    durationSeconds: 10,
+    weight: 2.4,
+    pose: "activityFish",
+    targetOffset: { x: 0, y: 1.8 },
+    targetPoint: { ratioX: 0.5, ratioY: 1 },
+    requires: { area: "lake" },
+    gearIds: ["fishingRod"],
+    zoneIds: ["lakeFishing"],
+    fixedTarget: true,
+    fallbackTarget: { x: 78, y: 40.5, activityFacing: "left" }
+  },
+  birdwatch: {
+    id: "birdwatch",
+    label: "Birdwatch",
+    actionLabel: "Birdwatching",
+    targetLabel: "a quiet lookout",
+    durationSeconds: 4.6,
+    weight: 2,
+    pose: "activityBirdwatch",
+    targetOffset: { x: 0, y: 2 },
+    targetPoint: { ratioX: 0.5, ratioY: 1 },
+    requires: { area: "treelineOrLake" },
+    gearIds: ["binoculars", "cameraTripod"],
+    zoneIds: ["treelineBirdwatch", "lakeBirdwatch"],
+    fallbackTarget: { x: 32, y: 56, activityFacing: "left" }
+  }
+};
+
+const fishCatalog = {
+  minnow: {
+    id: "minnow",
+    displayName: "小银鱼",
+    rarity: "common",
+    rarityLabel: "普通鱼",
+    image: "assets/inventory/fish/minnow.png"
+  },
+  bluegill: {
+    id: "bluegill",
+    displayName: "蓝鳃鱼",
+    rarity: "common",
+    rarityLabel: "普通鱼",
+    image: "assets/inventory/fish/bluegill.png"
+  },
+  yellowPerch: {
+    id: "yellowPerch",
+    displayName: "黄鲈",
+    rarity: "common",
+    rarityLabel: "普通鱼",
+    image: "assets/inventory/fish/yellow_perch.png"
+  },
+  pumpkinseed: {
+    id: "pumpkinseed",
+    displayName: "南瓜籽太阳鱼",
+    rarity: "common",
+    rarityLabel: "普通鱼",
+    image: "assets/inventory/fish/pumpkinseed.png"
+  },
+  brookTrout: {
+    id: "brookTrout",
+    displayName: "溪鳟",
+    rarity: "uncommon",
+    rarityLabel: "稍稀有鱼",
+    image: "assets/inventory/fish/brook_trout.png"
+  },
+  channelCatfish: {
+    id: "channelCatfish",
+    displayName: "沟鲶",
+    rarity: "uncommon",
+    rarityLabel: "稍稀有鱼",
+    image: "assets/inventory/fish/channel_catfish.png"
+  },
+  goldenKoi: {
+    id: "goldenKoi",
+    displayName: "金色锦鲤",
+    rarity: "rare",
+    rarityLabel: "稀有鱼",
+    image: "assets/inventory/fish/golden_koi.png"
+  },
+  moonCarp: {
+    id: "moonCarp",
+    displayName: "月光鲤",
+    rarity: "rare",
+    rarityLabel: "稀有鱼",
+    image: "assets/inventory/fish/moon_carp.png"
+  }
+};
+
+const fishIdsByRarity = {
+  common: ["minnow", "bluegill", "yellowPerch", "pumpkinseed"],
+  uncommon: ["brookTrout", "channelCatfish"],
+  rare: ["goldenKoi", "moonCarp"]
+};
+
+const fishingOutcomeTable = [
+  { id: "none", weight: 34 },
+  { id: "common", weight: 46 },
+  { id: "uncommon", weight: 15 },
+  { id: "rare", weight: 5 },
+  { id: "turtle", weight: 2 }
+];
+
+const mealCatalog = {
+  simpleGrilledFish: {
+    id: "simpleGrilledFish",
+    displayName: "烤湖鱼",
+    detail: "营地料理",
+    image: "assets/inventory/fish/brook_trout.png"
+  }
+};
+
+const cookingComfortMealCap = 0;
+const cookingCozyReward = 0;
 
 let activeShopFilter = "all";
 let statusToastTimer = null;
@@ -546,8 +937,8 @@ let camperProfileDraftAppearance = null;
 let camperCardEditingField = "";
 
 const CAMPER_LAYER_SHEET_ROOT = "assets/characters";
+const CAMPER_NIGHT_LAYER_SHEET_ROOT = "assets/characters/night";
 const CAMPER_SHEET_COLUMNS = 7;
-const CAMPER_SHEET_ROWS = 3;
 const CAMPER_IDLE_FRAME_NAME = "camper_idle.png";
 const CAMPER_SHEET_FRAME_NAMES = [
   "camper_idle.png",
@@ -568,8 +959,22 @@ const CAMPER_SHEET_FRAME_NAMES = [
   "camper_sit_ground.png",
   "camper_sit_chair.png",
   "camper_look_lake_back.png",
-  "camper_rest.png"
+  "camper_rest.png",
+  "__unused_01",
+  "__unused_02",
+  "camper_activity_cook_01.png",
+  "camper_activity_cook_02.png",
+  "camper_activity_cook_03.png",
+  "camper_activity_cook_04.png",
+  "camper_activity_birdwatch_01.png",
+  "camper_activity_birdwatch_02.png",
+  "camper_activity_birdwatch_03.png",
+  "camper_activity_fish_01.png",
+  "camper_activity_fish_02.png",
+  "camper_activity_fish_03.png",
+  "camper_activity_fish_04.png"
 ];
+const CAMPER_SHEET_ROWS = 6;
 const CAMPER_LAYER_RENDER_ORDER = [
   { id: "bodyBase", sheet: "camper_body_base.png" },
   { id: "eyes", sheet: "camper_eye_bright.png", appearanceCategory: "eyes" },
@@ -690,7 +1095,10 @@ const camperActionLabels = {
   sittingOnFurniture: "Settling into camp seating",
   sittingOnChair: "Settling into the camp chair",
   observingGear: "Inspecting camp gear",
-  tentRest: "Resting inside the tent"
+  tentRest: "Resting inside the tent",
+  cook: "Cooking at camp",
+  fish: "Fishing by the lake",
+  birdwatch: "Birdwatching"
 };
 
 const camperThoughtLines = {
@@ -703,6 +1111,10 @@ const camperThoughtLines = {
   resting: ["小累一会儿", "闭眼休息", "草地很软", "先躺一下", "慢慢恢复"],
   tentRest: ["钻进帐篷", "帐篷里好安心", "小睡一会儿", "外面风声好轻", "今晚睡这里"]
 };
+
+camperThoughtLines.cook = ["锅里开始香了", "先搅一搅", "营地要有热乎气", "这一口会很安心"];
+camperThoughtLines.fish = ["水面动了一下", "线要慢慢放", "湖边很适合等", "今天也许有收获"];
+camperThoughtLines.birdwatch = ["那边有翅膀声", "先别惊动它", "树影里有小动静", "看到一闪而过"];
 
 const CAMPER_PROFILE_VERSION = 1;
 const CAMPER_PROFILE_QUESTION_COUNT = 5;
@@ -1490,6 +1902,1367 @@ function getActiveDepthControlTargetItem() {
   return getGearItem(getSelectedActionTargetId() || depthControlHoverTargetId);
 }
 
+function getActivityDefinition(activityId) {
+  return activityId && activityDefinitions[activityId] ? activityDefinitions[activityId] : null;
+}
+
+function getActivityIds() {
+  return Object.keys(activityDefinitions);
+}
+
+function isActivityId(activityId) {
+  return Boolean(getActivityDefinition(activityId));
+}
+
+function getActivityZoneTargetId(zoneId) {
+  return ACTIVITY_ZONE_TARGET_PREFIX + zoneId;
+}
+
+function getActivityZoneIdFromTargetId(targetId) {
+  return typeof targetId === "string" && targetId.indexOf(ACTIVITY_ZONE_TARGET_PREFIX) === 0 ?
+    targetId.slice(ACTIVITY_ZONE_TARGET_PREFIX.length) :
+    "";
+}
+
+function getActivityZone(zoneId) {
+  return zoneId && activityZones[zoneId] ? activityZones[zoneId] : null;
+}
+
+function getActivityZoneElementId(zoneId) {
+  return "activity-zone-" + zoneId;
+}
+
+function getActivityZoneElement(zoneId) {
+  return document.getElementById(getActivityZoneElementId(zoneId));
+}
+
+function getActivityStatsMap(state) {
+  const campState = state || gameState;
+
+  if (!campState.activityStats || typeof campState.activityStats !== "object" || Array.isArray(campState.activityStats)) {
+    campState.activityStats = {};
+  }
+
+  return campState.activityStats;
+}
+
+function getActivityStats(activityId, state) {
+  const statsMap = getActivityStatsMap(state);
+
+  if (!statsMap[activityId] || typeof statsMap[activityId] !== "object") {
+    statsMap[activityId] = {
+      completed: 0,
+      lastCompletedAt: 0
+    };
+  }
+
+  statsMap[activityId].completed = Math.max(0, Number(statsMap[activityId].completed) || 0);
+  statsMap[activityId].lastCompletedAt = Number(statsMap[activityId].lastCompletedAt) || 0;
+  return statsMap[activityId];
+}
+
+function sanitizeActivityStats(stats) {
+  const cleanStats = {};
+
+  if (!stats || typeof stats !== "object" || Array.isArray(stats)) {
+    return cleanStats;
+  }
+
+  getActivityIds().forEach(function(activityId) {
+    const savedStats = stats[activityId];
+    const completed = savedStats && typeof savedStats === "object" ? Number(savedStats.completed) : Number(savedStats);
+    const lastCompletedAt = savedStats && typeof savedStats === "object" ? Number(savedStats.lastCompletedAt) : 0;
+
+    cleanStats[activityId] = {
+      completed: Math.max(0, Number.isFinite(completed) ? Math.floor(completed) : 0),
+      lastCompletedAt: Number.isFinite(lastCompletedAt) ? Math.max(0, lastCompletedAt) : 0
+    };
+  });
+
+  return cleanStats;
+}
+
+function recordActivityCompletion(activityId) {
+  if (!isActivityId(activityId)) {
+    return;
+  }
+
+  const stats = getActivityStats(activityId);
+  stats.completed += 1;
+  stats.lastCompletedAt = Date.now();
+  saveGame();
+}
+
+function getActivityCompletionCount(activityId) {
+  return getActivityStats(activityId).completed;
+}
+
+function cloneCountMap(counts) {
+  const cleanCounts = {};
+  const sourceCounts = counts && typeof counts === "object" && !Array.isArray(counts) ? counts : {};
+
+  Object.keys(sourceCounts).forEach(function(id) {
+    const count = Math.max(0, Math.floor(Number(sourceCounts[id]) || 0));
+
+    if (count > 0) {
+      cleanCounts[id] = count;
+    }
+  });
+
+  return cleanCounts;
+}
+
+function cloneInventory(inventory) {
+  const sourceInventory = inventory && typeof inventory === "object" && !Array.isArray(inventory) ? inventory : {};
+
+  return {
+    fish: cloneCountMap(sourceInventory.fish),
+    meals: cloneCountMap(sourceInventory.meals)
+  };
+}
+
+function sanitizeCountMap(counts, catalog) {
+  const cleanCounts = {};
+  const sourceCounts = counts && typeof counts === "object" && !Array.isArray(counts) ? counts : {};
+
+  Object.keys(catalog || {}).forEach(function(id) {
+    const count = Math.max(0, Math.floor(Number(sourceCounts[id]) || 0));
+
+    if (count > 0) {
+      cleanCounts[id] = count;
+    }
+  });
+
+  return cleanCounts;
+}
+
+function sanitizeInventory(inventory) {
+  const sourceInventory = inventory && typeof inventory === "object" && !Array.isArray(inventory) ? inventory : {};
+
+  return {
+    fish: sanitizeCountMap(sourceInventory.fish, fishCatalog),
+    meals: sanitizeCountMap(sourceInventory.meals, mealCatalog)
+  };
+}
+
+function sanitizeFishingProgress(progress) {
+  const sourceProgress = progress && typeof progress === "object" && !Array.isArray(progress) ? progress : {};
+
+  return {
+    attempts: Math.max(0, Math.floor(Number(sourceProgress.attempts) || 0)),
+    caught: Math.max(0, Math.floor(Number(sourceProgress.caught) || 0)),
+    released: Math.max(0, Math.floor(Number(sourceProgress.released) || 0)),
+    firstStoredFishGuideSeen: Boolean(sourceProgress.firstStoredFishGuideSeen)
+  };
+}
+
+function sanitizeCookingProgress(progress) {
+  const sourceProgress = progress && typeof progress === "object" && !Array.isArray(progress) ? progress : {};
+
+  return {
+    cooked: Math.max(0, Math.floor(Number(sourceProgress.cooked) || 0))
+  };
+}
+
+function getDivinationManager() {
+  return typeof window !== "undefined" && window.CAMP_DIVINATION_MANAGER ? window.CAMP_DIVINATION_MANAGER : null;
+}
+
+function getDivinationCatalog() {
+  return typeof window !== "undefined" && window.CAMP_DIVINATION_CATALOG ? window.CAMP_DIVINATION_CATALOG : null;
+}
+
+function getDivinationDateKey(date) {
+  const manager = getDivinationManager();
+  return manager && manager.getLocalDateKey ? manager.getLocalDateKey(date) : getLocalDateKey(date);
+}
+
+function createEmptyTodayDivinations(dateKey) {
+  const manager = getDivinationManager();
+
+  if (manager && manager.createEmptyTodayDivinations) {
+    return manager.createEmptyTodayDivinations(dateKey || "");
+  }
+
+  return {
+    date: dateKey || "",
+    active: {
+      method: "",
+      question: ""
+    },
+    records: {
+      tarot: {},
+      turtle: {}
+    },
+    rerollSalt: {
+      tarot: {},
+      turtle: {}
+    }
+  };
+}
+
+function sanitizeTodayDivinations(todayDivinations, dateKey, legacyTodayDivination) {
+  const manager = getDivinationManager();
+
+  if (manager && manager.sanitizeSavedDivinations) {
+    return manager.sanitizeSavedDivinations(todayDivinations, dateKey || "", legacyTodayDivination);
+  }
+
+  const source = todayDivinations && typeof todayDivinations === "object" && !Array.isArray(todayDivinations) ? todayDivinations : {};
+  const clean = createEmptyTodayDivinations(dateKey || "");
+
+  if (!source.date || dateKey && source.date !== dateKey) {
+    return clean;
+  }
+
+  clean.date = source.date;
+  ["tarot", "turtle"].forEach(function(method) {
+    const methodRecords = source.records && source.records[method];
+    if (methodRecords && typeof methodRecords === "object" && !Array.isArray(methodRecords)) {
+      Object.keys(methodRecords).forEach(function(questionId) {
+        const record = methodRecords[questionId];
+        if (record && record.date === clean.date && record.method === method && record.question === questionId && record.result) {
+          clean.records[method][questionId] = { ...record };
+        }
+      });
+    }
+
+    const methodRerollSalt = source.rerollSalt && source.rerollSalt[method];
+    if (methodRerollSalt && typeof methodRerollSalt === "object" && !Array.isArray(methodRerollSalt)) {
+      Object.keys(methodRerollSalt).forEach(function(questionId) {
+        const rerollSalt = Math.max(0, Math.floor(Number(methodRerollSalt[questionId]) || 0));
+        if (rerollSalt > 0) {
+          clean.rerollSalt[method][questionId] = rerollSalt;
+        }
+      });
+    }
+  });
+
+  const active = source.active && typeof source.active === "object" ? source.active : {};
+  if (clean.records[active.method] && clean.records[active.method][active.question]) {
+    clean.active = {
+      method: active.method,
+      question: active.question
+    };
+  }
+  return clean;
+}
+
+function sanitizeDivinationUnlocks(unlocks) {
+  const source = unlocks && typeof unlocks === "object" && !Array.isArray(unlocks) ? unlocks : {};
+
+  return {
+    turtleShell: Boolean(source.turtleShell)
+  };
+}
+
+function ensureTodayDivinationsForToday(date, state) {
+  const campState = state || gameState;
+  const dateKey = getDivinationDateKey(date);
+  campState.todayDivinations = sanitizeTodayDivinations(campState.todayDivinations, dateKey, campState.todayDivination);
+  if (Object.prototype.hasOwnProperty.call(campState, "todayDivination")) {
+    delete campState.todayDivination;
+  }
+  return campState.todayDivinations;
+}
+
+function getDivinationUserSeed() {
+  const dailyWeather = ensureDailyWeatherForToday();
+  return dailyWeather.userSeed || "camp-divination";
+}
+
+function getTodayDivinationSalt(method, questionId, state) {
+  const dailyDivinations = ensureTodayDivinationsForToday(new Date(), state);
+  const methodRerollSalt = dailyDivinations.rerollSalt && dailyDivinations.rerollSalt[method];
+  const rerollSalt = Math.max(0, Math.floor(Number(methodRerollSalt && methodRerollSalt[questionId]) || 0));
+  return rerollSalt > 0 ? "daily:" + rerollSalt : "daily";
+}
+
+function getTodayDivinationRecord(method, questionId, state) {
+  const dailyDivinations = ensureTodayDivinationsForToday(new Date(), state);
+  const manager = getDivinationManager();
+
+  if (manager && manager.getSavedDivination) {
+    return manager.getSavedDivination(dailyDivinations, method, questionId);
+  }
+
+  const methodRecords = dailyDivinations.records && dailyDivinations.records[method];
+  const record = methodRecords && methodRecords[questionId];
+  return record && record.result ? record : null;
+}
+
+function getActiveTodayDivination(state) {
+  const dailyDivinations = ensureTodayDivinationsForToday(new Date(), state);
+  const active = dailyDivinations.active || {};
+  return getTodayDivinationRecord(active.method, active.question, state);
+}
+
+function hasTodayDivinationResult(method, questionId, state) {
+  if (isDivinationMethod(method) && questionId) {
+    return Boolean(getTodayDivinationRecord(method, questionId, state));
+  }
+
+  const dailyDivinations = ensureTodayDivinationsForToday(new Date(), state);
+  return ["tarot", "turtle"].some(function(methodId) {
+    const records = dailyDivinations.records && dailyDivinations.records[methodId];
+    return records && Object.keys(records).some(function(id) {
+      return Boolean(records[id] && records[id].result);
+    });
+  });
+}
+
+function getCurrentDivinationResult() {
+  if (testDivinationOverride && testDivinationOverride.result) {
+    return testDivinationOverride.result;
+  }
+
+  const active = getActiveTodayDivination();
+  return active && active.result ? active.result : null;
+}
+
+function getCurrentDivinationEffects() {
+  if (testDivinationOverride && testDivinationOverride.effects) {
+    return testDivinationOverride.effects;
+  }
+
+  const active = getActiveTodayDivination();
+  return active && active.effects && typeof active.effects === "object" ? active.effects : {};
+}
+
+function getCurrentDivinationActivityWeights() {
+  const effects = getCurrentDivinationEffects();
+  return effects && effects.activityWeights ? effects.activityWeights : {};
+}
+
+function getCurrentDivinationActivityLabels() {
+  const effects = getCurrentDivinationEffects();
+  return effects && Array.isArray(effects.activityLabels) ? effects.activityLabels : [];
+}
+
+function getCurrentDivinationSoundRecommendations() {
+  const effects = getCurrentDivinationEffects();
+  return effects && Array.isArray(effects.soundRecommendations) ? effects.soundRecommendations : [];
+}
+
+function getCurrentDivinationMoodLine() {
+  const effects = getCurrentDivinationEffects();
+  return effects && typeof effects.moodLine === "string" ? effects.moodLine : "";
+}
+
+function getCurrentDivinationThoughtLines() {
+  const effects = getCurrentDivinationEffects();
+  return effects && Array.isArray(effects.thoughtLines) ? effects.thoughtLines : [];
+}
+
+function addUniqueText(list, value) {
+  if (value && list.indexOf(value) === -1) {
+    list.push(value);
+  }
+}
+
+function addUniqueSoundRecommendation(list, recommendation) {
+  if (!recommendation || !recommendation.id) {
+    return;
+  }
+
+  const exists = list.some(function(item) {
+    return item && item.id === recommendation.id;
+  });
+
+  if (!exists) {
+    list.push({ ...recommendation });
+  }
+}
+
+function getCurrentCampActivityLabels() {
+  const labels = [];
+  getCurrentWeatherActivityLabels().forEach(function(label) {
+    addUniqueText(labels, label);
+  });
+  getCurrentDivinationActivityLabels().forEach(function(label) {
+    addUniqueText(labels, label);
+  });
+  return labels;
+}
+
+function getCurrentCampSoundRecommendations() {
+  const recommendations = [];
+  getCurrentWeatherSoundRecommendations().forEach(function(recommendation) {
+    addUniqueSoundRecommendation(recommendations, recommendation);
+  });
+  getCurrentDivinationSoundRecommendations().forEach(function(recommendation) {
+    addUniqueSoundRecommendation(recommendations, recommendation);
+  });
+  return recommendations;
+}
+
+function getWeatherCatalog() {
+  const catalog = typeof window !== "undefined" ? window.WEATHER_CATALOG : null;
+
+  if (catalog && catalog.weathers && Array.isArray(catalog.weatherIds)) {
+    return catalog;
+  }
+
+  return {
+    defaultWeatherId: "sunny",
+    weatherIds: ["sunny", "cloudy", "breezy", "lightRain", "foggy"],
+    weathers: {
+      sunny: {
+        id: "sunny",
+        label: "晴天",
+        shortLabel: "晴",
+        weight: 1,
+        moodLines: ["今天湖边很安静，适合慢慢来。"],
+        activityLabels: ["看湖水"],
+        activityWeights: { lookingAtLake: 0.3 },
+        soundRecommendations: [{ id: "lake_water_loop", label: "湖水" }]
+      }
+    },
+    night: { activityWeights: {}, soundRecommendations: [] }
+  };
+}
+
+function getWeatherIds() {
+  return getWeatherCatalog().weatherIds.slice();
+}
+
+function getWeatherDefinition(weatherId) {
+  const catalog = getWeatherCatalog();
+  return weatherId && catalog.weathers[weatherId] ? catalog.weathers[weatherId] : null;
+}
+
+function getDefaultWeatherId() {
+  const catalog = getWeatherCatalog();
+  return getWeatherDefinition(catalog.defaultWeatherId) ? catalog.defaultWeatherId : "sunny";
+}
+
+function isWeatherId(weatherId) {
+  return Boolean(getWeatherDefinition(weatherId));
+}
+
+function createWeatherUserSeed() {
+  return "camp-weather-" + Date.now().toString(36) + "-" + Math.floor(Math.random() * 1000000000).toString(36);
+}
+
+function getLocalDateKey(date) {
+  const current = date instanceof Date && !isNaN(date.getTime()) ? date : new Date();
+  const year = current.getFullYear();
+  const month = String(current.getMonth() + 1).padStart(2, "0");
+  const day = String(current.getDate()).padStart(2, "0");
+  return year + "-" + month + "-" + day;
+}
+
+function hashStringToUint32(value) {
+  const text = String(value);
+  let hash = 2166136261;
+
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
+}
+
+function seededUnit(value) {
+  return hashStringToUint32(value) / 4294967296;
+}
+
+function getWeatherMoodLineCount(weatherId) {
+  const weather = getWeatherDefinition(weatherId);
+  return weather && Array.isArray(weather.moodLines) && weather.moodLines.length > 0 ? weather.moodLines.length : 1;
+}
+
+function getMoodIndexForWeather(weatherId, dateKey, userSeed, salt) {
+  const lineCount = getWeatherMoodLineCount(weatherId);
+  return Math.floor(seededUnit(userSeed + ":" + dateKey + ":" + weatherId + ":" + (salt || "mood")) * lineCount) % lineCount;
+}
+
+function chooseDailyWeatherId(userSeed, dateKey) {
+  const entries = getWeatherIds().map(function(weatherId) {
+    const weather = getWeatherDefinition(weatherId);
+    return {
+      id: weatherId,
+      weight: Math.max(0, Number(weather && weather.weight) || 0)
+    };
+  }).filter(function(entry) {
+    return entry.weight > 0;
+  });
+
+  if (entries.length === 0) {
+    return getDefaultWeatherId();
+  }
+
+  const totalWeight = entries.reduce(function(total, entry) {
+    return total + entry.weight;
+  }, 0);
+  let roll = seededUnit(userSeed + ":" + dateKey + ":weather") * Math.max(totalWeight, 1);
+
+  for (let index = 0; index < entries.length; index += 1) {
+    roll -= entries[index].weight;
+
+    if (roll <= 0) {
+      return entries[index].id;
+    }
+  }
+
+  return entries[entries.length - 1].id;
+}
+
+function sanitizeDailyWeather(dailyWeather) {
+  const source = dailyWeather && typeof dailyWeather === "object" && !Array.isArray(dailyWeather) ? dailyWeather : {};
+  const userSeed = typeof source.userSeed === "string" && source.userSeed ? source.userSeed : createWeatherUserSeed();
+  const id = isWeatherId(source.id) ? source.id : "";
+  const moodIndex = Math.max(0, Math.floor(Number(source.moodIndex) || 0));
+
+  return {
+    userSeed: userSeed,
+    dateKey: typeof source.dateKey === "string" ? source.dateKey : "",
+    id: id,
+    moodIndex: moodIndex
+  };
+}
+
+function buildDailyWeatherForDate(dateKey, userSeed) {
+  const weatherId = chooseDailyWeatherId(userSeed, dateKey);
+
+  return {
+    userSeed: userSeed,
+    dateKey: dateKey,
+    id: weatherId,
+    moodIndex: getMoodIndexForWeather(weatherId, dateKey, userSeed)
+  };
+}
+
+function ensureDailyWeatherForToday(date, state) {
+  const campState = state || gameState;
+  const dateKey = getLocalDateKey(date);
+  const current = sanitizeDailyWeather(campState.dailyWeather);
+
+  if (current.dateKey !== dateKey || !isWeatherId(current.id)) {
+    campState.dailyWeather = buildDailyWeatherForDate(dateKey, current.userSeed);
+  } else {
+    current.moodIndex = current.moodIndex % getWeatherMoodLineCount(current.id);
+    campState.dailyWeather = current;
+  }
+
+  return campState.dailyWeather;
+}
+
+function getCurrentDailyWeatherState() {
+  const dailyWeather = ensureDailyWeatherForToday();
+
+  if (isWeatherId(testWeatherOverride)) {
+    return {
+      userSeed: dailyWeather.userSeed,
+      dateKey: dailyWeather.dateKey,
+      id: testWeatherOverride,
+      moodIndex: getMoodIndexForWeather(testWeatherOverride, dailyWeather.dateKey, dailyWeather.userSeed, "test")
+    };
+  }
+
+  return dailyWeather;
+}
+
+function getCurrentWeatherDefinition() {
+  return getWeatherDefinition(getCurrentDailyWeatherState().id) || getWeatherDefinition(getDefaultWeatherId());
+}
+
+function getCurrentWeatherMoodLine() {
+  const state = getCurrentDailyWeatherState();
+  const weather = getWeatherDefinition(state.id);
+  const lines = weather && Array.isArray(weather.moodLines) ? weather.moodLines : [];
+
+  if (lines.length === 0) {
+    return "";
+  }
+
+  return lines[state.moodIndex % lines.length];
+}
+
+function getCurrentWeatherActivityWeights() {
+  const weather = getCurrentWeatherDefinition();
+  return weather && weather.activityWeights ? weather.activityWeights : {};
+}
+
+function getCurrentTimeActivityWeights() {
+  const catalog = getWeatherCatalog();
+  return gameState.isNight && catalog.night && catalog.night.activityWeights ? catalog.night.activityWeights : {};
+}
+
+function getCurrentWeatherActivityLabels() {
+  const weather = getCurrentWeatherDefinition();
+  return weather && Array.isArray(weather.activityLabels) ? weather.activityLabels : [];
+}
+
+function getCurrentWeatherSoundRecommendations() {
+  const weather = getCurrentWeatherDefinition();
+  const catalog = getWeatherCatalog();
+  const recommendations = weather && Array.isArray(weather.soundRecommendations) ? weather.soundRecommendations.slice() : [];
+
+  if (gameState.isNight && catalog.night && Array.isArray(catalog.night.soundRecommendations)) {
+    catalog.night.soundRecommendations.forEach(function(recommendation) {
+      recommendations.push(recommendation);
+    });
+  }
+
+  return recommendations;
+}
+
+function getSoundRecommendationState(recommendation) {
+  const entry = recommendation && recommendation.id ? getSoundCatalogEntry(recommendation.id) : null;
+  const isKnownLoop = Boolean(entry && entry.type === "loop");
+  const discovered = Boolean(isKnownLoop && isSoundDiscovered(recommendation.id));
+
+  if (discovered) {
+    return "已解锁";
+  }
+
+  if (recommendation && recommendation.future || !entry) {
+    return "后续";
+  }
+
+  return "线索";
+}
+
+function formatWeatherSoundRecommendations() {
+  const recommendations = getCurrentCampSoundRecommendations();
+
+  if (recommendations.length === 0) {
+    return "";
+  }
+
+  const unlocked = [];
+  const clues = [];
+
+  recommendations.forEach(function(recommendation) {
+    const label = recommendation.label || recommendation.id || "";
+    const state = getSoundRecommendationState(recommendation);
+
+    if (!label) {
+      return;
+    }
+
+    if (state === "已解锁") {
+      unlocked.push(label);
+    } else {
+      clues.push(label + "（" + state + "）");
+    }
+  });
+
+  if (unlocked.length > 0) {
+    return "推荐声音：" + unlocked.join(" + ") + (clues.length > 0 ? " · 线索：" + clues.join(" / ") : "");
+  }
+
+  return "声音线索：" + clues.join(" / ");
+}
+
+function updateWeatherLayer() {
+  if (!weatherLayer) {
+    return;
+  }
+
+  const weather = getCurrentWeatherDefinition();
+  const asset = weather && weather.asset;
+
+  if (!weather || !asset) {
+    weatherLayer.className = "weather-layer hidden";
+    weatherLayer.textContent = "";
+    return;
+  }
+
+  const layerClass = weather.layerClass || "weather-layer-" + weather.id;
+  weatherLayer.className = "weather-layer " + layerClass;
+  weatherLayer.classList.remove("hidden");
+
+  if (weatherLayer.dataset.weatherId !== weather.id || weatherLayer.dataset.assetPath !== asset) {
+    weatherLayer.textContent = "";
+    const image = document.createElement("img");
+    image.className = "weather-layer-image";
+    image.alt = "";
+    weatherLayer.appendChild(image);
+    weatherLayer.dataset.weatherId = weather.id;
+    weatherLayer.dataset.assetPath = asset;
+    setVersionedLayerSource(image, asset);
+  }
+}
+
+function syncDailyCampDrawerState() {
+  if (!dailyCampCard) {
+    return;
+  }
+
+  dailyCampCard.classList.toggle("open", dailyCampDrawerExpanded);
+  dailyCampCard.classList.toggle("collapsed", !dailyCampDrawerExpanded);
+
+  if (dailyCampDrawerToggle) {
+    const expanded = dailyCampDrawerExpanded ? "true" : "false";
+    const label = dailyCampDrawerExpanded ? "收起今日营地卡" : "展开今日营地卡";
+    dailyCampDrawerToggle.setAttribute("aria-expanded", expanded);
+    dailyCampDrawerToggle.setAttribute("aria-label", label);
+    dailyCampDrawerToggle.setAttribute("title", label);
+  }
+
+  if (dailyCampDrawerPanel) {
+    dailyCampDrawerPanel.setAttribute("aria-hidden", dailyCampDrawerExpanded ? "false" : "true");
+  }
+
+  if (dailyCampDrawerChevron) {
+    dailyCampDrawerChevron.textContent = dailyCampDrawerExpanded ? "›" : "‹";
+  }
+}
+
+function setDailyCampDrawerExpanded(expanded) {
+  dailyCampDrawerExpanded = Boolean(expanded);
+  syncDailyCampDrawerState();
+}
+
+function toggleDailyCampDrawer() {
+  setDailyCampDrawerExpanded(!dailyCampDrawerExpanded);
+}
+
+function updateDailyCampCard() {
+  if (!dailyCampCard) {
+    return;
+  }
+
+  const weather = getCurrentWeatherDefinition();
+
+  if (!weather) {
+    dailyCampCard.classList.add("hidden");
+    return;
+  }
+
+  dailyCampCard.classList.remove("hidden");
+  dailyCampCard.dataset.weatherId = weather.id;
+
+  if (dailyWeatherTabIcon) {
+    dailyWeatherTabIcon.textContent = weather.shortLabel || weather.label || "?";
+  }
+  if (dailyWeatherIcon) {
+    dailyWeatherIcon.textContent = weather.shortLabel || weather.label || "?";
+  }
+  if (dailyWeatherLabel) {
+    dailyWeatherLabel.textContent = weather.label || weather.id;
+  }
+  if (dailyCampMood) {
+    const nightMood = gameState.isNight && getWeatherCatalog().night ? getWeatherCatalog().night.moodLine : "";
+    const divinationMood = getCurrentDivinationMoodLine();
+    dailyCampMood.textContent = [getCurrentWeatherMoodLine(), nightMood, divinationMood].filter(Boolean).join(" ");
+  }
+  if (dailyCampActivities) {
+    const activities = getCurrentCampActivityLabels();
+    dailyCampActivities.textContent = activities.length > 0 ? "适合：" + activities.join(" / ") : "";
+  }
+  if (dailySoundRecommendation) {
+    dailySoundRecommendation.textContent = formatWeatherSoundRecommendations();
+  }
+
+  syncDailyCampDrawerState();
+}
+
+function refreshWeatherPresentation() {
+  updateWeatherLayer();
+  updateDailyCampCard();
+}
+
+function setTestWeather(weatherId) {
+  if (!isWeatherId(weatherId)) {
+    if (typeof console !== "undefined") {
+      console.warn("setTestWeather only accepts: " + getWeatherIds().join(", "));
+    }
+    return false;
+  }
+
+  testWeatherOverride = weatherId;
+  refreshWeatherPresentation();
+  setStatus("Weather test: " + getWeatherDefinition(weatherId).label);
+  return true;
+}
+
+function clearTestWeather() {
+  testWeatherOverride = "";
+  ensureDailyWeatherForToday();
+  refreshWeatherPresentation();
+  setStatus("Weather test cleared.");
+  return true;
+}
+
+function getSoundCatalogIdSet() {
+  const idSet = {};
+  const catalog = typeof window !== "undefined" ? window.SOUND_JOURNAL_CATALOG : null;
+
+  if (catalog && Array.isArray(catalog.sounds)) {
+    catalog.sounds.forEach(function(entry) {
+      if (entry && entry.id) {
+        idSet[entry.id] = entry;
+      }
+    });
+  }
+
+  return idSet;
+}
+
+function getSoundCatalogEntry(id) {
+  return getSoundCatalogIdSet()[id] || null;
+}
+
+function isLoopSoundId(id) {
+  const entry = getSoundCatalogEntry(id);
+  return Boolean(entry && entry.type === "loop");
+}
+
+function cloneSoundJournal(journal) {
+  const source = journal && typeof journal === "object" && !Array.isArray(journal) ? journal : {};
+
+  return {
+    discovered: Array.isArray(source.discovered) ? source.discovered.slice() : [],
+    enabledAmbient: Array.isArray(source.enabledAmbient) ? source.enabledAmbient.slice() : [],
+    masterVolume: typeof source.masterVolume === "number" ? source.masterVolume : 0.7,
+    muted: Boolean(source.muted)
+  };
+}
+
+function sanitizeSoundJournal(journal) {
+  // Old saves have no soundJournal at all: default to empty arrays / defaults.
+  const source = journal && typeof journal === "object" && !Array.isArray(journal) ? journal : {};
+  const knownIds = getSoundCatalogIdSet();
+  const hasCatalog = Object.keys(knownIds).length > 0;
+
+  function keepKnown(list, requireLoop) {
+    if (!Array.isArray(list)) {
+      return [];
+    }
+    const seen = {};
+    return list.filter(function(id) {
+      if (typeof id !== "string" || seen[id]) {
+        return false;
+      }
+      seen[id] = true;
+      // If the catalog failed to load, keep ids untouched rather than wiping the save.
+      if (!hasCatalog) {
+        return true;
+      }
+      if (!knownIds[id]) {
+        return false;
+      }
+      return requireLoop ? knownIds[id].type === "loop" : true;
+    });
+  }
+
+  const discovered = keepKnown(source.discovered, false);
+  const enabledAmbient = keepKnown(source.enabledAmbient, true).filter(function(id) {
+    // Only keep an ambient toggle if that sound has actually been discovered.
+    return discovered.indexOf(id) !== -1;
+  });
+
+  const volume = Number(source.masterVolume);
+
+  return {
+    discovered: discovered,
+    enabledAmbient: enabledAmbient,
+    masterVolume: Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : 0.7,
+    muted: Boolean(source.muted)
+  };
+}
+
+function getInventory(state) {
+  const campState = state || gameState;
+
+  if (!campState.inventory || typeof campState.inventory !== "object" || Array.isArray(campState.inventory)) {
+    campState.inventory = cloneInventory(defaultGameState.inventory);
+  }
+
+  if (!campState.inventory.fish || typeof campState.inventory.fish !== "object" || Array.isArray(campState.inventory.fish)) {
+    campState.inventory.fish = {};
+  }
+
+  if (!campState.inventory.meals || typeof campState.inventory.meals !== "object" || Array.isArray(campState.inventory.meals)) {
+    campState.inventory.meals = {};
+  }
+
+  return campState.inventory;
+}
+
+function getInventoryBucket(type, state) {
+  const inventory = getInventory(state);
+  const bucketName = type === "meals" ? "meals" : "fish";
+
+  return inventory[bucketName];
+}
+
+function getInventoryCatalog(type) {
+  return type === "meals" ? mealCatalog : fishCatalog;
+}
+
+function getInventoryItemCount(type, id, state) {
+  const bucket = getInventoryBucket(type, state);
+  return Math.max(0, Math.floor(Number(bucket[id]) || 0));
+}
+
+function getInventoryTotal(type, state) {
+  const bucket = getInventoryBucket(type, state);
+
+  return Object.keys(bucket).reduce(function(total, id) {
+    return total + Math.max(0, Math.floor(Number(bucket[id]) || 0));
+  }, 0);
+}
+
+function addInventoryItem(type, id, count, state) {
+  const catalog = getInventoryCatalog(type);
+
+  if (!catalog[id]) {
+    return false;
+  }
+
+  const bucket = getInventoryBucket(type, state);
+  const addCount = Math.max(1, Math.floor(Number(count) || 1));
+  bucket[id] = getInventoryItemCount(type, id, state) + addCount;
+  return true;
+}
+
+function removeInventoryItem(type, id, count, state) {
+  const bucket = getInventoryBucket(type, state);
+  const removeCount = Math.max(1, Math.floor(Number(count) || 1));
+  const currentCount = getInventoryItemCount(type, id, state);
+
+  if (currentCount < removeCount) {
+    return false;
+  }
+
+  const nextCount = currentCount - removeCount;
+
+  if (nextCount > 0) {
+    bucket[id] = nextCount;
+  } else {
+    delete bucket[id];
+  }
+
+  return true;
+}
+
+function getFishDefinition(id) {
+  return id && fishCatalog[id] ? fishCatalog[id] : null;
+}
+
+function getMealDefinition(id) {
+  return id && mealCatalog[id] ? mealCatalog[id] : null;
+}
+
+function getFishingProgress(state) {
+  const campState = state || gameState;
+
+  if (!campState.fishing || typeof campState.fishing !== "object" || Array.isArray(campState.fishing)) {
+    campState.fishing = sanitizeFishingProgress();
+  }
+
+  campState.fishing = sanitizeFishingProgress(campState.fishing);
+  return campState.fishing;
+}
+
+function getCookingProgress(state) {
+  const campState = state || gameState;
+
+  if (!campState.cooking || typeof campState.cooking !== "object" || Array.isArray(campState.cooking)) {
+    campState.cooking = sanitizeCookingProgress();
+  }
+
+  campState.cooking = sanitizeCookingProgress(campState.cooking);
+  return campState.cooking;
+}
+
+function isCoolerItem(item) {
+  return Boolean(item && item.category === "cooler");
+}
+
+function getCoolerItems() {
+  return getGearItems().filter(isCoolerItem);
+}
+
+function hasInventoryStorageUnlocked(state) {
+  return getCoolerItems().some(function(item) {
+    return ownsGear(item.id, state);
+  });
+}
+
+function hasPlacedInventoryCooler(state) {
+  return getCoolerItems().some(function(item) {
+    return ownsGear(item.id, state) && isGearPlaced(item.id, state);
+  });
+}
+
+function canOpenInventoryFromCooler(item, state) {
+  return Boolean(isCoolerItem(item) && ownsGear(item.id, state) && isGearPlaced(item.id, state));
+}
+
+function isCookingStationItem(item) {
+  return Boolean(item && (item.category === "stove" || item.id === "igtCampKitchenSet" || item.id === "kitchenCarryCase"));
+}
+
+function hasCookingStationAvailable(state) {
+  return getGearItems().some(function(item) {
+    return isCookingStationItem(item) && ownsGear(item.id, state) && isGearPlaced(item.id, state);
+  });
+}
+
+function getFirstAvailableFishId(state) {
+  return Object.keys(fishCatalog).find(function(id) {
+    return getInventoryItemCount("fish", id, state) > 0;
+  }) || "";
+}
+
+function hasCookableFish(state) {
+  return Boolean(getFirstAvailableFishId(state));
+}
+
+function calculateCookingComfortBonus(state) {
+  return Math.min(cookingComfortMealCap, getInventoryTotal("meals", state));
+}
+
+function chooseFishIdForRarity(rarity) {
+  const fishIds = fishIdsByRarity[rarity] || fishIdsByRarity.common;
+
+  return fishIds[Math.floor(Math.random() * fishIds.length)];
+}
+
+function chooseFishingResult() {
+  const outcome = chooseWeightedAction(fishingOutcomeTable);
+
+  if (outcome === "none") {
+    return {
+      caught: false,
+      type: "none",
+      rarity: "none",
+      fishId: ""
+    };
+  }
+
+  if (outcome === "turtle") {
+    return {
+      caught: true,
+      type: "turtle",
+      rarity: "special",
+      fishId: ""
+    };
+  }
+
+  return {
+    caught: true,
+    type: "fish",
+    rarity: outcome,
+    fishId: chooseFishIdForRarity(outcome)
+  };
+}
+
+function unlockTurtleShellDivination() {
+  if (!gameState.divinationUnlocks || typeof gameState.divinationUnlocks !== "object" || Array.isArray(gameState.divinationUnlocks)) {
+    gameState.divinationUnlocks = sanitizeDivinationUnlocks();
+  }
+
+  if (gameState.divinationUnlocks.turtleShell) {
+    showCamperThought("小乌龟又来湖边看了一眼。");
+    setStatus("小乌龟慢慢游回湖里。");
+    return false;
+  }
+
+  gameState.divinationUnlocks.turtleShell = true;
+    showCamperThought("小乌龟拨开湖边石缝，露出三枚旧铜钱。", 4200);
+    setStatus("铜钱筮占解锁了。乌龟不会进冷藏箱，也不会成为食材。");
+  return true;
+}
+
+function handleFishingActivityCompletion() {
+  const progress = getFishingProgress();
+  const result = chooseFishingResult();
+
+  progress.attempts += 1;
+
+  if (result.type === "turtle") {
+    unlockTurtleShellDivination();
+    updateScreen();
+    saveGame();
+    return;
+  }
+
+  if (!result.caught) {
+    showCamperThought("湖面安静了一会儿，今天先空手。");
+    saveGame();
+    return;
+  }
+
+  const fish = getFishDefinition(result.fishId);
+
+  if (!fish) {
+    saveGame();
+    return;
+  }
+
+  progress.caught += 1;
+
+  if (!hasInventoryStorageUnlocked()) {
+    progress.released += 1;
+    showCamperThought("钓到" + fish.displayName + "，但没有冷藏箱，只好放回湖里。");
+    saveGame();
+    return;
+  }
+
+  addInventoryItem("fish", fish.id, 1);
+  showCamperThought("钓到" + fish.displayName + "。");
+
+  if (!progress.firstStoredFishGuideSeen && hasPlacedInventoryCooler()) {
+    progress.firstStoredFishGuideSeen = true;
+    setStatus("第一条鱼进冷藏箱了。点击已放置的冷藏箱查看库存。");
+  } else {
+    setStatus(fish.rarityLabel + "：" + fish.displayName + " 已放进冷藏箱。");
+  }
+
+  updateScreen();
+  saveGame();
+}
+
+function getNoFoodCookingMessage() {
+  if (!hasInventoryStorageUnlocked()) {
+    return "没有可用食材。先准备冷藏箱，再把钓到的鱼存起来。";
+  }
+
+  return "没有可用食材。先去湖边钓一条鱼吧。";
+}
+
+function handleCookingActivityCompletion() {
+  const fishId = getFirstAvailableFishId();
+  const fish = getFishDefinition(fishId);
+
+  if (!hasCookingStationAvailable()) {
+    setStatus("需要炉具或 camp kitchen 才能做饭。");
+    showCamperThought("还没有能做饭的地方。");
+    saveGame();
+    return;
+  }
+
+  if (!fish || !removeInventoryItem("fish", fishId, 1)) {
+    const message = getNoFoodCookingMessage();
+    setStatus(message);
+    showCamperThought("没有可用食材。");
+    saveGame();
+    return;
+  }
+
+  addInventoryItem("meals", "simpleGrilledFish", 1);
+  getCookingProgress().cooked += 1;
+  gameState.cozyPoints += cookingCozyReward;
+
+  showCamperThought("把" + fish.displayName + "烤得香香的。");
+  setStatus("做出烤湖鱼：+" + cookingCozyReward + " Cozy Points，Comfort +1。");
+  updateScreen();
+  saveGame();
+}
+
+function handleActivityCompletionResult(activityId) {
+  if (activityId === "fish") {
+    handleFishingActivityCompletion();
+    return;
+  }
+
+  if (activityId === "cook") {
+    handleCookingActivityCompletion();
+  }
+}
+
+function itemMatchesActivityGear(item, activityId) {
+  const activity = getActivityDefinition(activityId);
+
+  if (!item || !activity) {
+    return false;
+  }
+
+  const gearCategories = activity.gearCategories || [];
+  const gearIds = activity.gearIds || [];
+
+  return gearIds.indexOf(item.id) !== -1 || gearCategories.indexOf(item.category) !== -1;
+}
+
+function getActivityIdForGear(item) {
+  if (!item || !item.scene) {
+    return "";
+  }
+
+  return getActivityIds().find(function(activityId) {
+    return itemMatchesActivityGear(item, activityId);
+  }) || "";
+}
+
+function activityHasRequiredGear(activity) {
+  const requirements = activity && activity.requires ? activity.requires : {};
+  const requiredCategories = requirements.anyGearCategory || [];
+  const requiredIds = requirements.anyGearId || [];
+
+  if (requiredCategories.length === 0 && requiredIds.length === 0) {
+    return true;
+  }
+
+  return getGearItems().some(function(item) {
+    return item &&
+      isGearVisibleInScene(item) &&
+      (requiredIds.indexOf(item.id) !== -1 || requiredCategories.indexOf(item.category) !== -1);
+  });
+}
+
+function isActivityAvailable(activityId) {
+  const activity = getActivityDefinition(activityId);
+
+  if (!activity) {
+    return false;
+  }
+
+  return activityHasRequiredGear(activity);
+}
+
+function getActivityGearCandidates(activityId) {
+  return getGearItems().filter(function(item) {
+    return itemMatchesActivityGear(item, activityId) && isGearVisibleInScene(item);
+  });
+}
+
+function getActivityTargetFromGear(item, activityId) {
+  const activity = getActivityDefinition(activityId);
+
+  if (!item || !activity || !isGearVisibleInScene(item)) {
+    return null;
+  }
+
+  const layout = getDisplayedGearLayoutOverride(item);
+  const scenePoint = getScenePointFromAssetPoint(item, activity.targetPoint || { ratioX: 0.5, ratioY: 1 }, layout);
+  const percentPoint = scenePointToPercent(scenePoint);
+  const targetOffset = activity.targetOffset || { x: 0, y: 0 };
+  const itemPosition = getDisplayedGearScenePosition(item);
+  const faceToward = itemPosition ? scenePointToPercent(itemPosition) : null;
+
+  return {
+    x: clamp(percentPoint.x + targetOffset.x, 8, 92),
+    y: clamp(percentPoint.y + targetOffset.y, 36, 90),
+    interactionTargetId: item.id,
+    ignoreObstacleId: item.id,
+    faceToward: faceToward
+  };
+}
+
+function getActivityTargetFromZone(zone, activityId) {
+  const activity = getActivityDefinition(activityId || zone && zone.activityId);
+
+  if (!zone || !activity || zone.activityId !== activity.id) {
+    return null;
+  }
+
+  return Object.assign({}, zone.target || activity.fallbackTarget, {
+    interactionTargetId: getActivityZoneTargetId(zone.id)
+  });
+}
+
+function getActivityFallbackTarget(activity) {
+  if (!activity || !activity.fallbackTarget) {
+    return null;
+  }
+
+  return Object.assign({}, activity.fallbackTarget, {
+    interactionTargetId: "activity:" + activity.id
+  });
+}
+
+function getFixedActivityTarget(activity, preferredTargetId) {
+  if (!activity) {
+    return null;
+  }
+
+  const preferredZoneId = getActivityZoneIdFromTargetId(preferredTargetId);
+  const preferredZone = getActivityZone(preferredZoneId);
+
+  if (preferredZone) {
+    return getActivityTargetFromZone(preferredZone, activity.id);
+  }
+
+  const zoneIds = activity.zoneIds || [];
+
+  for (let index = 0; index < zoneIds.length; index += 1) {
+    const zoneTarget = getActivityTargetFromZone(getActivityZone(zoneIds[index]), activity.id);
+
+    if (zoneTarget) {
+      return zoneTarget;
+    }
+  }
+
+  return getActivityFallbackTarget(activity);
+}
+
+function resolveActivityTarget(activityId, preferredTargetId) {
+  const activity = getActivityDefinition(activityId);
+
+  if (!activity || !isActivityAvailable(activityId)) {
+    return null;
+  }
+
+  if (activity.fixedTarget) {
+    const fixedTarget = getFixedActivityTarget(activity, preferredTargetId);
+    const preferredItem = getGearItem(preferredTargetId);
+
+    if (fixedTarget && preferredItem && itemMatchesActivityGear(preferredItem, activityId)) {
+      fixedTarget.interactionTargetId = preferredItem.id;
+      fixedTarget.ignoreObstacleId = preferredItem.id;
+    }
+
+    return fixedTarget;
+  }
+
+  const preferredZoneId = getActivityZoneIdFromTargetId(preferredTargetId);
+  const preferredZone = getActivityZone(preferredZoneId);
+
+  if (preferredZone) {
+    return getActivityTargetFromZone(preferredZone, activityId);
+  }
+
+  const preferredItem = getGearItem(preferredTargetId);
+
+  if (preferredItem && itemMatchesActivityGear(preferredItem, activityId)) {
+    const gearTarget = getActivityTargetFromGear(preferredItem, activityId);
+
+    if (gearTarget) {
+      return gearTarget;
+    }
+  }
+
+  const gearCandidates = getActivityGearCandidates(activityId);
+
+  if (gearCandidates.length > 0) {
+    const item = gearCandidates[Math.floor(Math.random() * gearCandidates.length)];
+    const gearTarget = getActivityTargetFromGear(item, activityId);
+
+    if (gearTarget) {
+      return gearTarget;
+    }
+  }
+
+  const zoneIds = activity.zoneIds || [];
+
+  for (let index = 0; index < zoneIds.length; index += 1) {
+    const zoneTarget = getActivityTargetFromZone(getActivityZone(zoneIds[index]), activityId);
+
+    if (zoneTarget) {
+      return zoneTarget;
+    }
+  }
+
+  return getActivityFallbackTarget(activity);
+}
+
+function getGearActionMetadata(item) {
+  const activityId = getActivityIdForGear(item);
+
+  return activityId ? { activityId: activityId } : {};
+}
+
+function isGearPositionLocked(item) {
+  return Boolean(item && item.scene && item.scene.movable === false);
+}
+
 function isSceneDepthAdjustableItem(item) {
   return Boolean(item && item.scene && item.scene.renderMode !== "campfire");
 }
@@ -1782,6 +3555,7 @@ function isBuildDraggableItem(item) {
   return Boolean(
     item &&
     item.scene &&
+    !isGearPositionLocked(item) &&
     item.scene.renderMode !== "campfire" &&
     isGearVisibleInScene(item)
   );
@@ -2275,12 +4049,18 @@ function configureGearBuildDragTarget(element, item) {
   });
 }
 
-function getActionTargetKey(type, targetId) {
+function getActionTargetKey(type, targetId, metadata) {
+  const actionMetadata = metadata || {};
+
+  if (type === "activity" && actionMetadata.activityId) {
+    return type + ":" + actionMetadata.activityId + ":" + targetId;
+  }
+
   return type + ":" + targetId;
 }
 
 function getActionKey(action) {
-  return action ? getActionTargetKey(action.type, action.targetId) : "";
+  return action ? getActionTargetKey(action.type, action.targetId, action) : "";
 }
 
 function clearSelectedActionTarget() {
@@ -2307,11 +4087,16 @@ function clearSelectedBuildTarget() {
 function getGearSelectionKey(item) {
   const actionType = getGearActionType(item);
 
-  return actionType && item ? getActionTargetKey(actionType, item.id) : "";
+  return actionType && item ? getActionTargetKey(actionType, item.id, getGearActionMetadata(item)) : "";
 }
 
 function getGearTouchPrompt(item) {
   const actionType = getGearActionType(item);
+
+  if (actionType === "activity") {
+    const activity = getActivityDefinition(getActivityIdForGear(item));
+    return "Tap again to send the camper to " + (activity ? activity.label.toLowerCase() : "do an activity") + " near " + item.displayName + ".";
+  }
 
   if (actionType === "chair") {
     return "Tap again to send the camper to sit at " + item.displayName + ".";
@@ -2360,6 +4145,7 @@ function rememberActionPointerType(event, element) {
 
 function handleGearActionClick(event, element, item) {
   const actionType = getGearActionType(item);
+  const actionMetadata = getGearActionMetadata(item);
 
   if (event) {
     event.preventDefault();
@@ -2375,7 +4161,13 @@ function handleGearActionClick(event, element, item) {
     return;
   }
 
-  if (hasQueuedAction(actionType, item.id)) {
+  if (actionType === "inventory") {
+    clearSelectedActionTarget();
+    openInventoryPanel();
+    return;
+  }
+
+  if (hasQueuedAction(actionType, item.id, actionMetadata)) {
     clearSelectedActionTarget();
     queueGearAction(item);
     return;
@@ -2405,6 +4197,14 @@ function getQueuedActionsInOrder() {
 function getActionTargetElement(action) {
   if (!action) {
     return null;
+  }
+
+  if (action.type === "activity") {
+    const zoneId = getActivityZoneIdFromTargetId(action.targetId);
+
+    if (zoneId) {
+      return getActivityZoneElement(zoneId);
+    }
   }
 
   if (action.type === "wood") {
@@ -2460,8 +4260,8 @@ function updateActionQueueIndicators() {
   });
 }
 
-function hasQueuedAction(type, targetId) {
-  const key = getActionTargetKey(type, targetId);
+function hasQueuedAction(type, targetId, metadata) {
+  const key = getActionTargetKey(type, targetId, metadata);
 
   if (getActionKey(activeQueuedAction) === key) {
     return true;
@@ -2472,7 +4272,12 @@ function hasQueuedAction(type, targetId) {
   });
 }
 
-function getQueuedActionLabel(type, targetId) {
+function getQueuedActionLabel(type, targetId, metadata) {
+  if (type === "activity") {
+    const activity = getActivityDefinition(metadata && metadata.activityId || targetId);
+    return activity ? activity.label : "activity";
+  }
+
   if (type === "wood") {
     return "fallen branches";
   }
@@ -2486,15 +4291,16 @@ function getQueuedActionLabel(type, targetId) {
   return item ? item.displayName : "target";
 }
 
-function enqueueAction(type, targetId) {
-  const label = getQueuedActionLabel(type, targetId);
+function enqueueAction(type, targetId, metadata) {
+  const actionMetadata = metadata || {};
+  const label = getQueuedActionLabel(type, targetId, actionMetadata);
 
   if (isBuildModeActive()) {
     return false;
   }
 
-  if (hasQueuedAction(type, targetId)) {
-    if (selectedActionTargetKey === getActionTargetKey(type, targetId)) {
+  if (hasQueuedAction(type, targetId, actionMetadata)) {
+    if (selectedActionTargetKey === getActionTargetKey(type, targetId, actionMetadata)) {
       clearSelectedActionTarget();
     }
 
@@ -2505,7 +4311,8 @@ function enqueueAction(type, targetId) {
   actionQueue.push({
     id: nextActionQueueId,
     type: type,
-    targetId: targetId
+    targetId: targetId,
+    activityId: actionMetadata.activityId || ""
   });
   nextActionQueueId += 1;
   clearSelectedActionTarget();
@@ -2563,6 +4370,10 @@ function isGearQueueInteractive(item) {
     return false;
   }
 
+  if (canOpenInventoryFromCooler(item)) {
+    return true;
+  }
+
   if (item.category === "chair" && item.interactions && item.interactions.seatable) {
     return true;
   }
@@ -2571,10 +4382,18 @@ function isGearQueueInteractive(item) {
     return true;
   }
 
-  return false;
+  return Boolean(getActivityIdForGear(item));
 }
 
 function getGearActionType(item) {
+  if (canOpenInventoryFromCooler(item)) {
+    return "inventory";
+  }
+
+  if (getActivityIdForGear(item)) {
+    return "activity";
+  }
+
   if (item && item.category === "chair" && item.interactions && item.interactions.seatable) {
     return "chair";
   }
@@ -2588,12 +4407,13 @@ function getGearActionType(item) {
 
 function queueGearAction(item) {
   const actionType = getGearActionType(item);
+  const actionMetadata = getGearActionMetadata(item);
 
-  if (!actionType || !isGearVisibleInScene(item)) {
+  if (!actionType || actionType === "inventory" || !isGearVisibleInScene(item)) {
     return;
   }
 
-  enqueueAction(actionType, item.id);
+  enqueueAction(actionType, item.id, actionMetadata);
 }
 
 function executeQueuedAction(action) {
@@ -2618,6 +4438,11 @@ function executeQueuedAction(action) {
 
   if (action.type === "fire") {
     executeQueuedFireAction();
+    return;
+  }
+
+  if (action.type === "activity") {
+    executeQueuedActivityAction(action);
     return;
   }
 
@@ -3239,13 +5064,20 @@ function getCamperLayerAssetSheet(layer, appearance) {
   return option && Object.prototype.hasOwnProperty.call(option, "assetSheet") ? option.assetSheet : layer.sheet;
 }
 
-function getCamperLayerSheetPath(layer, appearance) {
+function isNightFishingFrame(frameName) {
+  const fishFrames = assetPaths.characters.frameNames.activityFrames.fish || [];
+
+  return Boolean(gameState && gameState.isNight && fishFrames.indexOf(frameName) !== -1);
+}
+
+function getCamperLayerSheetPath(layer, appearance, frameName) {
   const assetSheet = getCamperLayerAssetSheet(layer, appearance);
   if (!assetSheet) {
     return "";
   }
 
-  return withVersion(CAMPER_LAYER_SHEET_ROOT + "/" + assetSheet);
+  const sheetRoot = layer.id === "clothes" && isNightFishingFrame(frameName) ? CAMPER_NIGHT_LAYER_SHEET_ROOT : CAMPER_LAYER_SHEET_ROOT;
+  return withVersion(sheetRoot + "/" + assetSheet);
 }
 
 function getCamperHairColorFilter(appearance) {
@@ -3343,12 +5175,13 @@ function renderCamperLayerStack(container, appearance, frameName) {
   const activeFrameName = frameName || CAMPER_IDLE_FRAME_NAME;
   const sheetPosition = getCamperSheetPosition(activeFrameName);
   const backgroundPosition = sheetPosition.x + "% " + sheetPosition.y + "%";
+  const backgroundSize = (CAMPER_SHEET_COLUMNS * 100) + "% " + (CAMPER_SHEET_ROWS * 100) + "%";
 
   removeUnusedCamperLayerElements(container);
 
   CAMPER_LAYER_RENDER_ORDER.forEach(function(layer) {
     const element = ensureCamperLayerElement(container, layer);
-    const nextPath = getCamperLayerSheetPath(layer, normalizedAppearance);
+    const nextPath = getCamperLayerSheetPath(layer, normalizedAppearance, activeFrameName);
 
     if (!element) {
       return;
@@ -3377,12 +5210,23 @@ function renderCamperLayerStack(container, appearance, frameName) {
       element.dataset.camperFramePosition = backgroundPosition;
     }
 
+    if (element.dataset.camperBackgroundSize !== backgroundSize) {
+      element.style.backgroundSize = backgroundSize;
+      element.dataset.camperBackgroundSize = backgroundSize;
+    }
+
     applyCamperLayerAppearance(element, layer, normalizedAppearance);
   });
 }
 
 function getCamperFrameNameForPose() {
   const frameNames = assetPaths.characters.frameNames;
+  const activityId = camper.currentActivityId || "";
+
+  if (activityId) {
+    const activityFrames = frameNames.activityFrames && frameNames.activityFrames[activityId];
+    return getCamperAnimationFrame(activityFrames, frameNames.idle, camperActivityFrameDurationMs);
+  }
 
   if (camper.pose === "walking") {
     return getCamperAnimationFrame(frameNames.walkFrames, frameNames.idle);
@@ -3862,6 +5706,8 @@ function startCamperProfileFlow(mode) {
   if (isShopOpen()) {
     closeShop();
   }
+
+  closeInventoryPanel();
 
   if (isBuildModeActive()) {
     exitBuildMode();
@@ -4396,6 +6242,8 @@ function calculateComfort(state) {
     comfort += Number(item.comfort) || 0;
   });
 
+  comfort += calculateCookingComfortBonus(state);
+
   return comfort;
 }
 
@@ -4463,6 +6311,7 @@ function resetCamperForNewGame() {
     target: null,
     actionAfterArrival: null,
     currentAction: null,
+    currentActivityId: "",
     actionTimer: 0,
     targetWoodId: null,
     woodCollectionSource: null,
@@ -4546,6 +6395,14 @@ function sanitizeSave(savedGame) {
     if (savedGame.buildModeGuideSeen !== undefined) {
       cleanState.buildModeGuideSeen = Boolean(savedGame.buildModeGuideSeen);
     }
+    cleanState.activityStats = sanitizeActivityStats(savedGame.activityStats);
+    cleanState.inventory = sanitizeInventory(savedGame.inventory);
+    cleanState.fishing = sanitizeFishingProgress(savedGame.fishing);
+    cleanState.cooking = sanitizeCookingProgress(savedGame.cooking);
+    cleanState.dailyWeather = sanitizeDailyWeather(savedGame.dailyWeather);
+    cleanState.todayDivinations = sanitizeTodayDivinations(savedGame.todayDivinations, getDivinationDateKey(), savedGame.todayDivination);
+    cleanState.divinationUnlocks = sanitizeDivinationUnlocks(savedGame.divinationUnlocks);
+    cleanState.soundJournal = sanitizeSoundJournal(savedGame.soundJournal);
     cleanState.economyResetTo500Applied = Boolean(savedGame.economyResetTo500Applied);
     cleanState.vehiclePlacementMigrated = Boolean(savedGame.vehiclePlacementMigrated);
     if (savedGame.lastSeen !== undefined) {
@@ -4736,7 +6593,7 @@ function sanitizeSave(savedGame) {
     const x = Number(savedPosition.x);
     const y = Number(savedPosition.y);
 
-    if (item && item.scene && Number.isFinite(x) && Number.isFinite(y)) {
+    if (item && item.scene && !isGearPositionLocked(item) && Number.isFinite(x) && Number.isFinite(y)) {
       cleanState.userGearPositions[normalizedId] = {
         x: clamp(x, 0, 100),
         y: clamp(y, 0, 100)
@@ -4754,6 +6611,8 @@ function sanitizeSave(savedGame) {
   cleanState.gatherWoodMode = Boolean(cleanState.gatherWoodMode);
   cleanState.lastSaveTime = Number(cleanState.lastSaveTime) || Date.now();
   cleanState.lastSeen = Number(cleanState.lastSeen) || cleanState.lastSaveTime;
+  ensureDailyWeatherForToday(new Date(), cleanState);
+  ensureTodayDivinationsForToday(new Date(), cleanState);
   cleanState.comfort = calculateComfort(cleanState);
 
   return cleanState;
@@ -4779,6 +6638,8 @@ function loadGame() {
 
   if (!savedText) {
     gameState.comfort = calculateComfort();
+    ensureDailyWeatherForToday();
+    ensureTodayDivinationsForToday();
     if (saveWasResetFromUrl) {
       showWelcome("Save reset. A quiet day begins beside the lake.");
     } else {
@@ -4838,6 +6699,8 @@ function applyOfflineEarnings() {
 }
 
 function updateScreen() {
+  ensureDailyWeatherForToday();
+  ensureTodayDivinationsForToday();
   gameState.comfort = calculateComfort();
 
   cozyPointsAmount.textContent = formatNumber(gameState.cozyPoints);
@@ -4857,9 +6720,12 @@ function updateScreen() {
   dayNightLabel.textContent = gameState.isNight ? "Day" : "Night";
   updateCamperProfileControls();
   updateBuildModeControls();
+  updateDailyCampCard();
+  syncDivinationEntryState();
 
   updateShopCards();
   updateSceneEquipment();
+  syncInventoryPanel();
   updateOnboardingView();
   maybeStartBuildModeGuide();
 }
@@ -5295,14 +7161,81 @@ function configureGearActionTarget(element, item) {
   };
   element.onkeydown = function(event) {
     if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      if (isBuildModeActive()) {
-        return;
-      }
-      clearSelectedActionTarget();
-      queueGearAction(item);
+      handleGearActionClick(event, element, item);
     }
   };
+}
+
+function getOrCreateActivityZoneLayer() {
+  if (!activityZoneLayer && sceneContent) {
+    activityZoneLayer = document.createElement("div");
+    activityZoneLayer.className = "activity-zone-layer";
+    activityZoneLayer.setAttribute("aria-label", "Activity areas");
+    sceneContent.appendChild(activityZoneLayer);
+  }
+
+  return activityZoneLayer;
+}
+
+function queueActivityZoneAction(zone) {
+  if (!zone || isBuildModeActive()) {
+    return;
+  }
+
+  clearSelectedActionTarget();
+  enqueueAction("activity", getActivityZoneTargetId(zone.id), { activityId: zone.activityId });
+}
+
+function configureActivityZoneElement(element, zone) {
+  if (!element || !zone) {
+    return;
+  }
+
+  element.type = "button";
+  element.setAttribute("aria-label", zone.label);
+  element.setAttribute("data-action-target-id", getActivityZoneTargetId(zone.id));
+  element.dataset.activityId = zone.activityId;
+  element.dataset.activityZoneId = zone.id;
+  element.style.left = zone.bounds.x + "%";
+  element.style.top = zone.bounds.y + "%";
+  element.style.width = zone.bounds.width + "%";
+  element.style.height = zone.bounds.height + "%";
+  element.classList.toggle("interactive-action-target", isActivityAvailable(zone.activityId) && !isBuildModeActive());
+  element.classList.toggle("hidden", !isActivityAvailable(zone.activityId) || isBuildModeActive());
+  element.tabIndex = isActivityAvailable(zone.activityId) && !isBuildModeActive() ? 0 : -1;
+  element.onclick = function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    queueActivityZoneAction(zone);
+  };
+  element.onkeydown = function(event) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      queueActivityZoneAction(zone);
+    }
+  };
+}
+
+function updateActivityZoneElements() {
+  const layer = getOrCreateActivityZoneLayer();
+
+  if (!layer) {
+    return;
+  }
+
+  Object.keys(activityZones).forEach(function(zoneId) {
+    const zone = activityZones[zoneId];
+    let element = getActivityZoneElement(zoneId);
+
+    if (!element) {
+      element = document.createElement("button");
+      element.id = getActivityZoneElementId(zoneId);
+      element.className = "activity-zone";
+      layer.appendChild(element);
+    }
+
+    configureActivityZoneElement(element, zone);
+  });
 }
 
 function getOrCreateGearFrontElement(item) {
@@ -5573,6 +7506,10 @@ function getUserGearMountOffsetMap() {
 }
 
 function getUserGearPosition(item) {
+  if (isGearPositionLocked(item)) {
+    return null;
+  }
+
   const positions = gameState && gameState.userGearPositions ? gameState.userGearPositions : {};
   const position = item && item.id ? positions[item.id] : null;
 
@@ -5595,7 +7532,7 @@ function isMountedGearDetached(item) {
 }
 
 function setUserGearPosition(item, position, shouldSave) {
-  if (!item || !item.scene || !position) {
+  if (!item || !item.scene || isGearPositionLocked(item) || !position) {
     return;
   }
 
@@ -6470,11 +8407,13 @@ function updateSceneEquipment() {
   sceneBackground.src = gameState.isNight ? assetPaths.backgrounds.campsiteNight : assetPaths.backgrounds.campsiteDay;
   treelineImage.src = gameState.isNight ? assetPaths.backgrounds.treelineNight : assetPaths.backgrounds.treelineDay;
   lakeImage.src = gameState.isNight ? assetPaths.backgrounds.lakeNight : assetPaths.backgrounds.lakeDay;
+  updateWeatherLayer();
 
   getGearItems().forEach(function(item) {
     updateGearSceneElement(item);
     updateSceneGearVisibility(item);
   });
+  updateActivityZoneElements();
   reconcileSelectedBuildTarget();
   updateCamperAttachments();
 
@@ -6698,6 +8637,7 @@ function handleGearAction(id) {
 }
 
 function openShop() {
+  closeInventoryPanel();
   document.body.classList.add("shop-open");
   shopDrawer.setAttribute("aria-hidden", "false");
   setShopFilter(activeShopFilter);
@@ -6710,6 +8650,127 @@ function openShop() {
 function closeShop() {
   document.body.classList.remove("shop-open");
   shopDrawer.setAttribute("aria-hidden", "true");
+}
+
+function isInventoryPanelOpen() {
+  return Boolean(inventoryLayer && !inventoryLayer.classList.contains("hidden"));
+}
+
+function createInventoryEmptyRow(message) {
+  const row = document.createElement("p");
+  row.className = "inventory-empty";
+  row.textContent = message;
+  return row;
+}
+
+function createInventoryItemRow(item, count) {
+  const row = document.createElement("article");
+  const image = document.createElement("img");
+  const copy = document.createElement("div");
+  const name = document.createElement("h3");
+  const detail = document.createElement("p");
+  const countBadge = document.createElement("strong");
+
+  row.className = "inventory-item";
+  image.className = "inventory-item-icon";
+  image.src = withVersion(item.image);
+  image.alt = "";
+  copy.className = "inventory-item-copy";
+  name.textContent = item.displayName;
+  detail.textContent = item.rarityLabel || item.detail || "";
+  countBadge.className = "inventory-item-count";
+  countBadge.textContent = "x" + count;
+
+  copy.appendChild(name);
+  copy.appendChild(detail);
+  row.appendChild(image);
+  row.appendChild(copy);
+  row.appendChild(countBadge);
+  return row;
+}
+
+function renderInventoryGroup(container, type, emptyMessage) {
+  const bucket = getInventoryBucket(type);
+  const catalog = getInventoryCatalog(type);
+  let renderedCount = 0;
+
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML = "";
+
+  Object.keys(catalog).forEach(function(id) {
+    const count = Math.max(0, Math.floor(Number(bucket[id]) || 0));
+
+    if (count <= 0) {
+      return;
+    }
+
+    container.appendChild(createInventoryItemRow(catalog[id], count));
+    renderedCount += 1;
+  });
+
+  if (renderedCount === 0) {
+    container.appendChild(createInventoryEmptyRow(emptyMessage));
+  }
+}
+
+function renderInventoryPanel() {
+  if (!inventoryLayer) {
+    return;
+  }
+
+  renderInventoryGroup(inventoryFishList, "fish", "还没有存放的鱼。");
+  renderInventoryGroup(inventoryMealList, "meals", "还没有做好的料理。");
+
+  if (inventoryStatsLine) {
+    const fishing = getFishingProgress();
+    const cooking = getCookingProgress();
+    inventoryStatsLine.textContent = "Fishing " + fishing.attempts + " / caught " + fishing.caught +
+      " / released " + fishing.released + " · Cooked " + cooking.cooked;
+  }
+}
+
+function openInventoryPanel() {
+  if (!inventoryLayer) {
+    return;
+  }
+
+  if (!hasPlacedInventoryCooler()) {
+    setStatus("放置一个冷藏箱后才能查看 inventory。");
+    return;
+  }
+
+  closeShop();
+  triggerInteractionSounds("coolerOpen");
+  renderInventoryPanel();
+  inventoryLayer.classList.remove("hidden");
+  inventoryLayer.setAttribute("aria-hidden", "false");
+  document.body.classList.add("inventory-open");
+}
+
+function closeInventoryPanel() {
+  if (!inventoryLayer) {
+    return;
+  }
+
+  inventoryLayer.classList.add("hidden");
+  inventoryLayer.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("inventory-open");
+}
+
+function syncInventoryPanel() {
+  if (!isInventoryPanelOpen()) {
+    return;
+  }
+
+  if (!hasPlacedInventoryCooler()) {
+    closeInventoryPanel();
+    return;
+  }
+
+  renderInventoryPanel();
 }
 
 function toggleShop() {
@@ -6779,6 +8840,7 @@ function interruptRelaxingActionForGatherMode() {
   camper.target = null;
   camper.actionAfterArrival = null;
   camper.currentAction = "idle";
+  camper.currentActivityId = "";
   camper.actionTimer = 0;
   camper.targetWoodId = null;
   camper.woodCollectionSource = null;
@@ -6820,6 +8882,7 @@ function pauseCamperForBuildMode() {
   camper.target = null;
   camper.actionAfterArrival = null;
   camper.currentAction = "idle";
+  camper.currentActivityId = "";
   camper.actionTimer = Number.POSITIVE_INFINITY;
   camper.targetWoodId = null;
   camper.woodCollectionSource = null;
@@ -6843,6 +8906,7 @@ function refreshCamperBesideCampfire() {
   camper.target = null;
   camper.actionAfterArrival = null;
   camper.currentAction = "idle";
+  camper.currentActivityId = "";
   camper.actionTimer = Date.now() + 250;
   camper.targetWoodId = null;
   camper.woodCollectionSource = null;
@@ -6870,6 +8934,7 @@ function enterBuildMode() {
   }
 
   closeShop();
+  closeInventoryPanel();
   clearSelectedActionTarget();
   clearSelectedBuildTarget();
   buildModeActive = true;
@@ -6913,10 +8978,14 @@ function spawnWood() {
     return;
   }
 
+  const woodPoint = getRandomWalkablePercentPoint(
+    { minX: 14, maxX: 68, minY: 67, maxY: 82 },
+    { x: 42, y: 76 }
+  );
   const wood = {
     id: nextWoodId,
-    x: randomBetween(14, 68),
-    y: randomBetween(67, 82),
+    x: woodPoint.x,
+    y: woodPoint.y,
     rotate: randomBetween(-22, 22)
   };
 
@@ -7105,6 +9174,100 @@ function clampScenePoint(point) {
   };
 }
 
+function getPointSegmentDistance(point, segmentStart, segmentEnd) {
+  const dx = segmentEnd.x - segmentStart.x;
+  const dy = segmentEnd.y - segmentStart.y;
+  const lengthSquared = dx * dx + dy * dy;
+
+  if (lengthSquared <= 0) {
+    return getScenePointDistance(point, segmentStart);
+  }
+
+  const ratio = clamp(
+    ((point.x - segmentStart.x) * dx + (point.y - segmentStart.y) * dy) / lengthSquared,
+    0,
+    1
+  );
+  const closestPoint = {
+    x: segmentStart.x + dx * ratio,
+    y: segmentStart.y + dy * ratio
+  };
+
+  return getScenePointDistance(point, closestPoint);
+}
+
+function pointInPolygon(point, polygonPoints) {
+  if (!point || !Array.isArray(polygonPoints) || polygonPoints.length < 3) {
+    return false;
+  }
+
+  let inside = false;
+
+  for (let index = 0, previousIndex = polygonPoints.length - 1; index < polygonPoints.length; previousIndex = index, index += 1) {
+    const currentPoint = polygonPoints[index];
+    const previousPoint = polygonPoints[previousIndex];
+    const intersects = currentPoint.y > point.y !== previousPoint.y > point.y &&
+      point.x < (previousPoint.x - currentPoint.x) * (point.y - currentPoint.y) / (previousPoint.y - currentPoint.y) + currentPoint.x;
+
+    if (intersects) {
+      inside = !inside;
+    }
+  }
+
+  return inside;
+}
+
+function pointNearPolygonEdge(point, polygonPoints, padding) {
+  if (!point || !Array.isArray(polygonPoints) || polygonPoints.length < 2 || padding <= 0) {
+    return false;
+  }
+
+  for (let index = 0; index < polygonPoints.length; index += 1) {
+    const startPoint = polygonPoints[index];
+    const endPoint = polygonPoints[(index + 1) % polygonPoints.length];
+
+    if (getPointSegmentDistance(point, startPoint, endPoint) <= padding) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function isSceneNoWalkPoint(point) {
+  return SCENE_NO_WALK_ZONES.some(function(zone) {
+    const points = zone.points || [];
+    const padding = Math.max(0, Number(zone.padding) || 0);
+
+    return pointInPolygon(point, points) || pointNearPolygonEdge(point, points, padding);
+  });
+}
+
+function isScenePercentPointWalkable(point) {
+  return Boolean(point && !isSceneNoWalkPoint(percentPointToScenePoint(point)));
+}
+
+function getRandomWalkablePercentPoint(bounds, fallbackPoint) {
+  const safeBounds = bounds || {};
+  const fallback = fallbackPoint || {
+    x: (safeBounds.minX + safeBounds.maxX) / 2,
+    y: (safeBounds.minY + safeBounds.maxY) / 2
+  };
+
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const point = {
+      x: randomBetween(safeBounds.minX, safeBounds.maxX),
+      y: randomBetween(safeBounds.minY, safeBounds.maxY)
+    };
+
+    if (isScenePercentPointWalkable(point)) {
+      return point;
+    }
+  }
+
+  return fallback;
+}
+
 function getSceneCollisionObstacles(options) {
   const pathOptions = options || {};
   const ignoreObstacleId = pathOptions.ignoreObstacleId || "";
@@ -7153,7 +9316,7 @@ function pathCellToScenePoint(cell) {
 }
 
 function isScenePointBlocked(point, obstacles) {
-  return obstacles.some(function(obstacle) {
+  return isSceneNoWalkPoint(point) || obstacles.some(function(obstacle) {
     return pointInRect(point, obstacle);
   });
 }
@@ -7333,7 +9496,7 @@ function getCamperMovePath(target, options) {
     startPoint: startPoint
   });
 
-  if (getScenePointDistance(startPoint, targetPoint) <= 1) {
+  if (!isScenePointBlocked(targetPoint, obstacles) && getScenePointDistance(startPoint, targetPoint) <= 1) {
     return {
       points: [startPoint, targetPoint],
       segmentLengths: [0],
@@ -7578,6 +9741,20 @@ function getRandomFacing() {
 }
 
 function getFacingForAction(action, target) {
+  const activity = getActivityDefinition(action);
+
+  if (activity) {
+    if (target && target.activityFacing) {
+      return normalizeFacing(target.activityFacing);
+    }
+
+    if (target && target.faceToward) {
+      return getFacingTowardPoint(target.faceToward);
+    }
+
+    return action === "birdwatch" ? getRandomFacing() : "right";
+  }
+
   if (action === "sittingOnFurniture" || action === "sittingOnChair") {
     return getCamperFacingForSeatable(target);
   }
@@ -7597,19 +9774,20 @@ function getFacingForAction(action, target) {
   return "right";
 }
 
-function getCamperAnimationFrameIndex(frameCount) {
+function getCamperAnimationFrameIndex(frameCount, frameDurationMs) {
   const animationStartedAt = camper.animationStartedAt || Date.now();
   const safeFrameCount = Math.max(1, frameCount || 1);
+  const duration = frameDurationMs || camperFrameDurationMs;
 
-  return Math.floor((Date.now() - animationStartedAt) / camperFrameDurationMs) % safeFrameCount;
+  return Math.floor((Date.now() - animationStartedAt) / duration) % safeFrameCount;
 }
 
-function getCamperAnimationFrame(frames, fallbackFrame) {
+function getCamperAnimationFrame(frames, fallbackFrame, frameDurationMs) {
   if (!Array.isArray(frames) || frames.length === 0) {
     return fallbackFrame || "";
   }
 
-  return frames[getCamperAnimationFrameIndex(frames.length)] || fallbackFrame || frames[0];
+  return frames[getCamperAnimationFrameIndex(frames.length, frameDurationMs)] || fallbackFrame || frames[0];
 }
 
 function updateCamperPathMotion(now) {
@@ -7687,6 +9865,7 @@ function startMovingTo(target, actionAfterArrival, options) {
     camper.state = "idle";
     camper.pose = "idle";
     camper.currentAction = "idle";
+    camper.currentActivityId = "";
     camper.actionAfterArrival = null;
     camper.target = null;
     camper.interactionTargetId = "";
@@ -7701,6 +9880,7 @@ function startMovingTo(target, actionAfterArrival, options) {
   camper.target = target;
   camper.actionAfterArrival = actionAfterArrival;
   camper.currentAction = actionName;
+  camper.currentActivityId = "";
   camper.interactionTargetId = interactionTargetId;
   camper.state = "moving";
   camper.pose = moveOptions.carryingWood ? "carryingWood" : "walking";
@@ -7719,16 +9899,21 @@ function startMovingTo(target, actionAfterArrival, options) {
   return true;
 }
 
-function startActing(action, durationSeconds) {
+function startActing(action, durationSeconds, options) {
   const now = Date.now();
   const actionTarget = camper.target;
+  const actingOptions = options || {};
+  const activityId = actingOptions.activityId || (isActivityId(action) ? action : "");
+
+  handleActivitySoundStart(action, activityId);
 
   camper.state = "acting";
   camper.currentAction = action;
+  camper.currentActivityId = activityId;
   camper.actionAfterArrival = null;
   camper.target = null;
   camper.interactionTargetId = getInteractionTargetId(actionTarget);
-  camper.pose = getPoseForAction(action);
+  camper.pose = activityId ? getActivityDefinition(activityId).pose : getPoseForAction(action);
   camper.facing = getFacingForAction(action, actionTarget);
   camper.animationStartedAt = now;
   camper.actionTimer = now + durationSeconds * 1000;
@@ -7742,6 +9927,12 @@ function startActing(action, durationSeconds) {
 }
 
 function getPoseForAction(action) {
+  const activity = getActivityDefinition(action);
+
+  if (activity) {
+    return activity.pose;
+  }
+
   if (action === "sittingByFire") {
     return "sittingGround";
   }
@@ -7769,6 +9960,22 @@ function getPoseForAction(action) {
   return "idle";
 }
 
+function isActivityDebugEnabled() {
+  return typeof window !== "undefined" && window.location && window.location.search.indexOf("activityDebug=1") !== -1;
+}
+
+function getCamperStateLabel() {
+  const action = camper.currentActivityId || camper.currentAction;
+  const activity = getActivityDefinition(action);
+  const baseLabel = activity ? activity.actionLabel : camperActionLabels[camper.currentAction] || camperActionLabels.idle;
+
+  if (!activity || !isActivityDebugEnabled()) {
+    return baseLabel;
+  }
+
+  return baseLabel + " [" + activity.id + ": " + getActivityCompletionCount(activity.id) + "]";
+}
+
 function updateCamperView() {
   setStyleValue(camperElement, "left", sceneXFromPercent(camper.x) + "px");
   setStyleValue(camperElement, "top", sceneYFromPercent(camper.y) + "px");
@@ -7776,7 +9983,7 @@ function updateCamperView() {
   updateCamperSprite();
   updateCamperAttachments();
   updateCamperThought();
-  camperStateText.textContent = camperActionLabels[camper.currentAction] || camperActionLabels.idle;
+  camperStateText.textContent = getCamperStateLabel();
 
   document.body.classList.toggle("camper-in-tent", camper.pose === "tentRest" && hasNightUnlock());
   updateSceneOcclusion();
@@ -7786,6 +9993,12 @@ function getRandomCamperThought(action) {
   const personality = getActiveCamperPersonality();
   const genericThoughts = camperThoughtLines[action] || [];
   const personalityThoughts = personality && personality.bubbles ? personality.bubbles[action] || [] : [];
+  const divinationThoughts = getCurrentDivinationThoughtLines();
+
+  if (Array.isArray(divinationThoughts) && divinationThoughts.length > 0 && Math.random() < 0.28) {
+    return divinationThoughts[Math.floor(Math.random() * divinationThoughts.length)];
+  }
+
   const shouldUsePersonalityThought = personalityThoughts.length > 0 && Math.random() < 0.65;
   const thoughts = shouldUsePersonalityThought ? personalityThoughts : genericThoughts;
 
@@ -7832,9 +10045,26 @@ function updateCamperThoughtPosition() {
   camperThoughtBubble.style.top = sceneY + "px";
 }
 
+function showCamperThought(message, durationMs) {
+  if (!message) {
+    return;
+  }
+
+  forcedCamperThoughtText = message;
+  forcedCamperThoughtUntil = Date.now() + (Number(durationMs) || 2800);
+  updateCamperThought();
+}
+
 function updateCamperThought() {
-  const thought = getCamperThoughtText(camper.currentAction);
-  const shouldShowThought = !isBuildModeActive() && !gameState.gatherWoodMode && thought;
+  const now = Date.now();
+  const hasForcedThought = forcedCamperThoughtText && forcedCamperThoughtUntil > now;
+  const thought = hasForcedThought ? forcedCamperThoughtText : getCamperThoughtText(camper.currentAction);
+  const shouldShowThought = !isBuildModeActive() && (hasForcedThought || !gameState.gatherWoodMode) && thought;
+
+  if (forcedCamperThoughtText && forcedCamperThoughtUntil <= now) {
+    forcedCamperThoughtText = "";
+    forcedCamperThoughtUntil = 0;
+  }
 
   camperThoughtBubble.textContent = shouldShowThought ? thought : "";
   updateCamperThoughtPosition();
@@ -7895,37 +10125,48 @@ function chooseWeightedAction(actionEntries) {
 }
 
 function getRandomObservableGearTarget() {
-  const candidates = getGearItems().filter(function(item) {
-    return item &&
+  const candidates = getGearItems().map(function(item) {
+    if (item &&
       item.scene &&
       item.id !== "campfire" &&
       isGearVisibleInScene(item) &&
-      (isGearPlaced(item.id) || isEquippableGear(item) && getEquippedGearId(item.category) === item.id);
+      (isGearPlaced(item.id) || isEquippableGear(item) && getEquippedGearId(item.category) === item.id)) {
+      const position = getDisplayedGearScenePosition(item);
+
+      if (!position) {
+        return null;
+      }
+
+      return {
+        item: item,
+        target: {
+          x: clamp(sceneXToPercent(position.x) + randomBetween(-4, 4), 16, 76),
+          y: clamp(sceneYToPercent(position.y) + 2, 62, 86),
+          interactionTargetId: item.id,
+          ignoreObstacleId: item.id
+        }
+      };
+    }
+
+    return null;
+  }).filter(function(entry) {
+    return entry && isScenePercentPointWalkable(entry.target);
   });
 
   if (candidates.length === 0) {
     return null;
   }
 
-  const item = candidates[Math.floor(Math.random() * candidates.length)];
-  const position = getDisplayedGearScenePosition(item);
-
-  if (!position) {
-    return null;
-  }
-
-  return {
-    x: clamp(sceneXToPercent(position.x) + randomBetween(-4, 4), 16, 76),
-    y: clamp(sceneYToPercent(position.y) + 2, 62, 86),
-    interactionTargetId: item.id,
-    ignoreObstacleId: item.id
-  };
+  return candidates[Math.floor(Math.random() * candidates.length)].target;
 }
 
 function getRelaxingActionEntries() {
   const personality = getActiveCamperPersonality();
   const bonuses = personality && personality.idleWeights ? personality.idleWeights : {};
   const nightBonuses = gameState.isNight && personality && personality.nightWeights ? personality.nightWeights : {};
+  const weatherBonuses = getCurrentWeatherActivityWeights();
+  const timeBonuses = getCurrentTimeActivityWeights();
+  const divinationBonuses = getCurrentDivinationActivityWeights();
   const entries = [
     { id: "wandering", weight: 4 },
     { id: "lookingAtLake", weight: 4 },
@@ -7942,18 +10183,40 @@ function getRelaxingActionEntries() {
     entries.push({ id: "observingGear", weight: 2 });
   }
 
+  getActivityIds().forEach(function(activityId) {
+    const activity = getActivityDefinition(activityId);
+
+    if (activityId === "cook" && !hasCookableFish()) {
+      return;
+    }
+
+    if (activity && isActivityAvailable(activityId)) {
+      entries.push({ id: activityId, weight: activity.weight });
+    }
+  });
+
   return entries.map(function(entry) {
     return {
       id: entry.id,
-      weight: entry.weight + (Number(bonuses[entry.id]) || 0) + (Number(nightBonuses[entry.id]) || 0)
+      weight: entry.weight +
+        (Number(bonuses[entry.id]) || 0) +
+        (Number(nightBonuses[entry.id]) || 0) +
+        (Number(weatherBonuses[entry.id]) || 0) +
+        (Number(timeBonuses[entry.id]) || 0) +
+        (Number(divinationBonuses[entry.id]) || 0)
     };
   });
 }
 
 function chooseRelaxingAction() {
   const action = chooseWeightedAction(getRelaxingActionEntries());
+  const activity = getActivityDefinition(action);
 
-  if (action === "lookingAtLake") {
+  if (activity) {
+    if (!startActivity(action)) {
+      startMovingTo(getRandomWanderPoint(), "wandering", { labelAction: "wandering" });
+    }
+  } else if (action === "lookingAtLake") {
     startMovingTo(campSpots.lake, "lookingAtLake");
   } else if (action === "sittingByFire") {
     startMovingToFire("sittingByFire");
@@ -7985,11 +10248,22 @@ function chooseRelaxingAction() {
   updateCamperThought();
 }
 
+function startActivity(activityId, preferredTargetId) {
+  const activity = getActivityDefinition(activityId);
+  const target = resolveActivityTarget(activityId, preferredTargetId);
+
+  if (!activity || !target) {
+    return false;
+  }
+
+  return startMovingTo(target, activity.id);
+}
+
 function getRandomWanderPoint() {
-  return {
-    x: randomBetween(18, 64),
-    y: randomBetween(68, 80)
-  };
+  return getRandomWalkablePercentPoint(
+    { minX: 18, maxX: 64, minY: 68, maxY: 80 },
+    { x: 43, y: 75 }
+  );
 }
 
 function withIgnoredObstacle(point, item) {
@@ -8058,6 +10332,32 @@ function executeQueuedFireAction() {
   setStatus("The camper heads closer to the campfire.");
 }
 
+function executeQueuedActivityAction(action) {
+  const activityId = action && action.activityId || "";
+  const activity = getActivityDefinition(activityId);
+
+  if (!activity || !isActivityAvailable(activityId)) {
+    setStatus(activityId === "cook" ? "需要炉具或 camp kitchen 才能做饭。" : "That activity is not available yet.");
+    completeActiveQueuedAction();
+    return;
+  }
+
+  if (activityId === "cook" && !hasCookableFish()) {
+    setStatus(getNoFoodCookingMessage());
+    showCamperThought("没有可用食材。");
+    completeActiveQueuedAction();
+    return;
+  }
+
+  if (!startActivity(activityId, action.targetId)) {
+    setStatus("No clear path to " + activity.targetLabel + ".");
+    completeActiveQueuedAction();
+    return;
+  }
+
+  setStatus("The camper heads over to " + activity.targetLabel + ".");
+}
+
 function updateCamperAI() {
   if (camperProfileActive || !hasCamperProfile(gameState)) {
     campfireFlameImage.src = getCurrentFlameImage();
@@ -8096,8 +10396,14 @@ function updateCamperAI() {
 
 function arriveAtTarget() {
   const action = camper.actionAfterArrival;
+  const activity = getActivityDefinition(action);
 
   hideActiveQueuedActionIndicator();
+
+  if (activity) {
+    startActing(activity.id, activity.durationSeconds, { activityId: activity.id });
+    return;
+  }
 
   if (action === "pickupWood") {
     pickupTargetWood();
@@ -8183,6 +10489,22 @@ function finishCurrentAction() {
     return;
   }
 
+  if (camper.currentActivityId) {
+    const completedActivityId = camper.currentActivityId;
+    stopActivityAmbience();
+    recordActivityCompletion(completedActivityId);
+    handleActivityCompletionResult(completedActivityId);
+    camper.currentActivityId = "";
+
+    if (activeQueuedAction) {
+      completeActiveQueuedAction();
+    } else {
+      chooseNextCamperAction();
+    }
+
+    return;
+  }
+
   if (activeQueuedAction) {
     completeActiveQueuedAction();
     return;
@@ -8227,6 +10549,7 @@ function gameTick() {
     showCozyGain(cozyGain);
   }
 
+  syncCampfireAmbient();
   updateScreen();
   saveGame();
 }
@@ -8275,9 +10598,1629 @@ function createCozySpark() {
   }, 900);
 }
 
+// ---------------------------------------------------------------------------
+// Sound Journal + ambient white-noise system.
+//
+// Discovery happens when an interaction STARTS (see startActing / cooler open),
+// so the player hears the sound during the activity rather than after it.
+// soundManager.js owns the actual Web Audio playback; this layer owns the
+// journal state, discovery notifications, temporary activity ambience and UI.
+// ---------------------------------------------------------------------------
+
+// Loops started for the duration of an activity that the player has NOT pinned
+// as a persistent ambient track. They are stopped when the activity ends.
+const temporaryAmbientLoops = new Set();
+let soundSystemStarted = false;
+
+// The campfire loop is "fire-linked": once discovered it defaults to on and
+// plays continuously WHILE THE FIRE IS BURNING, unless the player turns it off
+// in the Sound Journal. It is not a temporary activity loop.
+const FIRE_LINKED_LOOP = "campfire_crackle_loop";
+
+function isCampfireBurning() {
+  return gameState.warmthSeconds > 0;
+}
+
+// Keep the campfire loop in sync with the fire: play while lit + discovered +
+// not manually turned off; stop otherwise (e.g. the fire went out).
+function syncCampfireAmbient() {
+  const manager = getSoundManager();
+
+  if (!manager) {
+    return;
+  }
+
+  const shouldPlay = isSoundDiscovered(FIRE_LINKED_LOOP) &&
+    isAmbientEnabled(FIRE_LINKED_LOOP) &&
+    isCampfireBurning();
+
+  if (shouldPlay) {
+    manager.startLoop(FIRE_LINKED_LOOP);
+  } else {
+    manager.stopLoop(FIRE_LINKED_LOOP);
+  }
+}
+
+function getSoundManager() {
+  return typeof window !== "undefined" ? window.soundManager : null;
+}
+
+function getSoundTriggers() {
+  return typeof window !== "undefined" && window.SOUND_JOURNAL_TRIGGERS ?
+    window.SOUND_JOURNAL_TRIGGERS : {};
+}
+
+function getSoundCatalogSounds() {
+  const catalog = typeof window !== "undefined" ? window.SOUND_JOURNAL_CATALOG : null;
+  return catalog && Array.isArray(catalog.sounds) ? catalog.sounds : [];
+}
+
+function getSoundJournalState() {
+  if (!gameState.soundJournal || typeof gameState.soundJournal !== "object" || Array.isArray(gameState.soundJournal)) {
+    gameState.soundJournal = cloneSoundJournal(defaultGameState.soundJournal);
+  }
+
+  const journal = gameState.soundJournal;
+
+  if (!Array.isArray(journal.discovered)) {
+    journal.discovered = [];
+  }
+  if (!Array.isArray(journal.enabledAmbient)) {
+    journal.enabledAmbient = [];
+  }
+  if (typeof journal.masterVolume !== "number") {
+    journal.masterVolume = 0.7;
+  }
+  journal.muted = Boolean(journal.muted);
+
+  return journal;
+}
+
+function isSoundDiscovered(id) {
+  return getSoundJournalState().discovered.indexOf(id) !== -1;
+}
+
+function isAmbientEnabled(id) {
+  return getSoundJournalState().enabledAmbient.indexOf(id) !== -1;
+}
+
+function initSoundSystem() {
+  const manager = getSoundManager();
+
+  if (!manager) {
+    return;
+  }
+
+  const journal = getSoundJournalState();
+
+  manager.configure({
+    catalog: typeof window !== "undefined" ? window.SOUND_JOURNAL_CATALOG : null,
+    version: APP_VERSION,
+    masterVolume: journal.masterVolume,
+    muted: journal.muted
+  });
+
+  // Resume the audio context on the first real user gesture anywhere on the
+  // page (autoplay policy) and start any pinned ambient loops from the save.
+  const wakeSound = function() {
+    startSoundSystem();
+  };
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("pointerdown", wakeSound, { passive: true });
+    window.addEventListener("keydown", wakeSound);
+  }
+
+  syncSoundControls();
+}
+
+// Called from user gestures. Resumes audio and (re)starts enabled ambient loops.
+function startSoundSystem() {
+  const manager = getSoundManager();
+
+  if (!manager) {
+    return Promise.resolve(false);
+  }
+
+  return manager.resume().then(function(ready) {
+    if (!ready) {
+      return false;
+    }
+
+    if (!soundSystemStarted) {
+      soundSystemStarted = true;
+    }
+
+    getSoundJournalState().enabledAmbient.forEach(function(id) {
+      if (id === FIRE_LINKED_LOOP) {
+        return; // fire-linked: handled by syncCampfireAmbient (needs burning fire)
+      }
+      if (isLoopSoundId(id) && isSoundDiscovered(id)) {
+        manager.startLoop(id);
+      }
+    });
+
+    syncCampfireAmbient();
+    return true;
+  });
+}
+
+function discoverSound(id) {
+  const entry = getSoundCatalogEntry(id);
+
+  if (!entry) {
+    return false;
+  }
+
+  const journal = getSoundJournalState();
+
+  if (journal.discovered.indexOf(id) !== -1) {
+    return false; // already known: never re-show the unlock toast
+  }
+
+  journal.discovered.push(id);
+
+  // The campfire loop defaults to on when first discovered so it plays
+  // automatically while the fire is burning (player can still turn it off).
+  if (id === FIRE_LINKED_LOOP && journal.enabledAmbient.indexOf(id) === -1) {
+    journal.enabledAmbient.push(id);
+  }
+
+  saveGame();
+  setStatus("🔊 发现新声音：" + entry.name);
+  refreshSoundJournalView();
+  updateDailyCampCard();
+  return true;
+}
+
+function isDivinationPanelOpen() {
+  return Boolean(divinationLayer && !divinationLayer.classList.contains("hidden"));
+}
+
+function getDivinationQuestionIds() {
+  const manager = getDivinationManager();
+  return manager && manager.getQuestionIds ? manager.getQuestionIds() : ["overall", "relationship", "bodyMind", "money"];
+}
+
+function getDivinationQuestion(questionId) {
+  const manager = getDivinationManager();
+  return manager && manager.getQuestion ? manager.getQuestion(questionId) : null;
+}
+
+function getDivinationMethodDefinition(method) {
+  const manager = getDivinationManager();
+  return manager && manager.getMethodDefinition ? manager.getMethodDefinition(method) : null;
+}
+
+function isDivinationMethod(method) {
+  return method === "tarot" || method === "turtle";
+}
+
+function hasDivinationMethodUnlocked(method, state) {
+  const campState = state || gameState;
+
+  if (method === "tarot") {
+    return ownsGear("campBoardGame", campState);
+  }
+
+  if (method === "turtle") {
+    const unlocks = sanitizeDivinationUnlocks(campState.divinationUnlocks);
+    return unlocks.turtleShell;
+  }
+
+  return false;
+}
+
+function getFirstUnlockedDivinationMethod() {
+  if (hasDivinationMethodUnlocked("tarot")) {
+    return "tarot";
+  }
+  if (hasDivinationMethodUnlocked("turtle")) {
+    return "turtle";
+  }
+  return "";
+}
+
+function syncDivinationEntryState() {
+  if (!divinationButton) {
+    return;
+  }
+
+  divinationButton.classList.toggle("has-result", hasTodayDivinationResult());
+  divinationButton.classList.toggle("locked", !hasDivinationMethodUnlocked("tarot") && !hasDivinationMethodUnlocked("turtle"));
+}
+
+function resetTurtleCastAnimationState() {
+  turtleCastPending = false;
+  turtleCastPhase = "idle";
+  turtlePendingLine = null;
+  if (turtleCoinVisual) {
+    turtleCoinVisual.classList.remove("is-revealing");
+  }
+  if (turtleShellButton) {
+    turtleShellButton.classList.remove("is-shaking");
+  }
+}
+
+function resetDivinationDraft() {
+  selectedDivinationQuestionId = "overall";
+  selectedDivinationMethod = getFirstUnlockedDivinationMethod();
+  turtleCastLines = [];
+  resetTurtleCastAnimationState();
+  turtleHoldTriggered = false;
+  if (turtleHoldTimer) {
+    clearInterval(turtleHoldTimer);
+    turtleHoldTimer = null;
+  }
+}
+
+function renderDivinationQuestions() {
+  if (!divinationQuestionList) {
+    return;
+  }
+
+  divinationQuestionList.textContent = "";
+  getDivinationQuestionIds().forEach(function(questionId) {
+    const question = getDivinationQuestion(questionId);
+    const button = document.createElement("button");
+    const label = document.createElement("span");
+    const status = document.createElement("small");
+    const hasResult = hasTodayDivinationResult(selectedDivinationMethod, questionId);
+    button.type = "button";
+    button.className = "divination-choice-button";
+    button.classList.toggle("selected", selectedDivinationQuestionId === questionId);
+    button.classList.toggle("has-result", hasResult);
+    label.textContent = question ? question.label : questionId;
+    status.textContent = hasResult ? "今日已占" : "";
+    button.appendChild(label);
+    button.appendChild(status);
+    button.addEventListener("click", function() {
+      selectedDivinationQuestionId = questionId;
+      turtleCastLines = [];
+      resetTurtleCastAnimationState();
+      renderDivinationSetup();
+    });
+    divinationQuestionList.appendChild(button);
+  });
+}
+
+function renderDivinationMethods() {
+  if (!divinationMethodList) {
+    return;
+  }
+
+  divinationMethodList.textContent = "";
+  ["tarot", "turtle"].forEach(function(method) {
+    const definition = getDivinationMethodDefinition(method) || { label: method, lockedHint: "" };
+    const unlocked = hasDivinationMethodUnlocked(method);
+    const hasResult = hasTodayDivinationResult(method, selectedDivinationQuestionId);
+    const button = document.createElement("button");
+    const title = document.createElement("span");
+    const hint = document.createElement("small");
+
+    button.type = "button";
+    button.className = "divination-method-button";
+    button.classList.toggle("selected", selectedDivinationMethod === method);
+    button.classList.toggle("locked", !unlocked);
+    button.classList.toggle("has-result", hasResult);
+    button.disabled = !unlocked;
+    title.textContent = (unlocked ? "" : "🔒 ") + definition.label;
+    hint.textContent = unlocked ? hasResult ? "今日已占 · 查看结果" : "今日可占" : definition.lockedHint;
+    button.appendChild(title);
+    button.appendChild(hint);
+    button.addEventListener("click", function() {
+      selectedDivinationMethod = method;
+      turtleCastLines = [];
+      resetTurtleCastAnimationState();
+      renderDivinationSetup();
+    });
+    divinationMethodList.appendChild(button);
+  });
+}
+
+function renderTurtleLines(lines) {
+  if (!turtleLineStack) {
+    return;
+  }
+
+  turtleLineStack.textContent = "";
+  (lines || []).slice().reverse().forEach(function(line) {
+    const row = document.createElement("div");
+    const mark = document.createElement("span");
+    const label = document.createElement("small");
+    const yinYang = line && (line.yinYang === "yang" || line.type === "yang") ? "yang" : "yin";
+    row.className = "turtle-line-row";
+    mark.className = "turtle-line turtle-line-" + yinYang;
+    mark.classList.toggle("moving", Boolean(line && line.moving));
+    mark.setAttribute("aria-label", yinYang === "yang" ? "阳爻" : "阴爻");
+    label.textContent = getTurtleLineLabel(line);
+    row.appendChild(mark);
+    row.appendChild(label);
+    turtleLineStack.appendChild(row);
+  });
+}
+
+function getTurtleLineLabel(line) {
+  if (!line) {
+    return "";
+  }
+
+  const catalog = getDivinationCatalog();
+  const labels = catalog && catalog.turtleLineLabels || {};
+  if (labels[line.type]) {
+    return "第" + line.position + "爻 · " + labels[line.type];
+  }
+
+  return "第" + (line.position || line.index + 1) + "爻 · " + (line.yinYang === "yang" || line.type === "yang" ? "阳" : "阴");
+}
+
+function renderTurtleCoins(line) {
+  if (!turtleCoinTray) {
+    return;
+  }
+
+  turtleCoinTray.textContent = "";
+  turtleCoinTray.classList.toggle("hidden", !line);
+  if (!line || !Array.isArray(line.coins)) {
+    if (turtleCastReadout) {
+      turtleCastReadout.textContent = turtleCastPhase === "shaking" ? "龟壳摇动中..." : "点击龟壳，一爻一掷";
+    }
+    return;
+  }
+
+  const coins = line.coins;
+  coins.forEach(function(coin, index) {
+    const holder = document.createElement("span");
+    const image = document.createElement("img");
+    const side = coin && coin.side === "yin" ? "yin" : "yang";
+    holder.className = "turtle-coin turtle-coin-" + (index + 1);
+    holder.classList.toggle("waiting", !line);
+    image.alt = "";
+    setVersionedImageSource(image, "assets/divination/coins/coin_" + side + ".png");
+    holder.appendChild(image);
+    turtleCoinTray.appendChild(holder);
+  });
+
+  if (turtleCastReadout) {
+    turtleCastReadout.textContent = getTurtleLineLabel(line) + " · 合计 " + line.total;
+  }
+}
+
+function getTurtleShellFramePath(castNumber) {
+  const frame = Math.max(0, Math.min(6, Math.floor(Number(castNumber) || 0)));
+  return frame > 0
+    ? "assets/divination/turtle_shell/turtle_shell_shake_" + frame + ".png"
+    : "assets/divination/turtle_shell/turtle_shell.png";
+}
+
+function renderTurtleShellFrame(castNumber) {
+  if (turtleShellImage) {
+    setVersionedImageSource(turtleShellImage, getTurtleShellFramePath(castNumber));
+  }
+}
+
+function playTurtleShellShake(castNumber) {
+  if (!turtleShellButton) {
+    return;
+  }
+
+  renderTurtleShellFrame(castNumber);
+  turtleShellButton.classList.remove("is-shaking");
+  void turtleShellButton.offsetWidth;
+  turtleShellButton.classList.add("is-shaking");
+}
+
+function playTurtleCoinReveal() {
+  if (!turtleCoinVisual) {
+    return;
+  }
+
+  turtleCoinVisual.classList.remove("is-revealing");
+  void turtleCoinVisual.offsetWidth;
+  turtleCoinVisual.classList.add("is-revealing");
+}
+
+function renderDivinationSetup() {
+  const method = selectedDivinationMethod;
+  const methodDefinition = getDivinationMethodDefinition(method);
+  const methodUnlocked = method && hasDivinationMethodUnlocked(method);
+  const savedRecord = getTodayDivinationRecord(method, selectedDivinationQuestionId);
+
+  renderDivinationQuestions();
+  renderDivinationMethods();
+
+  if (savedRecord) {
+    renderDivinationResult(savedRecord.result, true);
+    return;
+  }
+
+  if (divinationIntro) {
+    divinationIntro.textContent = "每种方式的每个类别每天各占一次；已占过的结果会保留到明天。";
+  }
+
+  if (divinationQuestionList) {
+    divinationQuestionList.classList.remove("hidden");
+  }
+  if (divinationMethodList) {
+    divinationMethodList.classList.remove("hidden");
+  }
+  if (divinationStage) {
+    divinationStage.classList.remove("hidden");
+  }
+  if (divinationResult) {
+    divinationResult.classList.add("hidden");
+  }
+  if (divinationActionButton) {
+    divinationActionButton.classList.remove("hidden");
+  }
+  if (divinationCardVisual) {
+    divinationCardVisual.classList.toggle("hidden", method === "turtle");
+    divinationCardVisual.classList.remove("shuffling", "revealed");
+    divinationCardVisual.style.backgroundImage = "";
+  }
+  if (turtleCoinVisual) {
+    turtleCoinVisual.classList.toggle("hidden", method !== "turtle");
+  }
+  if (turtleShellButton) {
+    turtleShellButton.disabled = method !== "turtle" || !methodUnlocked || turtleCastPending;
+    if (turtleCastPhase !== "shaking") {
+      turtleShellButton.classList.remove("is-shaking");
+    }
+  }
+
+  renderTurtleShellFrame(turtleCastPhase === "shaking" ? turtleCastLines.length + 1 : 0);
+  renderTurtleCoins(turtleCastPhase === "shaking" ? null : turtleCastLines[turtleCastLines.length - 1]);
+  renderTurtleLines(turtleCastLines);
+
+  if (divinationActionButton) {
+    divinationActionButton.disabled = !method || !methodUnlocked || turtleCastPending;
+    if (!method) {
+      divinationActionButton.textContent = "先解锁占营方式";
+    } else if (!methodUnlocked) {
+      divinationActionButton.textContent = methodDefinition && methodDefinition.lockedHint || "还没解锁";
+    } else if (method === "turtle") {
+      divinationActionButton.textContent = turtleCastPending
+        ? turtleCastPhase === "shaking" ? "龟壳摇动中..." : turtleCastLines.length >= 6 ? "六爻已成，解卦中..." : "铜钱落定..."
+        : "摇动龟壳 · 第 " + (turtleCastLines.length + 1) + " / 6 爻";
+    } else {
+      divinationActionButton.textContent = methodDefinition && methodDefinition.actionLabel || "开始占营";
+    }
+  }
+}
+
+function setVersionedImageSource(image, path) {
+  if (image && path) {
+    image.src = withVersion(path);
+  }
+}
+
+function appendIChingHexagramCard(container, label, hexagram, lineValues, movingPositions) {
+  if (!container || !hexagram) {
+    return;
+  }
+
+  const card = document.createElement("section");
+  const kicker = document.createElement("small");
+  const heading = document.createElement("strong");
+  const lines = document.createElement("div");
+  card.className = "iching-hexagram-card";
+  kicker.textContent = label + (hexagram.upperTrigram && hexagram.lowerTrigram
+    ? " · 上" + hexagram.upperTrigram.name + " 下" + hexagram.lowerTrigram.name
+    : "");
+  heading.textContent = hexagram.name;
+  lines.className = "iching-hexagram-lines";
+
+  (lineValues || []).map(function(value, index) {
+    return { value: value, position: index + 1 };
+  }).reverse().forEach(function(line) {
+    const row = document.createElement("div");
+    const mark = document.createElement("span");
+    const position = document.createElement("small");
+    const yinYang = line.value === "yang" || line.value === 1 ? "yang" : "yin";
+    row.className = "turtle-line-row";
+    mark.className = "turtle-line turtle-line-" + yinYang;
+    if ((movingPositions || []).indexOf(line.position) !== -1) {
+      mark.classList.add("moving");
+    }
+    position.textContent = String(line.position);
+    row.appendChild(mark);
+    row.appendChild(position);
+    lines.appendChild(row);
+  });
+
+  card.appendChild(kicker);
+  card.appendChild(heading);
+  card.appendChild(lines);
+  container.appendChild(card);
+}
+
+function renderIChingResultLines(result) {
+  if (!divinationResultLines) {
+    return;
+  }
+
+  divinationResultLines.textContent = "";
+  divinationResultLines.classList.add("iching-result-hexagrams");
+  appendIChingHexagramCard(
+    divinationResultLines,
+    "本卦",
+    result.primaryHexagram,
+    result.primaryLines,
+    result.movingLines
+  );
+
+  const arrow = document.createElement("span");
+  arrow.className = "iching-change-arrow";
+  arrow.textContent = "→";
+  divinationResultLines.appendChild(arrow);
+
+  appendIChingHexagramCard(
+    divinationResultLines,
+    "变卦",
+    result.changedHexagram,
+    result.changedLines,
+    []
+  );
+  divinationResultLines.classList.remove("hidden");
+}
+
+function renderOraclePhraseList(list, phrases) {
+  if (!list) {
+    return;
+  }
+
+  list.textContent = "";
+  (phrases || []).slice(0, 3).forEach(function(phrase) {
+    const item = document.createElement("li");
+    item.textContent = phrase;
+    list.appendChild(item);
+  });
+}
+
+function renderModernIChingResult(result) {
+  if (divinationTurtleFortune) {
+    divinationTurtleFortune.textContent = result.fortune || "平";
+    divinationTurtleFortune.dataset.fortune = result.fortune || "平";
+  }
+  if (divinationTurtlePrimaryName) {
+    divinationTurtlePrimaryName.textContent = result.primaryHexagram.name;
+  }
+  if (divinationTurtleMovingCount) {
+    const movingCount = Array.isArray(result.movingLines) ? result.movingLines.length : 0;
+    divinationTurtleMovingCount.textContent = "本卦 " + result.primaryHexagram.name + " · " + movingCount + " 个动爻 · 变卦 " + result.changedHexagram.name;
+  }
+  if (divinationTurtleKeywords) {
+    divinationTurtleKeywords.textContent = "";
+    (result.keywords || []).slice(0, 4).forEach(function(keyword) {
+      const word = document.createElement("span");
+      word.textContent = keyword;
+      divinationTurtleKeywords.appendChild(word);
+    });
+  }
+  if (divinationTurtleSummary) {
+    divinationTurtleSummary.textContent = result.summary || result.reality || "";
+  }
+  if (divinationTurtleInterpretation) {
+    divinationTurtleInterpretation.textContent = result.interpretation || "";
+  }
+  renderOraclePhraseList(divinationTurtleGoodFor, result.goodFor);
+  renderOraclePhraseList(divinationTurtleAvoid, result.avoid);
+  if (divinationTurtleConclusion) {
+    divinationTurtleConclusion.textContent = result.conclusion || result.campImpact || "";
+  }
+  if (divinationTurtleDetails) {
+    divinationTurtleDetails.removeAttribute("open");
+  }
+
+  renderIChingResultLines(result);
+
+  if (divinationResultBasis) {
+    const movingDetails = (result.lines || []).filter(function(line) {
+      return line && line.moving;
+    }).map(function(line) {
+      return "第" + line.position + "爻（" + getTurtleLineLabel(line).split(" · ").slice(1).join(" · ") + "）";
+    }).join("、");
+    divinationResultBasis.textContent = "动爻：" + (movingDetails || "无") + "。主占依据：" + result.readingBasis.summary;
+  }
+  if (divinationResultJudgments) {
+    divinationResultJudgments.textContent = "本卦卦辞：" + result.primaryHexagram.judgment + " 变卦卦辞：" + result.changedHexagram.judgment;
+  }
+  if (divinationResultCastDetails) {
+    divinationResultCastDetails.textContent = "六次铜钱：" + (result.lines || []).map(function(line) {
+      return "第" + line.position + "爻 " + line.total + "（" + getTurtleLineLabel(line).split(" · ").slice(1).join(" · ") + "）";
+    }).join("；");
+  }
+  if (divinationResultLineDetails) {
+    divinationResultLineDetails.textContent = "爻位细目：" + (result.readingBasis.items || []).map(function(item) {
+      return [item.source, item.label, item.keyword, item.text].filter(Boolean).join(" · ");
+    }).join("；");
+  }
+  if (divinationResultDetailReading) {
+    divinationResultDetailReading.textContent = result.detailInterpretation || "";
+  }
+}
+
+function renderDivinationResult(result, fromSaved) {
+  if (!result || !divinationResult) {
+    return;
+  }
+
+  const methodDefinition = getDivinationMethodDefinition(result.method);
+
+  const isModernIChingResult = result.method === "turtle" && result.primaryHexagram && result.changedHexagram && result.readingBasis;
+
+  if (divinationIntro) {
+    divinationIntro.textContent = result.method === "turtle"
+      ? fromSaved ? "今日卦签已定。" : "六爻已成，卦签落定。"
+      : fromSaved ? "今日牌面已定。" : "牌面已翻开，今日倾向已经落定。";
+  }
+  if (divinationQuestionList) {
+    divinationQuestionList.classList.remove("hidden");
+  }
+  if (divinationMethodList) {
+    divinationMethodList.classList.remove("hidden");
+  }
+  if (divinationStage) {
+    divinationStage.classList.add("hidden");
+  }
+  if (divinationActionButton) {
+    divinationActionButton.classList.add("hidden");
+  }
+
+  renderDivinationQuestions();
+  renderDivinationMethods();
+  divinationResult.classList.remove("hidden");
+  divinationResult.classList.toggle("iching-result-active", isModernIChingResult);
+  if (divinationResultQuestion) {
+    divinationResultQuestion.textContent = (result.questionLabel || "") + " · " + (methodDefinition ? methodDefinition.label : result.method);
+  }
+  if (divinationResultTop) {
+    divinationResultTop.classList.toggle("hidden", isModernIChingResult);
+  }
+  if (divinationTarotResultBody) {
+    divinationTarotResultBody.classList.toggle("hidden", isModernIChingResult);
+  }
+  if (divinationTurtleResultBody) {
+    divinationTurtleResultBody.classList.toggle("hidden", !isModernIChingResult);
+  }
+
+  if (isModernIChingResult) {
+    renderModernIChingResult(result);
+    return;
+  }
+
+  if (divinationResultTitle) {
+    divinationResultTitle.textContent = result.title || "";
+  }
+  if (divinationResultSubtitle) {
+    divinationResultSubtitle.textContent = result.subtitle || "";
+  }
+  if (divinationResultImage) {
+    if (result.method === "tarot" && result.image) {
+      setVersionedImageSource(divinationResultImage, result.image);
+      divinationResultImage.classList.remove("hidden");
+    } else {
+      divinationResultImage.classList.add("hidden");
+    }
+  }
+  if (divinationResultKeywords) {
+    divinationResultKeywords.textContent = Array.isArray(result.keywords) ? result.keywords.join(" / ") : "";
+  }
+  if (divinationResultReality) {
+    divinationResultReality.textContent = result.reality || "";
+  }
+  if (divinationResultAdvice) {
+    divinationResultAdvice.textContent = result.advice || "";
+  }
+  if (divinationResultCamp) {
+    divinationResultCamp.textContent = result.campImpact || "";
+  }
+}
+
+function completeDivination(method, lines, options) {
+  const manager = getDivinationManager();
+
+  if (!manager || !manager.createResult) {
+    setStatus("占营数据还没准备好。");
+    return null;
+  }
+
+  const dateKey = getDivinationDateKey();
+  const resultSalt = getTodayDivinationSalt(method, selectedDivinationQuestionId);
+  const result = manager.createResult({
+    method: method,
+    questionId: selectedDivinationQuestionId,
+    dateKey: dateKey,
+    userSeed: getDivinationUserSeed(),
+    lines: lines,
+    salt: resultSalt
+  });
+
+  const record = {
+    date: dateKey,
+    method: method,
+    question: selectedDivinationQuestionId,
+    result: result,
+    effects: result.effects || {}
+  };
+  const dailyDivinations = ensureTodayDivinationsForToday();
+  dailyDivinations.records[method][selectedDivinationQuestionId] = record;
+  dailyDivinations.active = {
+    method: method,
+    question: selectedDivinationQuestionId
+  };
+  turtleCastLines = [];
+  resetTurtleCastAnimationState();
+  camperThoughtAction = "";
+  if (!options || !options.deferResult) {
+    renderDivinationResult(result, false);
+  }
+  updateDailyCampCard();
+  syncDivinationEntryState();
+  if (result.effects && Array.isArray(result.effects.thoughtLines) && result.effects.thoughtLines.length > 0) {
+    showCamperThought(result.effects.thoughtLines[0], 3600);
+  }
+  saveGame();
+  return result;
+}
+
+function createFallbackTurtleLine(index) {
+  const coins = [0, 1, 2].map(function(coinIndex) {
+    const yang = Math.random() >= 0.5;
+    return {
+      index: coinIndex,
+      side: yang ? "yang" : "yin",
+      value: yang ? 3 : 2
+    };
+  });
+  const total = coins.reduce(function(sum, coin) { return sum + coin.value; }, 0);
+  const typeByTotal = { 6: "oldYin", 7: "youngYang", 8: "youngYin", 9: "oldYang" };
+  const yinYang = total === 7 || total === 9 ? "yang" : "yin";
+  const moving = total === 6 || total === 9;
+  return {
+    index: index,
+    position: index + 1,
+    coins: coins,
+    total: total,
+    type: typeByTotal[total],
+    yinYang: yinYang,
+    moving: moving,
+    changedYinYang: moving ? yinYang === "yang" ? "yin" : "yang" : yinYang
+  };
+}
+
+function castTurtleCoinsOnce() {
+  if (turtleCastPending || turtleCastLines.length >= 6) {
+    return;
+  }
+
+  const manager = getDivinationManager();
+  const resultSalt = getTodayDivinationSalt("turtle", selectedDivinationQuestionId);
+  const lineIndex = turtleCastLines.length;
+  const line = manager && manager.createTurtleLine ? manager.createTurtleLine({
+    questionId: selectedDivinationQuestionId,
+    dateKey: getDivinationDateKey(),
+    userSeed: getDivinationUserSeed(),
+    salt: resultSalt
+  }, lineIndex) : createFallbackTurtleLine(lineIndex);
+
+  turtlePendingLine = line;
+  turtleCastPending = true;
+  turtleCastPhase = "shaking";
+  renderDivinationSetup();
+  playTurtleShellShake(lineIndex + 1);
+
+  window.setTimeout(function() {
+    if (!turtlePendingLine) {
+      return;
+    }
+
+    turtleCastLines.push(turtlePendingLine);
+    turtlePendingLine = null;
+    turtleCastPhase = "revealing";
+    if (turtleCastLines.length >= 6 && turtleHoldTimer) {
+      clearInterval(turtleHoldTimer);
+      turtleHoldTimer = null;
+    }
+    renderDivinationSetup();
+    playTurtleCoinReveal();
+
+    window.setTimeout(function() {
+      turtleCastPending = false;
+      turtleCastPhase = "idle";
+      if (turtleCoinVisual) {
+        turtleCoinVisual.classList.remove("is-revealing");
+      }
+      if (turtleCastLines.length >= 6) {
+        completeDivination("turtle", turtleCastLines.slice());
+      } else {
+        renderDivinationSetup();
+      }
+    }, 520);
+  }, 430);
+}
+
+function handleDivinationAction() {
+  const savedRecord = getTodayDivinationRecord(selectedDivinationMethod, selectedDivinationQuestionId);
+
+  if (savedRecord) {
+    renderDivinationResult(savedRecord.result, true);
+    return;
+  }
+
+  if (!selectedDivinationMethod || !hasDivinationMethodUnlocked(selectedDivinationMethod)) {
+    setStatus("这个占营方式还没解锁。");
+    return;
+  }
+
+  if (selectedDivinationMethod === "turtle") {
+    castTurtleCoinsOnce();
+    return;
+  }
+
+  if (divinationActionButton) {
+    divinationActionButton.disabled = true;
+    divinationActionButton.textContent = "洗牌中...";
+  }
+  if (divinationCardVisual) {
+    divinationCardVisual.classList.add("shuffling");
+  }
+
+  window.setTimeout(function() {
+    const result = completeDivination("tarot", null, { deferResult: true });
+    if (divinationCardVisual && result && result.image) {
+      divinationCardVisual.classList.remove("shuffling");
+      divinationCardVisual.classList.add("revealed", "revealing");
+      divinationCardVisual.style.backgroundImage = "url('" + withVersion(result.image) + "')";
+    }
+    if (divinationActionButton) {
+      divinationActionButton.textContent = "翻牌中...";
+    }
+    window.setTimeout(function() {
+      if (divinationCardVisual) {
+        divinationCardVisual.classList.remove("revealing");
+      }
+      renderDivinationResult(result, false);
+    }, 620);
+  }, 520);
+}
+
+function startTurtleHold() {
+  if (selectedDivinationMethod !== "turtle" || !hasDivinationMethodUnlocked("turtle") ||
+      hasTodayDivinationResult("turtle", selectedDivinationQuestionId)) {
+    return;
+  }
+
+  turtleHoldTriggered = false;
+  if (turtleHoldTimer) {
+    clearInterval(turtleHoldTimer);
+  }
+  turtleHoldTimer = window.setInterval(function() {
+    turtleHoldTriggered = true;
+    castTurtleCoinsOnce();
+    if (turtleCastLines.length >= 6 && turtleHoldTimer) {
+      clearInterval(turtleHoldTimer);
+      turtleHoldTimer = null;
+    }
+  }, 1100);
+}
+
+function stopTurtleHold() {
+  if (turtleHoldTimer) {
+    clearInterval(turtleHoldTimer);
+    turtleHoldTimer = null;
+  }
+}
+
+function openDivinationPanel() {
+  if (!divinationLayer) {
+    return;
+  }
+
+  closeShop();
+  closeInventoryPanel();
+  closeSoundJournal();
+  closeSettingsMenu();
+  resetDivinationDraft();
+  divinationLayer.classList.remove("hidden");
+  divinationLayer.setAttribute("aria-hidden", "false");
+  document.body.classList.add("divination-open");
+
+  renderDivinationSetup();
+}
+
+function closeDivinationPanel() {
+  if (!divinationLayer) {
+    return;
+  }
+
+  stopTurtleHold();
+  divinationLayer.classList.add("hidden");
+  divinationLayer.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("divination-open");
+}
+
+function setTestDivination(method) {
+  const manager = getDivinationManager();
+
+  if (!manager || !manager.createResult || !isDivinationMethod(method)) {
+    if (typeof console !== "undefined") {
+      console.warn("setTestDivination only accepts: tarot, turtle");
+    }
+    return false;
+  }
+
+  const dateKey = getDivinationDateKey();
+  const result = manager.createResult({
+    method: method,
+    questionId: selectedDivinationQuestionId || "overall",
+    dateKey: dateKey,
+    userSeed: getDivinationUserSeed() + ":test:" + Date.now(),
+    salt: "test"
+  });
+
+  testDivinationOverride = {
+    result: result,
+    effects: result.effects || {}
+  };
+  camperThoughtAction = "";
+  updateDailyCampCard();
+  if (result.effects && Array.isArray(result.effects.thoughtLines) && result.effects.thoughtLines.length > 0) {
+    showCamperThought(result.effects.thoughtLines[0], 3200);
+  }
+  setStatus("Divination test: " + (result.title || method));
+  return result;
+}
+
+function clearTestDivination() {
+  testDivinationOverride = null;
+  camperThoughtAction = "";
+  updateDailyCampCard();
+  setStatus("Divination test cleared.");
+  return true;
+}
+
+function normalizeTestDivinationMethod(method) {
+  if (method === undefined || method === null || method === "") {
+    return selectedDivinationMethod || "";
+  }
+
+  const value = String(method).trim().toLowerCase();
+
+  if (value === "tarot" || value === "card" || value === "cards" || value === "塔罗") {
+    return "tarot";
+  }
+  if (value === "turtle" || value === "shell" || value === "turtleShell" || value === "turtleshell" || value === "龟壳") {
+    return "turtle";
+  }
+
+  return "";
+}
+
+function normalizeTestDivinationQuestion(question) {
+  if (question === undefined || question === null || question === "") {
+    return selectedDivinationQuestionId || "overall";
+  }
+
+  const raw = String(question).trim();
+  const value = raw.toLowerCase();
+  const aliases = {
+    overall: "overall",
+    today: "overall",
+    fortune: "overall",
+    "今日整体": "overall",
+    "今日运势": "overall",
+    "今日運勢": "overall",
+    "运势": "overall",
+    "運勢": "overall",
+    relationship: "relationship",
+    love: "relationship",
+    emotion: "relationship",
+    "情感": "relationship",
+    bodymind: "bodyMind",
+    body: "bodyMind",
+    mind: "bodyMind",
+    health: "bodyMind",
+    "身心": "bodyMind",
+    money: "money",
+    wealth: "money",
+    finance: "money",
+    "钱财": "money",
+    "錢財": "money",
+    "财运": "money",
+    "財運": "money"
+  };
+  const questionId = aliases[value] || aliases[raw] || raw;
+
+  return getDivinationQuestion(questionId) ? questionId : "";
+}
+
+function refreshAfterDivinationTestReset() {
+  testDivinationOverride = null;
+  camperThoughtAction = "";
+  updateDailyCampCard();
+  syncDivinationEntryState();
+
+  if (isDivinationPanelOpen()) {
+    renderDivinationSetup();
+  }
+
+  saveGame();
+}
+
+function repairActiveTodayDivination(dailyDivinations) {
+  if (!dailyDivinations || !dailyDivinations.records) {
+    return;
+  }
+
+  if (getTodayDivinationRecord(dailyDivinations.active && dailyDivinations.active.method, dailyDivinations.active && dailyDivinations.active.question)) {
+    return;
+  }
+
+  dailyDivinations.active = { method: "", question: "" };
+  ["tarot", "turtle"].some(function(method) {
+    return getDivinationQuestionIds().some(function(questionId) {
+      if (dailyDivinations.records[method] && dailyDivinations.records[method][questionId]) {
+        dailyDivinations.active = { method: method, question: questionId };
+        return true;
+      }
+
+      return false;
+    });
+  });
+}
+
+function getDivinationResultSignature(result) {
+  if (!result || typeof result !== "object") {
+    return "";
+  }
+
+  if (result.method === "turtle" || result.type === "turtle") {
+    const lines = Array.isArray(result.lines) ? result.lines.map(function(line) {
+      const coins = line && Array.isArray(line.coins) ? line.coins.map(function(coin) {
+        return coin && coin.side === "yang" ? "Y" : "N";
+      }).join("") : "";
+      return String(line && line.total || "") + coins;
+    }).join("") : "";
+    return "turtle:" + (result.turtleResultId || result.title || "") + ":" + lines;
+  }
+
+  return "tarot:" + (result.cardId || result.title || "") + ":" + (result.orientation || "");
+}
+
+function findNextDivinationRerollSalt(method, questionId, currentSalt, previousResult) {
+  const firstSalt = Math.max(0, Math.floor(Number(currentSalt) || 0)) + 1;
+  const previousSignature = getDivinationResultSignature(previousResult);
+  const manager = getDivinationManager();
+
+  if (!previousSignature || !manager || !manager.createResult) {
+    return firstSalt;
+  }
+
+  for (let rerollSalt = firstSalt; rerollSalt < firstSalt + 256; rerollSalt += 1) {
+    const candidate = manager.createResult({
+      method: method,
+      questionId: questionId,
+      dateKey: getDivinationDateKey(),
+      userSeed: getDivinationUserSeed(),
+      salt: "daily:" + rerollSalt
+    });
+    if (getDivinationResultSignature(candidate) !== previousSignature) {
+      return rerollSalt;
+    }
+  }
+
+  return firstSalt;
+}
+
+function resetTodayDivination(method, question) {
+  const normalizedMethod = normalizeTestDivinationMethod(method);
+  const normalizedQuestion = normalizeTestDivinationQuestion(question);
+
+  if (!isDivinationMethod(normalizedMethod) || !normalizedQuestion) {
+    if (typeof console !== "undefined") {
+      console.warn('resetTodayDivination usage: resetTodayDivination("tarot", "money") or resetTodayDivination("turtle", "情感")');
+    }
+    return false;
+  }
+
+  const dailyDivinations = ensureTodayDivinationsForToday();
+  if (!dailyDivinations.records[normalizedMethod]) {
+    dailyDivinations.records[normalizedMethod] = {};
+  }
+  if (!dailyDivinations.rerollSalt) {
+    dailyDivinations.rerollSalt = { tarot: {}, turtle: {} };
+  }
+  if (!dailyDivinations.rerollSalt[normalizedMethod]) {
+    dailyDivinations.rerollSalt[normalizedMethod] = {};
+  }
+
+  const previousRecord = dailyDivinations.records[normalizedMethod][normalizedQuestion];
+  delete dailyDivinations.records[normalizedMethod][normalizedQuestion];
+  dailyDivinations.rerollSalt[normalizedMethod][normalizedQuestion] =
+    findNextDivinationRerollSalt(
+      normalizedMethod,
+      normalizedQuestion,
+      dailyDivinations.rerollSalt[normalizedMethod][normalizedQuestion],
+      previousRecord && previousRecord.result
+    );
+  repairActiveTodayDivination(dailyDivinations);
+  turtleCastLines = [];
+  resetTurtleCastAnimationState();
+  refreshAfterDivinationTestReset();
+  setStatus("Divination reset: " + normalizedMethod + " / " + normalizedQuestion);
+  return true;
+}
+
+function resetAllTodayDivinations() {
+  const previous = ensureTodayDivinationsForToday();
+  const reset = createEmptyTodayDivinations(getDivinationDateKey());
+  ["tarot", "turtle"].forEach(function(method) {
+    getDivinationQuestionIds().forEach(function(questionId) {
+      const previousMethodSalt = previous.rerollSalt && previous.rerollSalt[method];
+      const previousRecord = previous.records && previous.records[method] && previous.records[method][questionId];
+      reset.rerollSalt[method][questionId] =
+        findNextDivinationRerollSalt(
+          method,
+          questionId,
+          previousMethodSalt && previousMethodSalt[questionId],
+          previousRecord && previousRecord.result
+        );
+    });
+  });
+  gameState.todayDivinations = reset;
+  turtleCastLines = [];
+  resetTurtleCastAnimationState();
+  refreshAfterDivinationTestReset();
+  setStatus("All today divinations reset.");
+  return true;
+}
+
+// Fired when an interaction begins. Discovers + plays the mapped sounds.
+function triggerInteractionSounds(triggerKey) {
+  const trigger = getSoundTriggers()[triggerKey];
+
+  if (!trigger) {
+    return;
+  }
+
+  const manager = getSoundManager();
+
+  startSoundSystem();
+
+  (trigger.oneshot || []).forEach(function(id) {
+    discoverSound(id);
+    if (manager) {
+      manager.playOneShot(id);
+    }
+  });
+
+  (trigger.ambient || []).forEach(function(id) {
+    discoverSound(id);
+    startActivityAmbience(id);
+  });
+}
+
+// Called at the start of every camper action. Ends the previous activity's
+// temporary ambience and, if the new action is a sound-bearing interaction,
+// discovers + plays its sounds.
+function handleActivitySoundStart(action, activityId) {
+  stopActivityAmbience();
+
+  if (activityId && getSoundTriggers()[activityId]) {
+    triggerInteractionSounds(activityId);
+    return;
+  }
+
+  // Campfire is fire-linked, not a temporary activity loop: tending the fire
+  // discovers it (which defaults it on), then it follows the burning state.
+  if (action === "sittingByFire" || action === "addingWoodToFire") {
+    startSoundSystem();
+    discoverSound(FIRE_LINKED_LOOP);
+    syncCampfireAmbient();
+  }
+}
+
+// Start a loop just for the current activity. If the player has already pinned
+// it as persistent ambient, leave that alone (it is already playing).
+function startActivityAmbience(id) {
+  const manager = getSoundManager();
+
+  if (!manager || !isLoopSoundId(id)) {
+    return;
+  }
+
+  if (isAmbientEnabled(id)) {
+    manager.startLoop(id);
+    return;
+  }
+
+  temporaryAmbientLoops.add(id);
+  manager.startLoop(id);
+}
+
+// Stop any temporary activity loops that the player has not pinned.
+function stopActivityAmbience() {
+  if (temporaryAmbientLoops.size === 0) {
+    return;
+  }
+
+  const manager = getSoundManager();
+
+  temporaryAmbientLoops.forEach(function(id) {
+    if (!isAmbientEnabled(id) && manager) {
+      manager.stopLoop(id);
+    }
+  });
+
+  temporaryAmbientLoops.clear();
+}
+
+// Player toggles a pinned ambient loop in the journal.
+function setAmbientEnabled(id, enabled) {
+  if (!isLoopSoundId(id) || !isSoundDiscovered(id)) {
+    return;
+  }
+
+  const journal = getSoundJournalState();
+  const manager = getSoundManager();
+  const index = journal.enabledAmbient.indexOf(id);
+
+  if (enabled) {
+    if (index === -1) {
+      journal.enabledAmbient.push(id);
+    }
+    temporaryAmbientLoops.delete(id); // now a persistent loop, not temporary
+  } else if (index !== -1) {
+    journal.enabledAmbient.splice(index, 1);
+  }
+
+  if (id === FIRE_LINKED_LOOP) {
+    // campfire only plays while the fire burns, even when toggled on
+    startSoundSystem().then(syncCampfireAmbient);
+    syncCampfireAmbient();
+  } else if (enabled) {
+    startSoundSystem().then(function() {
+      if (manager) {
+        manager.startLoop(id);
+      }
+    });
+  } else if (manager) {
+    manager.stopLoop(id);
+  }
+
+  saveGame();
+  refreshSoundJournalView();
+}
+
+function setSoundMasterVolume(value) {
+  const journal = getSoundJournalState();
+  const manager = getSoundManager();
+  const volume = Math.max(0, Math.min(1, Number(value) || 0));
+
+  journal.masterVolume = volume;
+
+  if (manager) {
+    manager.setMasterVolume(volume);
+  }
+
+  saveGame();
+}
+
+function setSoundMuted(muted) {
+  const journal = getSoundJournalState();
+  const manager = getSoundManager();
+
+  journal.muted = Boolean(muted);
+
+  if (manager) {
+    manager.setMuted(journal.muted);
+  }
+
+  saveGame();
+  syncSoundControls();
+}
+
+// ---- Sound Journal panel ----
+function isSoundJournalOpen() {
+  return Boolean(soundJournalLayer && !soundJournalLayer.classList.contains("hidden"));
+}
+
+function openSoundJournal() {
+  if (!soundJournalLayer) {
+    return;
+  }
+
+  startSoundSystem();
+  closeShop();
+  closeInventoryPanel();
+  renderSoundJournal();
+  syncSoundControls();
+  soundJournalLayer.classList.remove("hidden");
+  soundJournalLayer.setAttribute("aria-hidden", "false");
+  document.body.classList.add("sound-journal-open");
+}
+
+function closeSoundJournal() {
+  if (!soundJournalLayer) {
+    return;
+  }
+
+  soundJournalLayer.classList.add("hidden");
+  soundJournalLayer.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("sound-journal-open");
+}
+
+function refreshSoundJournalView() {
+  if (isSoundJournalOpen()) {
+    renderSoundJournal();
+  }
+}
+
+function syncSoundControls() {
+  const journal = getSoundJournalState();
+
+  if (soundVolumeSlider) {
+    soundVolumeSlider.value = String(Math.round(journal.masterVolume * 100));
+  }
+
+  if (soundMasterToggle) {
+    soundMasterToggle.classList.toggle("muted", journal.muted);
+    soundMasterToggle.setAttribute("aria-pressed", journal.muted ? "true" : "false");
+    soundMasterToggle.textContent = journal.muted ? "🔇 静音中" : "🔊 开启";
+  }
+}
+
+function renderSoundJournal() {
+  if (!soundJournalList) {
+    return;
+  }
+
+  soundJournalList.textContent = "";
+
+  const sounds = getSoundCatalogSounds();
+  const discoveredCount = sounds.filter(function(entry) {
+    return isSoundDiscovered(entry.id);
+  }).length;
+
+  sounds.forEach(function(entry) {
+    soundJournalList.appendChild(createSoundJournalRow(entry));
+  });
+
+  const summary = document.createElement("p");
+  summary.className = "sound-journal-summary";
+  summary.textContent = "已发现 " + discoveredCount + " / " + sounds.length + " 种声音";
+  soundJournalList.appendChild(summary);
+}
+
+function createSoundJournalRow(entry) {
+  const discovered = isSoundDiscovered(entry.id);
+  const isLoop = entry.type === "loop";
+
+  const row = document.createElement("div");
+  row.className = "sound-journal-row";
+  row.classList.toggle("locked", !discovered);
+  row.classList.toggle("is-loop", isLoop);
+
+  const icon = document.createElement("span");
+  icon.className = "sound-journal-icon";
+  icon.setAttribute("aria-hidden", "true");
+  icon.textContent = discovered ? (isLoop ? "🎧" : "✨") : "🔒";
+  row.appendChild(icon);
+
+  const copy = document.createElement("div");
+  copy.className = "sound-journal-copy";
+
+  const title = document.createElement("h3");
+  title.className = "sound-journal-name";
+  title.textContent = discovered ? entry.name : "？？？";
+  copy.appendChild(title);
+
+  const desc = document.createElement("p");
+  desc.className = "sound-journal-desc";
+  desc.textContent = discovered ? entry.description : (entry.lockedHint || "继续探索营地就能发现。");
+  copy.appendChild(desc);
+
+  row.appendChild(copy);
+
+  const control = document.createElement("div");
+  control.className = "sound-journal-control";
+
+  if (!discovered) {
+    const lockTag = document.createElement("span");
+    lockTag.className = "sound-journal-tag locked-tag";
+    lockTag.textContent = "未发现";
+    control.appendChild(lockTag);
+  } else if (isLoop) {
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "sound-journal-toggle";
+    const on = isAmbientEnabled(entry.id);
+    toggle.classList.toggle("on", on);
+    toggle.setAttribute("aria-pressed", on ? "true" : "false");
+    toggle.setAttribute("aria-label", (on ? "关闭" : "开启") + entry.name + "循环");
+    const knob = document.createElement("span");
+    knob.className = "sound-journal-knob";
+    toggle.appendChild(knob);
+    toggle.addEventListener("click", function() {
+      setAmbientEnabled(entry.id, !isAmbientEnabled(entry.id));
+    });
+    control.appendChild(toggle);
+  } else {
+    const foundTag = document.createElement("span");
+    foundTag.className = "sound-journal-tag found-tag";
+    foundTag.textContent = "已发现";
+    control.appendChild(foundTag);
+  }
+
+  row.appendChild(control);
+  return row;
+}
+
+// ---------------------------------------------------------------------------
+// Settings menu (opened from the Help button). Houses the tutorials and Reset.
+// ---------------------------------------------------------------------------
+function isSettingsMenuOpen() {
+  return Boolean(settingsLayer && !settingsLayer.classList.contains("hidden"));
+}
+
+function openSettingsMenu() {
+  if (!settingsLayer) {
+    return;
+  }
+
+  closeShop();
+  closeInventoryPanel();
+  closeSoundJournal();
+  collapseTutorialList();
+  settingsLayer.classList.remove("hidden");
+  settingsLayer.setAttribute("aria-hidden", "false");
+  document.body.classList.add("settings-open");
+}
+
+function closeSettingsMenu() {
+  if (!settingsLayer) {
+    return;
+  }
+
+  settingsLayer.classList.add("hidden");
+  settingsLayer.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("settings-open");
+}
+
+function collapseTutorialList() {
+  if (settingsTutorialList) {
+    settingsTutorialList.classList.add("hidden");
+  }
+  if (settingsTutorialToggle) {
+    settingsTutorialToggle.setAttribute("aria-expanded", "false");
+    settingsTutorialToggle.classList.remove("expanded");
+  }
+}
+
+function toggleTutorialList() {
+  if (!settingsTutorialList || !settingsTutorialToggle) {
+    return;
+  }
+  const expanded = settingsTutorialList.classList.toggle("hidden") === false;
+  settingsTutorialToggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+  settingsTutorialToggle.classList.toggle("expanded", expanded);
+}
+
+// Replay a tutorial from the menu. "onboarding" is the original Help guide;
+// "buildMode" is the Build Mode standalone guide.
+function playTutorialFromMenu(guideId) {
+  closeSettingsMenu();
+
+  if (guideId === "onboarding") {
+    startOnboarding(true);
+    return;
+  }
+
+  if (guideId === "buildMode") {
+    startStandaloneGuide("buildMode");
+    if (!onboardingActive) {
+      // guards blocked it (e.g. another guide is open); nudge instead.
+      setStatus("先关掉其它引导再重看建造模式指引。");
+    }
+  }
+}
+
 shopToggle.addEventListener("click", toggleShop);
 closeShopButton.addEventListener("click", closeShop);
 shopBackdrop.addEventListener("click", closeShop);
+if (inventoryCloseButton) {
+  inventoryCloseButton.addEventListener("click", closeInventoryPanel);
+}
+if (inventoryLayer) {
+  inventoryLayer.addEventListener("click", function(event) {
+    if (event.target === inventoryLayer) {
+      closeInventoryPanel();
+    }
+  });
+}
+if (inventoryPanel) {
+  inventoryPanel.addEventListener("click", function(event) {
+    event.stopPropagation();
+  });
+}
+if (soundJournalButton) {
+  soundJournalButton.addEventListener("click", function() {
+    if (isSoundJournalOpen()) {
+      closeSoundJournal();
+    } else {
+      openSoundJournal();
+    }
+  });
+}
+if (soundJournalCloseButton) {
+  soundJournalCloseButton.addEventListener("click", closeSoundJournal);
+}
+if (soundJournalLayer) {
+  soundJournalLayer.addEventListener("click", function(event) {
+    if (event.target === soundJournalLayer) {
+      closeSoundJournal();
+    }
+  });
+}
+if (soundJournalPanel) {
+  soundJournalPanel.addEventListener("click", function(event) {
+    event.stopPropagation();
+  });
+}
+if (soundMasterToggle) {
+  soundMasterToggle.addEventListener("click", function() {
+    setSoundMuted(!getSoundJournalState().muted);
+  });
+}
+if (soundVolumeSlider) {
+  soundVolumeSlider.addEventListener("input", function() {
+    setSoundMasterVolume((Number(soundVolumeSlider.value) || 0) / 100);
+  });
+}
+if (divinationButton) {
+  divinationButton.addEventListener("click", openDivinationPanel);
+}
+if (divinationCloseButton) {
+  divinationCloseButton.addEventListener("click", closeDivinationPanel);
+}
+if (divinationLayer) {
+  divinationLayer.addEventListener("click", function(event) {
+    if (event.target === divinationLayer) {
+      closeDivinationPanel();
+    }
+  });
+}
+if (divinationPanel) {
+  divinationPanel.addEventListener("click", function(event) {
+    event.stopPropagation();
+  });
+}
+if (divinationActionButton) {
+  divinationActionButton.addEventListener("click", function() {
+    if (turtleHoldTriggered) {
+      turtleHoldTriggered = false;
+      return;
+    }
+    handleDivinationAction();
+  });
+  divinationActionButton.addEventListener("pointerdown", startTurtleHold);
+  divinationActionButton.addEventListener("pointerup", stopTurtleHold);
+  divinationActionButton.addEventListener("pointercancel", stopTurtleHold);
+  divinationActionButton.addEventListener("pointerleave", stopTurtleHold);
+}
+if (turtleShellButton) {
+  turtleShellButton.addEventListener("click", function() {
+    if (selectedDivinationMethod === "turtle" &&
+        hasDivinationMethodUnlocked("turtle") &&
+        !hasTodayDivinationResult("turtle", selectedDivinationQuestionId)) {
+      castTurtleCoinsOnce();
+    }
+  });
+}
+if (dailyCampDrawerToggle) {
+  dailyCampDrawerToggle.addEventListener("click", toggleDailyCampDrawer);
+}
 campScene.addEventListener("click", handleCampSceneClick);
 if (sceneContent) {
   sceneContent.addEventListener("pointerdown", handleBuildScenePointerDown);
@@ -8298,8 +12241,44 @@ if (camperProfileButton) {
   });
 }
 onboardingHelpButton.addEventListener("click", function() {
-  startOnboarding(true);
+  if (isSettingsMenuOpen()) {
+    closeSettingsMenu();
+  } else {
+    openSettingsMenu();
+  }
 });
+if (settingsCloseButton) {
+  settingsCloseButton.addEventListener("click", closeSettingsMenu);
+}
+if (settingsLayer) {
+  settingsLayer.addEventListener("click", function(event) {
+    if (event.target === settingsLayer) {
+      closeSettingsMenu();
+    }
+  });
+}
+if (settingsPanel) {
+  settingsPanel.addEventListener("click", function(event) {
+    event.stopPropagation();
+  });
+}
+if (settingsTutorialToggle) {
+  settingsTutorialToggle.addEventListener("click", toggleTutorialList);
+}
+if (settingsTutorialList) {
+  settingsTutorialList.addEventListener("click", function(event) {
+    const button = event.target && event.target.closest ? event.target.closest("[data-guide]") : null;
+    if (button) {
+      playTutorialFromMenu(button.dataset.guide);
+    }
+  });
+}
+if (settingsResetItem) {
+  settingsResetItem.addEventListener("click", function() {
+    closeSettingsMenu();
+    confirmResetSave();
+  });
+}
 onboardingPrimaryButton.addEventListener("click", advanceOnboarding);
 onboardingSkipButton.addEventListener("click", function() {
   completeOnboarding(true);
@@ -8344,13 +12323,38 @@ if (camperRecustomizeButton) {
     startCamperProfileFlow("appearanceOnly");
   });
 }
-resetSaveButton.addEventListener("click", confirmResetSave);
+if (resetSaveButton) {
+  resetSaveButton.addEventListener("click", confirmResetSave);
+}
 
 if (typeof window !== "undefined") {
+  window.setTestWeather = setTestWeather;
+  window.clearTestWeather = clearTestWeather;
+  window.setTestDivination = setTestDivination;
+  window.clearTestDivination = clearTestDivination;
+  window.resetTodayDivination = resetTodayDivination;
+  window.resetAllTodayDivinations = resetAllTodayDivinations;
   window.addEventListener("beforeunload", saveGame);
   window.addEventListener("pointermove", updateBuildDrag);
   window.addEventListener("pointerup", finishBuildDrag);
   window.addEventListener("pointercancel", finishBuildDrag);
+  window.addEventListener("keydown", function(event) {
+    if (event.key === "Escape" && isInventoryPanelOpen()) {
+      closeInventoryPanel();
+    }
+    if (event.key === "Escape" && isSoundJournalOpen()) {
+      closeSoundJournal();
+    }
+    if (event.key === "Escape" && isSettingsMenuOpen()) {
+      closeSettingsMenu();
+    }
+    if (event.key === "Escape" && isDivinationPanelOpen()) {
+      closeDivinationPanel();
+    }
+    if (event.key === "Escape" && dailyCampDrawerExpanded) {
+      setDailyCampDrawerExpanded(false);
+    }
+  });
   window.addEventListener("resize", function() {
     syncSceneScale();
     positionOnboardingLayer();
@@ -8367,6 +12371,7 @@ spawnWood();
 spawnWood();
 setShopFilter("all");
 applyUiDisplayMode();
+initSoundSystem();
 updateScreen();
 updateCamperView();
 chooseNextCamperAction();

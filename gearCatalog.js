@@ -818,7 +818,7 @@
       cost: 75, comfort: 3, 
       detail: "+3 Comfort", 
       image: imagePath("activity", "fishingRod", "png"), 
-      scene: scene({ x: 45, y: 50 }, 15, 16, { mirrored: true }) }),
+      scene: scene({ x: 68, y: 41 }, 15, 16, { mirrored: true, movable: false }) }),
     gear({ id: "campBoardGame", 
       category: "activity", 
       shopGroup: "activity", 

@@ -15,10 +15,18 @@ assets/
   characters/
   gear/
   resources/
+  sounds/             白噪音循环 + 短音效 (WAV)
   ui/
   reference/          dev only
   generated_sources/  dev only
 ```
+
+## 声音资源
+
+- `assets/sounds/` 是程序生成的真实 WAV（mono 22050Hz 16-bit）。
+- 循环（无缝）：`lake_water_loop`、`campfire_crackle_loop`、`birds_morning_loop`、`cooking_sizzle_loop`。
+- 短音效：`cooler_open`、`fishing_line`。
+- 由 `soundManager.js` 用 Web Audio (`AudioBufferSourceNode loop=true`) 无缝循环播放；替换时保持同名、无缝首尾。生成脚本见开发记录（非运行时依赖）。
 
 Gear 资源路径：
 

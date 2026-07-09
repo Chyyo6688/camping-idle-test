@@ -1,0 +1,93 @@
+{
+  "frameWidth": 128,
+  "frameHeight": 144,
+  "columns": 4,
+  "rows": 3,
+  "source": "assets/characters/activity_sprites.png",
+  "runtimeMode": "layered-camper-sheets",
+  "runtimeSheet": {
+    "columns": 7,
+    "rows": 5,
+    "frameNames": [
+      "camper_idle.png",
+      "camper_walk_01.png",
+      "camper_walk_02.png",
+      "camper_walk_03.png",
+      "camper_walk_04.png",
+      "camper_walk_05.png",
+      "camper_walk_06.png",
+      "camper_carry_wood _01.png",
+      "camper_carry_wood _02.png",
+      "camper_carry_wood _03.png",
+      "camper_carry_wood _04.png",
+      "camper_carry_wood _05.png",
+      "camper_carry_wood _06.png",
+      "camper_carry_wood.png",
+      "camper_sit.png",
+      "camper_sit_ground.png",
+      "camper_sit_chair.png",
+      "camper_look_lake_back.png",
+      "camper_rest.png",
+      "camper_activity_cook_01.png",
+      "camper_activity_cook_02.png",
+      "camper_activity_cook_03.png",
+      "camper_activity_cook_04.png",
+      "camper_activity_fish_01.png",
+      "camper_activity_fish_02.png",
+      "camper_activity_fish_03.png",
+      "camper_activity_fish_04.png",
+      "camper_activity_birdwatch_01.png",
+      "camper_activity_birdwatch_02.png",
+      "camper_activity_birdwatch_03.png",
+      "camper_activity_birdwatch_04.png"
+    ]
+  },
+  "activities": {
+    "cook": {
+      "label": "Cook",
+      "frameNames": [
+        "camper_activity_cook_01.png",
+        "camper_activity_cook_02.png",
+        "camper_activity_cook_03.png",
+        "camper_activity_cook_04.png"
+      ],
+      "status": "placeholder_from_existing_layer_frames"
+    },
+    "fish": {
+      "label": "Fish",
+      "frameNames": [
+        "camper_activity_fish_01.png",
+        "camper_activity_fish_02.png",
+        "camper_activity_fish_03.png",
+        "camper_activity_fish_04.png"
+      ],
+      "status": "placeholder_from_existing_layer_frames"
+    },
+    "birdwatch": {
+      "label": "Birdwatch",
+      "frameNames": [
+        "camper_activity_birdwatch_01.png",
+        "camper_activity_birdwatch_02.png",
+        "camper_activity_birdwatch_03.png",
+        "camper_activity_birdwatch_04.png"
+      ],
+      "status": "placeholder_from_existing_layer_frames"
+    }
+  },
+  "imageGenReference": "assets/characters/activity_sprites_imagegen_reference.png",
+  "finalLayerArtNeeded": [
+    "camper_activity_cook_01.png",
+    "camper_activity_cook_02.png",
+    "camper_activity_cook_03.png",
+    "camper_activity_cook_04.png",
+    "camper_activity_fish_01.png",
+    "camper_activity_fish_02.png",
+    "camper_activity_fish_03.png",
+    "camper_activity_fish_04.png",
+    "camper_activity_birdwatch_01.png",
+    "camper_activity_birdwatch_02.png",
+    "camper_activity_birdwatch_03.png",
+    "camper_activity_birdwatch_04.png"
+  ],
+  "notes": "The runtime-compatible layer sheets contain safe placeholders copied from existing camper frames. Final activity-specific per-layer art is still needed for body, face, hair, clothing, and accessory layers."
+}
