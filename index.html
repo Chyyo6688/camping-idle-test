@@ -84,6 +84,8 @@
         </div>
       </section>
 
+      <button id="coolerFullHint" class="cooler-full-hint hidden" type="button" title="冷藏箱已满，请清理。" aria-label="冷藏箱已满，请清理。">!</button>
+
       <nav class="mode-controls" aria-label="Camp mode controls">
         <button id="gatherWoodToggle" class="mode-button gather-button active" type="button">
           <img class="button-icon" src="assets/ui/icon_gather_wood.png?v=3.0" alt="">
@@ -193,7 +195,15 @@
                 <div id="inventoryMealList" class="inventory-list"></div>
               </section>
             </div>
+
+            <div id="inventoryFishMenu" class="inventory-fish-menu hidden" role="menu" aria-hidden="true"></div>
           </section>
+        </div>
+
+        <div id="koiReleaseCinematic" class="koi-release-cinematic hidden" aria-hidden="true" aria-label="金色锦鲤放生动画">
+          <video id="koiReleaseVideo" class="koi-release-video" preload="auto" muted playsinline poster="assets/cinematics/koi_release/lake_shore_portrait_v1.png?v=3.1">
+            <source src="assets/cinematics/koi_release/koi_release_v1.mp4" type="video/mp4">
+          </video>
         </div>
 
         <div id="settingsLayer" class="settings-layer hidden" aria-hidden="true" aria-live="polite">

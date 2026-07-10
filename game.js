@@ -201,10 +201,14 @@ const defaultGameState = {
     attempts: 0,
     caught: 0,
     released: 0,
+    releasedByPlayer: 0,
+    koiReleaseAnimationSeen: false,
     firstStoredFishGuideSeen: false
   },
   cooking: {
-    cooked: 0
+    cooked: 0,
+    autoCookDate: "",
+    autoCookedToday: 0
   },
   dailyWeather: {
     userSeed: "",
@@ -469,6 +473,8 @@ let turtleHoldTriggered = false;
 let turtleCastPending = false;
 let turtleCastPhase = "idle";
 let turtlePendingLine = null;
+let activeInventoryFishMenuId = "";
+let koiReleaseCinematicTimer = null;
 
 // These variables connect JavaScript to the HTML.
 const cozyPointsAmount = document.getElementById("cozyPointsAmount");
@@ -559,6 +565,10 @@ const inventoryCloseButton = document.getElementById("inventoryCloseButton");
 const inventoryFishList = document.getElementById("inventoryFishList");
 const inventoryMealList = document.getElementById("inventoryMealList");
 const inventoryStatsLine = document.getElementById("inventoryStatsLine");
+const inventoryFishMenu = document.getElementById("inventoryFishMenu");
+const coolerFullHint = document.getElementById("coolerFullHint");
+const koiReleaseCinematic = document.getElementById("koiReleaseCinematic");
+const koiReleaseVideo = document.getElementById("koiReleaseVideo");
 const soundJournalButton = document.getElementById("soundJournalButton");
 const soundJournalLayer = document.getElementById("soundJournalLayer");
 const soundJournalPanel = document.getElementById("soundJournalPanel");
@@ -897,7 +907,7 @@ const fishingOutcomeTable = [
   { id: "common", weight: 46 },
   { id: "uncommon", weight: 15 },
   { id: "rare", weight: 5 },
-  { id: "turtle", weight: 2 }
+  { id: "turtle", weight: 8 }
 ];
 
 const mealCatalog = {
@@ -911,6 +921,9 @@ const mealCatalog = {
 
 const cookingComfortMealCap = 0;
 const cookingCozyReward = 0;
+const fishInventoryCapacity = 20;
+const dailyAutoCookingLimit = 20;
+const koiReleaseAnimationThreshold = 10;
 
 let activeShopFilter = "all";
 let statusToastTimer = null;
@@ -2036,11 +2049,46 @@ function sanitizeCountMap(counts, catalog) {
   return cleanCounts;
 }
 
+function getFishStoragePriority(id) {
+  const fish = getFishDefinition(id);
+  const rarityPriority = {
+    rare: 0,
+    uncommon: 1,
+    common: 2
+  };
+
+  return fish && Object.prototype.hasOwnProperty.call(rarityPriority, fish.rarity) ? rarityPriority[fish.rarity] : 3;
+}
+
+function capFishCountMapToCapacity(counts) {
+  const cleanCounts = {};
+  const sourceCounts = counts && typeof counts === "object" && !Array.isArray(counts) ? counts : {};
+  let remaining = fishInventoryCapacity;
+
+  Object.keys(sourceCounts)
+    .sort(function(firstId, secondId) {
+      const priorityDifference = getFishStoragePriority(firstId) - getFishStoragePriority(secondId);
+      return priorityDifference !== 0 ? priorityDifference : Object.keys(fishCatalog).indexOf(firstId) - Object.keys(fishCatalog).indexOf(secondId);
+    })
+    .forEach(function(id) {
+      const count = Math.max(0, Math.floor(Number(sourceCounts[id]) || 0));
+      const keptCount = Math.min(count, remaining);
+
+      if (keptCount > 0) {
+        cleanCounts[id] = keptCount;
+        remaining -= keptCount;
+      }
+    });
+
+  return cleanCounts;
+}
+
 function sanitizeInventory(inventory) {
   const sourceInventory = inventory && typeof inventory === "object" && !Array.isArray(inventory) ? inventory : {};
+  const fish = sanitizeCountMap(sourceInventory.fish, fishCatalog);
 
   return {
-    fish: sanitizeCountMap(sourceInventory.fish, fishCatalog),
+    fish: capFishCountMapToCapacity(fish),
     meals: sanitizeCountMap(sourceInventory.meals, mealCatalog)
   };
 }
@@ -2052,6 +2100,8 @@ function sanitizeFishingProgress(progress) {
     attempts: Math.max(0, Math.floor(Number(sourceProgress.attempts) || 0)),
     caught: Math.max(0, Math.floor(Number(sourceProgress.caught) || 0)),
     released: Math.max(0, Math.floor(Number(sourceProgress.released) || 0)),
+    releasedByPlayer: Math.max(0, Math.floor(Number(sourceProgress.releasedByPlayer) || 0)),
+    koiReleaseAnimationSeen: Boolean(sourceProgress.koiReleaseAnimationSeen),
     firstStoredFishGuideSeen: Boolean(sourceProgress.firstStoredFishGuideSeen)
   };
 }
@@ -2060,7 +2110,9 @@ function sanitizeCookingProgress(progress) {
   const sourceProgress = progress && typeof progress === "object" && !Array.isArray(progress) ? progress : {};
 
   return {
-    cooked: Math.max(0, Math.floor(Number(sourceProgress.cooked) || 0))
+    cooked: Math.max(0, Math.floor(Number(sourceProgress.cooked) || 0)),
+    autoCookDate: typeof sourceProgress.autoCookDate === "string" ? sourceProgress.autoCookDate : "",
+    autoCookedToday: Math.max(0, Math.floor(Number(sourceProgress.autoCookedToday) || 0))
   };
 }
 
@@ -2808,6 +2860,18 @@ function getInventoryTotal(type, state) {
   }, 0);
 }
 
+function getFishInventoryTotal(state) {
+  return getInventoryTotal("fish", state);
+}
+
+function getAvailableFishStorageSlots(state) {
+  return Math.max(0, fishInventoryCapacity - getFishInventoryTotal(state));
+}
+
+function isFishInventoryFull(state) {
+  return getAvailableFishStorageSlots(state) <= 0;
+}
+
 function addInventoryItem(type, id, count, state) {
   const catalog = getInventoryCatalog(type);
 
@@ -2817,7 +2881,13 @@ function addInventoryItem(type, id, count, state) {
 
   const bucket = getInventoryBucket(type, state);
   const addCount = Math.max(1, Math.floor(Number(count) || 1));
-  bucket[id] = getInventoryItemCount(type, id, state) + addCount;
+  const availableCount = type === "fish" ? Math.min(addCount, getAvailableFishStorageSlots(state)) : addCount;
+
+  if (availableCount <= 0) {
+    return false;
+  }
+
+  bucket[id] = getInventoryItemCount(type, id, state) + availableCount;
   return true;
 }
 
@@ -2869,6 +2939,31 @@ function getCookingProgress(state) {
 
   campState.cooking = sanitizeCookingProgress(campState.cooking);
   return campState.cooking;
+}
+
+function getCookingDailyProgress(state) {
+  const progress = getCookingProgress(state);
+  const dateKey = getLocalDateKey();
+
+  if (progress.autoCookDate !== dateKey) {
+    progress.autoCookDate = dateKey;
+    progress.autoCookedToday = 0;
+  }
+
+  return progress;
+}
+
+function getAutoCookedToday(state) {
+  return getCookingDailyProgress(state).autoCookedToday;
+}
+
+function canAutoCookToday(state) {
+  return getAutoCookedToday(state) < dailyAutoCookingLimit;
+}
+
+function recordAutoCookingCompletion(state) {
+  const progress = getCookingDailyProgress(state);
+  progress.autoCookedToday = Math.min(dailyAutoCookingLimit, progress.autoCookedToday + 1);
 }
 
 function isCoolerItem(item) {
@@ -2971,8 +3066,26 @@ function unlockTurtleShellDivination() {
   return true;
 }
 
+function getCoolerFullMessage() {
+  return "冷藏箱已满，请清理。";
+}
+
+function getAutoCookingLimitMessage() {
+  return "今天自动做菜已经到 " + dailyAutoCookingLimit + " 道，小人先不继续做饭。";
+}
+
 function handleFishingActivityCompletion() {
   const progress = getFishingProgress();
+
+  if (hasInventoryStorageUnlocked() && isFishInventoryFull()) {
+    progress.attempts += 1;
+    setStatus(getCoolerFullMessage());
+    showCamperThought("冷藏箱已经满了。");
+    updateScreen();
+    saveGame();
+    return;
+  }
+
   const result = chooseFishingResult();
 
   progress.attempts += 1;
@@ -3006,12 +3119,22 @@ function handleFishingActivityCompletion() {
     return;
   }
 
-  addInventoryItem("fish", fish.id, 1);
+  if (!addInventoryItem("fish", fish.id, 1)) {
+    progress.released += 1;
+    showCamperThought("钓到" + fish.displayName + "，但冷藏箱满了，只好放回湖里。");
+    setStatus(getCoolerFullMessage());
+    updateScreen();
+    saveGame();
+    return;
+  }
+
   showCamperThought("钓到" + fish.displayName + "。");
 
   if (!progress.firstStoredFishGuideSeen && hasPlacedInventoryCooler()) {
     progress.firstStoredFishGuideSeen = true;
     setStatus("第一条鱼进冷藏箱了。点击已放置的冷藏箱查看库存。");
+  } else if (isFishInventoryFull()) {
+    setStatus(fish.rarityLabel + "：" + fish.displayName + " 已放进冷藏箱。冷藏箱已满，请清理。");
   } else {
     setStatus(fish.rarityLabel + "：" + fish.displayName + " 已放进冷藏箱。");
   }
@@ -3028,15 +3151,35 @@ function getNoFoodCookingMessage() {
   return "没有可用食材。先去湖边钓一条鱼吧。";
 }
 
-function handleCookingActivityCompletion() {
-  const fishId = getFirstAvailableFishId();
+function getCookingSuccessStatus(fish, source) {
+  const autoProgressText = source === "auto" ?
+    " 今日自动做菜 " + getAutoCookedToday() + "/" + dailyAutoCookingLimit + "。" :
+    "";
+
+  if (cookingCozyReward > 0) {
+    return "做出烤湖鱼：+" + cookingCozyReward + " Cozy Points。消耗了" + fish.displayName + "。" + autoProgressText;
+  }
+
+  return "做出烤湖鱼，消耗了" + fish.displayName + "。" + autoProgressText;
+}
+
+function cookFishFromInventory(fishId, options) {
+  const actionOptions = options || {};
+  const source = actionOptions.source || "manual";
   const fish = getFishDefinition(fishId);
+
+  if (source === "auto" && !canAutoCookToday()) {
+    setStatus(getAutoCookingLimitMessage());
+    showCamperThought("今天先不再开火了。");
+    saveGame();
+    return false;
+  }
 
   if (!hasCookingStationAvailable()) {
     setStatus("需要炉具或 camp kitchen 才能做饭。");
     showCamperThought("还没有能做饭的地方。");
     saveGame();
-    return;
+    return false;
   }
 
   if (!fish || !removeInventoryItem("fish", fishId, 1)) {
@@ -3044,27 +3187,49 @@ function handleCookingActivityCompletion() {
     setStatus(message);
     showCamperThought("没有可用食材。");
     saveGame();
-    return;
+    return false;
   }
 
   addInventoryItem("meals", "simpleGrilledFish", 1);
   getCookingProgress().cooked += 1;
-  gameState.cozyPoints += cookingCozyReward;
+
+  if (source === "auto") {
+    recordAutoCookingCompletion();
+  }
+
+  if (cookingCozyReward > 0) {
+    gameState.cozyPoints += cookingCozyReward;
+  }
 
   showCamperThought("把" + fish.displayName + "烤得香香的。");
-  setStatus("做出烤湖鱼：+" + cookingCozyReward + " Cozy Points，Comfort +1。");
+  setStatus(getCookingSuccessStatus(fish, source));
   updateScreen();
   saveGame();
+  return true;
 }
 
-function handleActivityCompletionResult(activityId) {
+function handleCookingActivityCompletion(options) {
+  const actionOptions = options || {};
+  const source = actionOptions.source || "auto";
+
+  if (source === "auto" && !canAutoCookToday()) {
+    setStatus(getAutoCookingLimitMessage());
+    showCamperThought("今天先不再开火了。");
+    saveGame();
+    return;
+  }
+
+  cookFishFromInventory(getFirstAvailableFishId(), { source: source, fromActivity: true });
+}
+
+function handleActivityCompletionResult(activityId, options) {
   if (activityId === "fish") {
     handleFishingActivityCompletion();
     return;
   }
 
   if (activityId === "cook") {
-    handleCookingActivityCompletion();
+    handleCookingActivityCompletion(options);
   }
 }
 
@@ -6726,6 +6891,7 @@ function updateScreen() {
   updateShopCards();
   updateSceneEquipment();
   syncInventoryPanel();
+  updateCoolerFullHint();
   updateOnboardingView();
   maybeStartBuildModeGuide();
 }
@@ -8663,7 +8829,172 @@ function createInventoryEmptyRow(message) {
   return row;
 }
 
-function createInventoryItemRow(item, count) {
+function closeFishActionMenu() {
+  activeInventoryFishMenuId = "";
+
+  if (!inventoryFishMenu) {
+    return;
+  }
+
+  inventoryFishMenu.classList.add("hidden");
+  inventoryFishMenu.setAttribute("aria-hidden", "true");
+  inventoryFishMenu.innerHTML = "";
+}
+
+function positionFishActionMenu(anchor) {
+  if (!inventoryFishMenu || !inventoryPanel || !anchor) {
+    return;
+  }
+
+  const panelRect = inventoryPanel.getBoundingClientRect();
+  const anchorRect = anchor.getBoundingClientRect();
+  const menuWidth = 136;
+  const menuHeight = 122;
+  const left = clamp(anchorRect.right - panelRect.left - menuWidth, 8, Math.max(8, panelRect.width - menuWidth - 8));
+  const top = clamp(anchorRect.top - panelRect.top + 8, 8, Math.max(8, panelRect.height - menuHeight - 8));
+
+  inventoryFishMenu.style.left = left + "px";
+  inventoryFishMenu.style.top = top + "px";
+}
+
+function createFishActionMenuButton(label, action) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "inventory-fish-menu-item";
+  button.setAttribute("role", "menuitem");
+  button.textContent = label;
+  button.addEventListener("click", function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    action();
+  });
+  return button;
+}
+
+function openFishActionMenu(fishId, anchor) {
+  const fish = getFishDefinition(fishId);
+
+  if (!inventoryFishMenu || !fish) {
+    return;
+  }
+
+  activeInventoryFishMenuId = fishId;
+  inventoryFishMenu.innerHTML = "";
+  inventoryFishMenu.appendChild(createFishActionMenuButton("放生", function() {
+    releaseFishFromInventory(fishId);
+  }));
+  inventoryFishMenu.appendChild(createFishActionMenuButton("烹饪", function() {
+    cookFishFromInventory(fishId, { source: "menu" });
+    closeFishActionMenu();
+  }));
+  inventoryFishMenu.appendChild(createFishActionMenuButton("交易", function() {
+    tradeFishFromInventory(fishId);
+  }));
+  inventoryFishMenu.classList.remove("hidden");
+  inventoryFishMenu.setAttribute("aria-hidden", "false");
+  positionFishActionMenu(anchor);
+
+  const firstButton = inventoryFishMenu.querySelector("button");
+  if (firstButton) {
+    firstButton.focus();
+  }
+}
+
+function updateFishInventoryAfterAction() {
+  closeFishActionMenu();
+  renderInventoryPanel();
+  updateScreen();
+  saveGame();
+}
+
+function closeKoiReleaseCinematic() {
+  if (koiReleaseCinematicTimer) {
+    clearTimeout(koiReleaseCinematicTimer);
+    koiReleaseCinematicTimer = null;
+  }
+
+  if (!koiReleaseCinematic) {
+    return;
+  }
+
+  if (koiReleaseVideo) {
+    koiReleaseVideo.pause();
+    koiReleaseVideo.currentTime = 0;
+  }
+
+  koiReleaseCinematic.classList.add("hidden");
+  koiReleaseCinematic.setAttribute("aria-hidden", "true");
+}
+
+function startKoiReleaseCinematic() {
+  setStatus("好像有什么改变了……");
+
+  if (!koiReleaseCinematic) {
+    return;
+  }
+
+  closeKoiReleaseCinematic();
+  koiReleaseCinematic.classList.remove("hidden");
+  koiReleaseCinematic.setAttribute("aria-hidden", "false");
+
+  if (koiReleaseVideo) {
+    koiReleaseVideo.currentTime = 0;
+    const playPromise = koiReleaseVideo.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(function() {});
+    }
+  }
+
+  koiReleaseCinematicTimer = setTimeout(closeKoiReleaseCinematic, 8500);
+}
+
+function maybeUnlockKoiReleaseCinematic() {
+  const progress = getFishingProgress();
+
+  if (progress.koiReleaseAnimationSeen || progress.releasedByPlayer < koiReleaseAnimationThreshold) {
+    return false;
+  }
+
+  progress.koiReleaseAnimationSeen = true;
+  startKoiReleaseCinematic();
+  return true;
+}
+
+function releaseFishFromInventory(fishId) {
+  const fish = getFishDefinition(fishId);
+
+  if (!fish || !removeInventoryItem("fish", fishId, 1)) {
+    setStatus("这条鱼已经不在冷藏箱里了。");
+    updateFishInventoryAfterAction();
+    return false;
+  }
+
+  const progress = getFishingProgress();
+  progress.released += 1;
+  progress.releasedByPlayer += 1;
+  showCamperThought(fish.displayName + "回到湖里了。");
+  setStatus("放生了" + fish.displayName + "。冷藏箱 " + getFishInventoryTotal() + "/" + fishInventoryCapacity + "。");
+  maybeUnlockKoiReleaseCinematic();
+  updateFishInventoryAfterAction();
+  return true;
+}
+
+function tradeFishFromInventory(fishId) {
+  const fish = getFishDefinition(fishId);
+
+  if (!fish || !removeInventoryItem("fish", fishId, 1)) {
+    setStatus("这条鱼已经不在冷藏箱里了。");
+    updateFishInventoryAfterAction();
+    return false;
+  }
+
+  showCamperThought("冷藏箱空出一点位置。");
+  setStatus("用" + fish.displayName + "换成了一点营地补给。暂无额外数值收益。");
+  updateFishInventoryAfterAction();
+  return true;
+}
+
+function createInventoryItemRow(item, count, type) {
   const row = document.createElement("article");
   const image = document.createElement("img");
   const copy = document.createElement("div");
@@ -8686,6 +9017,33 @@ function createInventoryItemRow(item, count) {
   row.appendChild(image);
   row.appendChild(copy);
   row.appendChild(countBadge);
+
+  if (type === "fish") {
+    row.classList.add("inventory-item-actionable");
+    row.tabIndex = 0;
+    row.setAttribute("role", "button");
+    row.setAttribute("aria-haspopup", "menu");
+    row.setAttribute("aria-label", item.displayName + "，数量 " + count + "。打开操作菜单。");
+    row.addEventListener("click", function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      openFishActionMenu(item.id, row);
+    });
+    row.addEventListener("contextmenu", function(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      openFishActionMenu(item.id, row);
+    });
+    row.addEventListener("keydown", function(event) {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openFishActionMenu(item.id, row);
+      } else if (event.key === "Escape") {
+        closeFishActionMenu();
+      }
+    });
+  }
+
   return row;
 }
 
@@ -8707,7 +9065,7 @@ function renderInventoryGroup(container, type, emptyMessage) {
       return;
     }
 
-    container.appendChild(createInventoryItemRow(catalog[id], count));
+    container.appendChild(createInventoryItemRow(catalog[id], count, type));
     renderedCount += 1;
   });
 
@@ -8727,8 +9085,10 @@ function renderInventoryPanel() {
   if (inventoryStatsLine) {
     const fishing = getFishingProgress();
     const cooking = getCookingProgress();
-    inventoryStatsLine.textContent = "Fishing " + fishing.attempts + " / caught " + fishing.caught +
-      " / released " + fishing.released + " · Cooked " + cooking.cooked;
+    inventoryStatsLine.textContent = "Fish " + getFishInventoryTotal() + "/" + fishInventoryCapacity +
+      " · Fishing " + fishing.attempts + " / caught " + fishing.caught +
+      " / released " + fishing.released + " · Cooked " + cooking.cooked +
+      " · Auto today " + getAutoCookedToday() + "/" + dailyAutoCookingLimit;
   }
 }
 
@@ -8758,10 +9118,12 @@ function closeInventoryPanel() {
   inventoryLayer.classList.add("hidden");
   inventoryLayer.setAttribute("aria-hidden", "true");
   document.body.classList.remove("inventory-open");
+  closeFishActionMenu();
 }
 
 function syncInventoryPanel() {
   if (!isInventoryPanelOpen()) {
+    closeFishActionMenu();
     return;
   }
 
@@ -8771,6 +9133,19 @@ function syncInventoryPanel() {
   }
 
   renderInventoryPanel();
+}
+
+function updateCoolerFullHint() {
+  const shouldShow = Boolean(coolerFullHint && hasInventoryStorageUnlocked() && isFishInventoryFull());
+
+  if (!coolerFullHint) {
+    return;
+  }
+
+  coolerFullHint.classList.toggle("hidden", !shouldShow);
+  coolerFullHint.setAttribute("aria-hidden", shouldShow ? "false" : "true");
+  coolerFullHint.setAttribute("title", getCoolerFullMessage());
+  coolerFullHint.setAttribute("aria-label", getCoolerFullMessage());
 }
 
 function toggleShop() {
@@ -10186,7 +10561,11 @@ function getRelaxingActionEntries() {
   getActivityIds().forEach(function(activityId) {
     const activity = getActivityDefinition(activityId);
 
-    if (activityId === "cook" && !hasCookableFish()) {
+    if (activityId === "cook" && (!hasCookableFish() || !canAutoCookToday())) {
+      return;
+    }
+
+    if (activityId === "fish" && isFishInventoryFull()) {
       return;
     }
 
@@ -10349,6 +10728,13 @@ function executeQueuedActivityAction(action) {
     return;
   }
 
+  if (activityId === "fish" && isFishInventoryFull()) {
+    setStatus(getCoolerFullMessage());
+    showCamperThought("冷藏箱已经满了。");
+    completeActiveQueuedAction();
+    return;
+  }
+
   if (!startActivity(activityId, action.targetId)) {
     setStatus("No clear path to " + activity.targetLabel + ".");
     completeActiveQueuedAction();
@@ -10491,9 +10877,12 @@ function finishCurrentAction() {
 
   if (camper.currentActivityId) {
     const completedActivityId = camper.currentActivityId;
+    const completedByQueuedAction = Boolean(activeQueuedAction);
     stopActivityAmbience();
     recordActivityCompletion(completedActivityId);
-    handleActivityCompletionResult(completedActivityId);
+    handleActivityCompletionResult(completedActivityId, {
+      source: completedByQueuedAction ? "queued" : "auto"
+    });
     camper.currentActivityId = "";
 
     if (activeQueuedAction) {
@@ -12132,6 +12521,19 @@ shopBackdrop.addEventListener("click", closeShop);
 if (inventoryCloseButton) {
   inventoryCloseButton.addEventListener("click", closeInventoryPanel);
 }
+if (coolerFullHint) {
+  coolerFullHint.addEventListener("click", function(event) {
+    event.preventDefault();
+    showCamperThought(getCoolerFullMessage());
+    setStatus(getCoolerFullMessage());
+  });
+  coolerFullHint.addEventListener("mouseenter", function() {
+    showCamperThought(getCoolerFullMessage());
+  });
+  coolerFullHint.addEventListener("focus", function() {
+    showCamperThought(getCoolerFullMessage());
+  });
+}
 if (inventoryLayer) {
   inventoryLayer.addEventListener("click", function(event) {
     if (event.target === inventoryLayer) {
@@ -12141,8 +12543,22 @@ if (inventoryLayer) {
 }
 if (inventoryPanel) {
   inventoryPanel.addEventListener("click", function(event) {
+    if (!event.target.closest(".inventory-item-actionable") && !event.target.closest(".inventory-fish-menu")) {
+      closeFishActionMenu();
+    }
     event.stopPropagation();
   });
+}
+if (inventoryFishMenu) {
+  inventoryFishMenu.addEventListener("click", function(event) {
+    event.stopPropagation();
+  });
+}
+if (koiReleaseCinematic) {
+  koiReleaseCinematic.addEventListener("click", closeKoiReleaseCinematic);
+}
+if (koiReleaseVideo) {
+  koiReleaseVideo.addEventListener("ended", closeKoiReleaseCinematic);
 }
 if (soundJournalButton) {
   soundJournalButton.addEventListener("click", function() {
@@ -12339,6 +12755,10 @@ if (typeof window !== "undefined") {
   window.addEventListener("pointerup", finishBuildDrag);
   window.addEventListener("pointercancel", finishBuildDrag);
   window.addEventListener("keydown", function(event) {
+    if (event.key === "Escape") {
+      closeFishActionMenu();
+      closeKoiReleaseCinematic();
+    }
     if (event.key === "Escape" && isInventoryPanelOpen()) {
       closeInventoryPanel();
     }

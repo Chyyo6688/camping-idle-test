@@ -430,6 +430,44 @@ body.night .string-lights-glow {
   line-height: 1.12;
 }
 
+.cooler-full-hint {
+  width: 24px;
+  height: 24px;
+  position: absolute;
+  z-index: 67;
+  right: calc(11px + env(safe-area-inset-right, 0px));
+  top: calc(env(safe-area-inset-top, 0px) + 14% + 96px);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 223, 139, 0.68);
+  border-radius: 50%;
+  color: #fff7dc;
+  background:
+    linear-gradient(180deg, rgba(111, 63, 44, 0.9), rgba(58, 42, 34, 0.92));
+  box-shadow:
+    0 0.2rem 0.46rem rgba(10, 14, 9, 0.3),
+    inset 0 1px 0 rgba(255, 238, 186, 0.24);
+  font-size: 0.72rem;
+  font-weight: 950;
+  line-height: 1;
+  cursor: pointer;
+  transition: opacity 0.18s ease, transform 0.18s ease, filter 0.18s ease;
+}
+
+.cooler-full-hint:hover,
+.cooler-full-hint:focus-visible {
+  filter: brightness(1.08);
+  outline: 2px solid rgba(255, 238, 186, 0.78);
+  outline-offset: 2px;
+}
+
+.daily-camp-card.open + .cooler-full-hint {
+  opacity: 0;
+  transform: translateX(0.25rem);
+  pointer-events: none;
+}
+
 .daily-camp-card {
   --daily-drawer-width: min(82vw, 350px);
   --daily-drawer-tab-width: 46px;
@@ -1282,6 +1320,7 @@ body.ui-hidden .top-bar,
 body.ui-hidden .mode-controls,
 body.ui-hidden .floating-controls,
 body.ui-hidden .daily-camp-card,
+body.ui-hidden .cooler-full-hint,
 body.ui-hidden .toast-layer,
 body.ui-hidden .onboarding-layer,
 body.ui-hidden .shop-backdrop,
@@ -2394,6 +2433,7 @@ h2 {
 .inventory-panel {
   width: min(100%, 390px);
   max-height: min(78%, 560px);
+  position: relative;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2485,6 +2525,17 @@ h2 {
   box-shadow: inset 0 1px 0 rgba(255, 238, 186, 0.08);
 }
 
+.inventory-item-actionable {
+  cursor: pointer;
+}
+
+.inventory-item-actionable:hover,
+.inventory-item-actionable:focus-visible {
+  border-color: rgba(255, 223, 139, 0.62);
+  background: rgba(34, 45, 28, 0.76);
+  outline: none;
+}
+
 .inventory-item-icon {
   width: 52px;
   height: 52px;
@@ -2541,6 +2592,60 @@ h2 {
   font-weight: 800;
   line-height: 1.28;
   overflow-wrap: anywhere;
+}
+
+.inventory-fish-menu {
+  width: 136px;
+  position: absolute;
+  z-index: 4;
+  display: grid;
+  gap: 0.18rem;
+  padding: 0.28rem;
+  border: 1px solid rgba(255, 223, 139, 0.56);
+  border-radius: 8px;
+  background: rgba(27, 34, 24, 0.98);
+  box-shadow:
+    0 0.6rem 1.2rem rgba(5, 8, 5, 0.46),
+    inset 0 1px 0 rgba(255, 238, 186, 0.12);
+}
+
+.inventory-fish-menu-item {
+  min-height: 30px;
+  padding: 0.28rem 0.48rem;
+  border: 0;
+  border-radius: 6px;
+  color: #fff3cf;
+  background: transparent;
+  font-size: clamp(0.62rem, 1.72vw, 0.76rem);
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: left;
+  cursor: pointer;
+}
+
+.inventory-fish-menu-item:hover,
+.inventory-fish-menu-item:focus-visible {
+  color: #2d2518;
+  background: #f2d28a;
+  outline: none;
+}
+
+.koi-release-cinematic {
+  position: absolute;
+  z-index: 140;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #071411;
+  pointer-events: auto;
+}
+
+.koi-release-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #071411;
 }
 
 .shop-section h2 {
