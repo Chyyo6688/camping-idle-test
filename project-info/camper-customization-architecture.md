@@ -47,7 +47,7 @@ Some choices are still placeholders, but every `camper_*.png` sheet in `assets/c
 
 ## Updating Options
 
-Runtime option wiring lives in `game.js` under `CAMPER_APPEARANCE_OPTIONS`.
+Runtime option wiring lives in `gameContent.js` under `CAMPER_APPEARANCE_OPTIONS`.
 
 - To change the in-game display name, edit the option's `label`.
 - To point an option to a renamed PNG, edit the option's `assetSheet`.

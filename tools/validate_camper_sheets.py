@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import re
 from pathlib import Path
 
@@ -46,14 +45,20 @@ FRAME_NAMES = [
     "camper_activity_birdwatch_03.png",
     "camper_activity_birdwatch_04.png",
 ]
-ROWS = math.ceil(len(FRAME_NAMES) / COLUMNS)
+# Runtime sheets reserve a sixth row; keep validation aligned with
+# CAMPER_SHEET_ROWS in js/config/camperConfig.js instead of deriving it from named frames.
+ROWS = 6
 EXPECTED_SIZE = (FRAME_WIDTH * COLUMNS, FRAME_HEIGHT * ROWS)
 
 
-def read_game_asset_sheets(game_js_path: Path) -> list[str]:
-    game_js = game_js_path.read_text(encoding="utf-8")
-    sheets = set(re.findall(r'assetSheet:\s*"([^"]+)"', game_js))
-    sheets.update(re.findall(r'sheet:\s*"([^"]+\.png)"', game_js))
+def read_game_asset_sheets(game_js_paths: list[Path]) -> list[str]:
+    sheets = set()
+
+    for game_js_path in game_js_paths:
+        game_js = game_js_path.read_text(encoding="utf-8")
+        sheets.update(re.findall(r'assetSheet:\s*"([^"]+)"', game_js))
+        sheets.update(re.findall(r'sheet:\s*"([^"]+\.png)"', game_js))
+
     sheets.discard("")
     return sorted(sheets)
 
@@ -108,14 +113,19 @@ def write_manifest(sheet_dir: Path, sheets: list[str], details: dict[str, dict[s
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--sheet-dir", type=Path, default=Path("assets/characters"))
-    parser.add_argument("--game-js", type=Path, default=Path("game.js"))
+    parser.add_argument(
+        "--game-js",
+        type=Path,
+        help="scan one script instead of the default js/**/*.js script set",
+    )
     parser.add_argument("--write-manifest", action="store_true")
     args = parser.parse_args()
 
-    sheets = read_game_asset_sheets(args.game_js)
+    game_js_paths = [args.game_js] if args.game_js else sorted(Path("js").rglob("*.js"))
+    sheets = read_game_asset_sheets(game_js_paths)
 
     if not sheets:
-        raise SystemExit("No assetSheet entries found in game.js")
+        raise SystemExit("No assetSheet entries found in the selected JavaScript files")
 
     details = {}
 
