@@ -64,6 +64,8 @@
         </div>
       </header>
 
+      <div id="dailyCampBackdrop" class="daily-camp-backdrop hidden"></div>
+      
       <section id="dailyCampCard" class="daily-camp-card collapsed" aria-label="今日营地卡">
         <button id="dailyCampDrawerToggle" class="daily-camp-drawer-toggle" type="button" aria-expanded="false" aria-controls="dailyCampDrawerPanel" aria-label="展开今日营地卡">
           <span id="dailyWeatherTabIcon" class="daily-weather-tab-icon" aria-hidden="true">晴</span>
@@ -404,8 +406,9 @@
                 </div>
 
                 <div class="camper-card-info">
-                  <button id="camperCardCloseButton" class="camper-card-close" type="button" aria-label="Close camper card">×</button>
-
+                  <button id="camperCardCloseButton" class="close-button camper-card-close" type="button" aria-label="Close camper card">
+                    <img src="assets/ui/icon_close.png?v=3.6" alt="">
+                  </button>
                   <div class="camper-card-field">
                     <p class="camper-card-label">昵称</p>
                     <div class="camper-card-edit-row">

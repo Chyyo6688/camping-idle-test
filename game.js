@@ -588,6 +588,7 @@ const cozyRateAmount = document.getElementById("cozyRateAmount");
 const offlineCapAmount = document.getElementById("offlineCapAmount");
 const statusLine = document.getElementById("statusLine");
 const dailyCampCard = document.getElementById("dailyCampCard");
+const dailyCampBackdrop = document.getElementById("dailyCampBackdrop");
 const dailyCampDrawerToggle = document.getElementById("dailyCampDrawerToggle");
 const dailyCampDrawerPanel = document.getElementById("dailyCampDrawerPanel");
 const dailyCampDrawerChevron = document.getElementById("dailyCampDrawerChevron");
@@ -915,7 +916,7 @@ const mealCatalog = {
     id: "simpleGrilledFish",
     displayName: "烤湖鱼",
     detail: "营地料理",
-    image: "assets/inventory/fish/brook_trout.png"
+    image: "assets/inventory/meals/grilled_fish.png"
   }
 };
 
@@ -2666,6 +2667,11 @@ function syncDailyCampDrawerState() {
 
 function setDailyCampDrawerExpanded(expanded) {
   dailyCampDrawerExpanded = Boolean(expanded);
+
+  if (dailyCampBackdrop) {
+    dailyCampBackdrop.classList.toggle("hidden", !dailyCampDrawerExpanded);
+  }
+
   syncDailyCampDrawerState();
 }
 
@@ -12637,6 +12643,15 @@ if (turtleShellButton) {
 if (dailyCampDrawerToggle) {
   dailyCampDrawerToggle.addEventListener("click", toggleDailyCampDrawer);
 }
+
+if (dailyCampBackdrop) {
+  dailyCampBackdrop.addEventListener("click", function(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    setDailyCampDrawerExpanded(false);
+  });
+}
+
 campScene.addEventListener("click", handleCampSceneClick);
 if (sceneContent) {
   sceneContent.addEventListener("pointerdown", handleBuildScenePointerDown);
@@ -12716,6 +12731,16 @@ if (camperProfileSecondaryButton) {
 }
 if (camperCardCloseButton) {
   camperCardCloseButton.addEventListener("click", closeCamperCardAndResume);
+}
+if (camperProfileLayer) {
+  camperProfileLayer.addEventListener("click", function(event) {
+    if (
+      event.target === camperProfileLayer &&
+      camperProfileStep === "result"
+    ) {
+      closeCamperCardAndResume();
+    }
+  });
 }
 if (camperNameEditButton) {
   camperNameEditButton.addEventListener("click", editActiveCamperName);
