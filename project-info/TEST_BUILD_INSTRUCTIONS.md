@@ -1,11 +1,11 @@
 # Test Build Instructions
 
-当前源码版本：V3.4。
+当前源码版本：V4.8。
 
 ## 包状态
 
 - 纯静态 app；没有 npm package、安装步骤、build command 或后端。
-- 运行文件：`index.html`、`style.css`、`gearCatalog.js`、`soundJournalCatalog.js`、`soundManager.js`、`game.js`、`assets/`（含 `assets/sounds/`）。
+- 运行文件：`index.html`、`style.css`、各 catalog/manager 脚本、全部 `game*.js` 模块、`assets/`（含 `assets/sounds/`）。
 - `index.html` 里的 `window.APP_VERSION` 控制 CSS、JS 和 asset URL 的 cache busting。
 - 发布时直接上传当前根目录静态包到 GitHub。
 
@@ -38,7 +38,7 @@ http://localhost:8080/index.html?reset=1
 - `gearCatalog.js`
 - `soundJournalCatalog.js`
 - `soundManager.js`
-- `game.js`
+- 全部 `game*.js` 模块（含入口 `game.js`）
 - `assets/`（含 `assets/sounds/`）
 
 排除：

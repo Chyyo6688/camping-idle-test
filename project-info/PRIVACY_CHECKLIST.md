@@ -10,7 +10,7 @@
 
 ## 已检查
 
-- 入口只加载本地 `style.css`、`gearCatalog.js`、`game.js` 和本地 `assets/`。
+- 入口只加载本地 `style.css`、catalog/manager 脚本、`game*.js` 模块和本地 `assets/`。
 - 源码中没有发现 `http://` 或 `https://` 的 runtime script/style import。
 - 以后上传 GitHub 前按根目录静态包重新检查。
 
@@ -20,8 +20,8 @@
 
 - `index.html`
 - `style.css`
-- `gearCatalog.js`
-- `game.js`
+- catalog/manager 脚本
+- 全部 `game*.js` 模块（含入口 `game.js`）
 - `assets/`
 
 不要分享开发文件、隐藏文件、`.env`、token、generated sources、reference images、preview images 或 tmp folders。

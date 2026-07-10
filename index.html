@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cozy Camping Idle V4.7</title>
+  <title>Cozy Camping Idle V4.8</title>
   <script>
-    window.APP_VERSION = "4.7";
+    window.APP_VERSION = "4.8";
   </script>
   <link id="appStylesheet" rel="stylesheet" href="style.css?v=3.0">
   <script>
@@ -287,7 +287,7 @@
               <div id="turtleCoinVisual" class="turtle-coin-visual hidden">
                 <div class="turtle-cast-object">
                   <button id="turtleShellButton" class="turtle-shell-button" type="button" aria-label="摇动龟壳">
-                    <img id="turtleShellImage" src="assets/divination/turtle_shell/turtle_shell.png?v=4.7" alt="">
+                    <img id="turtleShellImage" src="assets/divination/turtle_shell/turtle_shell.png?v=4.8" alt="">
                   </button>
                   <div id="turtleCoinTray" class="turtle-coin-tray hidden" aria-hidden="true"></div>
                 </div>
@@ -470,23 +470,47 @@
         document.body.appendChild(script);
       }
 
-      function loadGameScript() {
-        loadScriptThen("game.js", function() {});
+      const gameScripts = [
+        "js/config/gearCatalog.js",
+        "js/config/weatherCatalog.js",
+        "js/config/ichingCatalog.js",
+        "js/config/divinationCatalog.js",
+        "js/systems/divinationManager.js",
+        "js/config/soundJournalCatalog.js",
+        "js/systems/soundManager.js",
+        "js/core/gameConfig.js",
+        "js/config/economyConfig.js",
+        "js/config/sceneConfig.js",
+        "js/config/activityConfig.js",
+        "js/config/fishingCookingConfig.js",
+        "js/config/tutorialConfig.js",
+        "js/config/camperConfig.js",
+        "js/systems/gameActivities.js",
+        "js/systems/gameSound.js",
+        "js/core/gameRuntime.js",
+        "js/core/gameUi.js",
+        "js/systems/gameDivination.js",
+        "js/systems/gameDaily.js",
+        "js/systems/gameScene.js",
+        "js/camper/gameCamperProfile.js",
+        "js/core/gameEconomy.js",
+        "js/core/gameSave.js",
+        "js/systems/gameShop.js",
+        "js/camper/gameCamper.js",
+        "js/core/game.js"
+      ];
+
+      function loadGameScriptsInOrder(index) {
+        if (index >= gameScripts.length) {
+          return;
+        }
+
+        loadScriptThen(gameScripts[index], function() {
+          loadGameScriptsInOrder(index + 1);
+        });
       }
 
-      loadScriptThen("gearCatalog.js", function() {
-        loadScriptThen("weatherCatalog.js", function() {
-          loadScriptThen("ichingCatalog.js", function() {
-            loadScriptThen("divinationCatalog.js", function() {
-              loadScriptThen("divinationManager.js", function() {
-                loadScriptThen("soundJournalCatalog.js", function() {
-                  loadScriptThen("soundManager.js", loadGameScript);
-                });
-              });
-            });
-          });
-        });
-      });
+      loadGameScriptsInOrder(0);
     })();
   </script>
 </body>
