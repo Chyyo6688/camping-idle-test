@@ -122,6 +122,12 @@
           <span class="utility-glyph" aria-hidden="true">🧑</span>
           <span>Camper</span>
         </button>
+
+        <button id="adventureStorageButton" class="utility-button adventure-storage-entry-button" type="button" aria-label="打开冒险仓库">
+          <span class="adventure-storage-entry-icon adventure-item-icon item-map" aria-hidden="true"></span>
+          <span>冒险仓库</span>
+          <strong id="adventureStorageBadge" class="adventure-storage-entry-badge">0</strong>
+        </button>
       </nav>
 
       <nav class="ui-display-controls" aria-label="Display controls">
@@ -202,6 +208,38 @@
           </section>
         </div>
 
+        <div id="adventureStorageLayer" class="adventure-storage-layer hidden" aria-hidden="true" aria-live="polite">
+          <section id="adventureStoragePanel" class="adventure-storage-panel" aria-label="冒险仓库">
+            <header class="adventure-storage-header">
+              <div>
+                <p class="eyebrow">Expedition Finds</p>
+                <h2>冒险仓库</h2>
+              </div>
+              <button id="adventureStorageCloseButton" class="close-button adventure-storage-close-button" type="button" aria-label="关闭冒险仓库">
+                <img src="assets/ui/icon_close.png?v=3.3" alt="">
+              </button>
+            </header>
+
+            <p class="adventure-storage-intro">这里单独收纳从冒险带回的物件。鱼和料理仍在 Cooler 中查看。</p>
+
+            <section class="adventure-storage-latest" aria-label="最近一次冒险发现">
+              <div class="adventure-storage-section-heading">
+                <h3>最近一次冒险发现</h3>
+                <span id="adventureStorageLatestMeta">暂无记录</span>
+              </div>
+              <div id="adventureStorageLatestList" class="adventure-storage-latest-list"></div>
+            </section>
+
+            <section class="adventure-storage-contents" aria-label="已收纳的冒险物品">
+              <div class="adventure-storage-section-heading">
+                <h3>已收纳物件</h3>
+                <span id="adventureStorageCountLabel">0 件</span>
+              </div>
+              <div id="adventureStorageItemList" class="adventure-storage-item-list"></div>
+            </section>
+          </section>
+        </div>
+
         <div id="koiReleaseCinematic" class="koi-release-cinematic hidden" aria-hidden="true" aria-label="金色锦鲤放生动画">
           <video id="koiReleaseVideo" class="koi-release-video" preload="auto" muted playsinline poster="assets/cinematics/koi_release/lake_shore_portrait_v1.png?v=3.1">
             <source src="assets/cinematics/koi_release/koi_release_v1.mp4" type="video/mp4">
@@ -232,11 +270,176 @@
                 <button class="settings-subitem" type="button" data-guide="buildMode">建造模式</button>
               </div>
 
+              <button id="settingsAdventurePrototypeItem" class="settings-item settings-item-adventure" type="button">
+                <span class="settings-item-icon" aria-hidden="true">🏔️</span>
+                <span class="settings-item-label">深山冒险测试</span>
+                <span class="settings-item-badge">DEV</span>
+              </button>
+
               <button id="settingsResetItem" class="settings-item settings-item-danger" type="button">
                 <span class="settings-item-icon" aria-hidden="true"><img src="assets/ui/icon_tools.png?v=3.3" alt=""></span>
                 <span class="settings-item-label">Reset</span>
               </button>
             </div>
+          </section>
+        </div>
+
+        <div id="adventurePrototypeLayer" class="adventure-prototype-layer hidden" aria-hidden="true">
+          <section id="adventurePrototype" class="adventure-prototype is-preparing" aria-label="深山冒险测试">
+            <div id="adventureScene" class="adventure-scene">
+              <img class="adventure-background" src="assets/adventure/deep-mountain/deep-mountain-background.png?v=4.8" alt="">
+              <div id="adventureAtmosphere" class="adventure-atmosphere" aria-hidden="true"></div>
+              <div id="adventureRainLayer" class="adventure-rain-layer" aria-hidden="true"></div>
+              <div id="adventureEventProp" class="adventure-event-prop" aria-hidden="true"></div>
+              <div id="adventureEventAccent" class="adventure-event-accent" aria-hidden="true"></div>
+              <div id="adventureUsedItemVisual" class="adventure-used-item-visual" aria-hidden="true"></div>
+              <div id="adventureCamper" class="adventure-camper" role="img" aria-label="Camper walking through the mountains"></div>
+              <p id="adventureBubble" class="adventure-bubble" aria-live="polite"></p>
+              <div id="adventureItemFeedbackLayer" class="adventure-item-feedback-layer" aria-live="polite" aria-atomic="false"></div>
+              <div class="adventure-foreground adventure-foreground-left" aria-hidden="true"></div>
+              <div class="adventure-foreground adventure-foreground-right" aria-hidden="true"></div>
+            </div>
+
+            <header id="adventureHeader" class="adventure-header">
+              <div>
+                <p class="eyebrow">Solo Prototype</p>
+                <h2>深山</h2>
+              </div>
+              <span id="adventurePhaseLabel" class="adventure-phase-label">沿山路前进</span>
+            </header>
+
+            <div id="adventureRunningUi" class="adventure-running-ui">
+              <div class="adventure-run-status">
+                <span id="adventureEventCount">事件 0 / 5</span>
+                <span id="adventureRunStamina">体力 100 / 100</span>
+                <span id="adventureRunBackpack">背包 0 / 5</span>
+              </div>
+
+              <div id="adventureResult" class="adventure-result" aria-live="polite">
+                <p id="adventureEventTitle" class="adventure-event-title">山路很安静</p>
+                <p id="adventureResultText">Camper 正在观察四周。</p>
+                <p id="adventureEffectText" class="adventure-effect-text"></p>
+              </div>
+
+              <nav class="adventure-controls" aria-label="冒险控制">
+                <button id="adventureEndEarlyButton" class="adventure-control" type="button">提前返回营地</button>
+              </nav>
+            </div>
+
+            <section id="adventurePrepPanel" class="adventure-screen-panel adventure-prep-panel" aria-label="深山出发准备">
+              <header class="adventure-panel-header">
+                <div>
+                  <p class="eyebrow">Deep Mountain</p>
+                  <h2>出发准备</h2>
+                </div>
+                <button id="adventurePrepCloseButton" class="adventure-panel-close" type="button">返回营地</button>
+              </header>
+
+              <div class="adventure-prep-illustration" aria-hidden="true">
+                <span>深山 · 单人路线</span>
+              </div>
+
+              <section class="adventure-choice-section" aria-label="本次目标">
+                <div class="adventure-section-heading">
+                  <strong>本次目标</strong>
+                  <span>Camper 会自动判断和行动</span>
+                </div>
+                <div id="adventureGoalList" class="adventure-choice-grid adventure-goal-grid"></div>
+              </section>
+
+              <section class="adventure-choice-section" aria-label="路线选择">
+                <div class="adventure-section-heading">
+                  <strong>选择路线</strong>
+                  <span>只改变沿途更容易遇见什么</span>
+                </div>
+                <div id="adventureRouteList" class="adventure-choice-grid adventure-route-grid"></div>
+                <p id="adventureStrategyHint" class="adventure-strategy-hint"></p>
+              </section>
+
+              <section class="adventure-stamina-card" aria-label="冒险体力">
+                <div class="adventure-section-heading">
+                  <strong>冒险体力</strong>
+                  <span id="adventurePrepStaminaText">100 / 100</span>
+                </div>
+                <div class="adventure-stamina-track"><span id="adventurePrepStaminaFill"></span></div>
+                <p id="adventureStaminaHint">每次出发消耗 25 点，体力会随时间缓慢恢复。</p>
+              </section>
+
+              <div class="adventure-loadout-grid">
+                <section class="adventure-inventory-column" aria-label="本次可携带物">
+                  <div class="adventure-section-heading">
+                    <strong>可携带物</strong>
+                    <span>按来源分开</span>
+                  </div>
+                  <div id="adventureStorageList" class="adventure-item-list"></div>
+                </section>
+
+                <section class="adventure-inventory-column adventure-backpack-column" aria-label="本次冒险背包">
+                  <div class="adventure-section-heading">
+                    <strong>冒险背包</strong>
+                    <span id="adventureBackpackCapacity">已携带 0 / 5</span>
+                  </div>
+                  <div id="adventureBackpackList" class="adventure-item-list"></div>
+                </section>
+              </div>
+
+              <p id="adventurePrepMessage" class="adventure-prep-message" aria-live="polite">背包最多携带 5 件，途中发现的物品会另行收好。</p>
+
+              <div class="adventure-panel-actions">
+                <button id="adventureStartButton" class="adventure-control adventure-control-primary" type="button">带上背包出发</button>
+                <button id="adventurePrepResetButton" class="adventure-control" type="button">重置测试状态</button>
+              </div>
+            </section>
+
+            <section id="adventureLogPanel" class="adventure-screen-panel adventure-log-panel" aria-label="本次冒险日志">
+              <header class="adventure-panel-header">
+                <div>
+                  <p class="eyebrow">Adventure Journal</p>
+                  <h2>深山日志</h2>
+                </div>
+                <span id="adventureLogStatus" class="adventure-log-status">平安返回</span>
+              </header>
+
+              <div id="adventureLogIllustration" class="adventure-log-illustration" aria-hidden="true">
+                <div id="adventureLogIllustrationProp" class="adventure-log-illustration-prop prop-sign"></div>
+                <span id="adventureLogIllustrationCaption">深山里的一个片刻</span>
+              </div>
+
+              <div class="adventure-log-summary-grid">
+                <article><span>路线</span><strong id="adventureLogLocation">深山</strong></article>
+                <article><span>事件</span><strong id="adventureLogEventCount">0 / 5</strong></article>
+                <article><span>体力</span><strong id="adventureLogStamina">0</strong></article>
+                <article><span>结束状态</span><strong id="adventureLogEndReason">完成路线</strong></article>
+              </div>
+
+              <article class="adventure-story-card">
+                <span id="adventureLogGoalStatus" class="adventure-goal-status">目标结算</span>
+                <h3 id="adventureLogStoryTitle">本次深山记录</h3>
+                <p id="adventureLogStoryIntro"></p>
+                <div id="adventureLogStoryBody" class="adventure-story-body"></div>
+                <p id="adventureLogStoryEnding" class="adventure-story-ending"></p>
+              </article>
+
+              <details class="adventure-raw-log">
+                <summary>查看事件原始记录</summary>
+                <div id="adventureLogEventList" class="adventure-log-event-list"></div>
+              </details>
+
+              <div class="adventure-log-ledger">
+                <section><strong>出发携带</strong><div id="adventureLogDeparted"></div></section>
+                <section><strong>本次发现</strong><div id="adventureLogGained"></div></section>
+                <section><strong>丢失</strong><div id="adventureLogLost"></div></section>
+                <section><strong>消耗</strong><div id="adventureLogConsumed"></div></section>
+                <section><strong>解锁</strong><div id="adventureLogUnlocked"></div></section>
+              </div>
+
+              <div class="adventure-panel-actions">
+                <button id="adventureAgainButton" class="adventure-control adventure-control-primary" type="button">准备下一次冒险</button>
+                <button id="adventureLogExitButton" class="adventure-control" type="button">返回营地</button>
+                <button id="adventureLogResetButton" class="adventure-control" type="button">重置测试</button>
+              </div>
+            </section>
+
           </section>
         </div>
 
@@ -485,18 +688,22 @@
         "js/config/fishingCookingConfig.js",
         "js/config/tutorialConfig.js",
         "js/config/camperConfig.js",
+        "js/config/camperProgressionConfig.js",
+        "js/config/adventurePrototypeConfig.js",
         "js/systems/gameActivities.js",
         "js/systems/gameSound.js",
         "js/core/gameRuntime.js",
         "js/core/gameUi.js",
         "js/systems/gameDivination.js",
         "js/systems/gameDaily.js",
+        "js/systems/gameCamperProgression.js",
         "js/systems/gameScene.js",
         "js/camper/gameCamperProfile.js",
         "js/core/gameEconomy.js",
         "js/core/gameSave.js",
         "js/systems/gameShop.js",
         "js/camper/gameCamper.js",
+        "js/systems/gameAdventurePrototype.js",
         "js/core/game.js"
       ];
 

@@ -199,6 +199,31 @@ const defaultGameState = {
     fish: {},
     meals: {}
   },
+  adventure: {
+    version: 4,
+    storage: {
+      ropeKit: 1,
+      fieldLantern: 1,
+      firstAidPouch: 1,
+      trailRation: 2
+    },
+    stamina: {
+      value: 100,
+      updatedAt: Date.now()
+    },
+    unlockedRoutes: ["deepMountain"],
+    unlockedLocations: ["deepMountain"],
+    discoveredKeyItems: [],
+    discoveredClues: [],
+    collectedClues: [],
+    itemSolutionKnowledge: [],
+    adventureStarterKitMigrationVersion: 1,
+    completedTrips: 0,
+    pendingBackpack: {},
+    pendingLoot: {},
+    recentAdventureHistory: [],
+    lastLog: null
+  },
   fishing: {
     attempts: 0,
     caught: 0,
@@ -232,6 +257,14 @@ const defaultGameState = {
       tarot: {},
       turtle: {}
     }
+  },
+  dailyAdventureModifiers: {
+    dateKey: "",
+    generalLuck: 0,
+    treasureLuck: 0,
+    socialLuck: 0,
+    healthLuck: 0,
+    dangerSense: 0
   },
   divinationUnlocks: {
     turtleShell: false
@@ -269,6 +302,24 @@ function createDefaultGameState() {
     userGearMountOffsets: { ...defaultGameState.userGearMountOffsets },
     activityStats: { ...defaultGameState.activityStats },
     inventory: cloneInventory(defaultGameState.inventory),
+    adventure: {
+      ...defaultGameState.adventure,
+      storage: { ...defaultGameState.adventure.storage },
+      stamina: {
+        ...defaultGameState.adventure.stamina,
+        updatedAt: Date.now()
+      },
+      unlockedRoutes: defaultGameState.adventure.unlockedRoutes.slice(),
+      unlockedLocations: defaultGameState.adventure.unlockedLocations.slice(),
+      discoveredKeyItems: defaultGameState.adventure.discoveredKeyItems.slice(),
+      discoveredClues: defaultGameState.adventure.discoveredClues.slice(),
+      collectedClues: defaultGameState.adventure.collectedClues.slice(),
+      itemSolutionKnowledge: defaultGameState.adventure.itemSolutionKnowledge.slice(),
+      pendingBackpack: {},
+      pendingLoot: {},
+      recentAdventureHistory: [],
+      lastLog: null
+    },
     fishing: { ...defaultGameState.fishing },
     cooking: { ...defaultGameState.cooking },
     dailyWeather: { ...defaultGameState.dailyWeather },
@@ -284,6 +335,7 @@ function createDefaultGameState() {
         turtle: { ...defaultGameState.todayDivinations.rerollSalt.turtle }
       }
     },
+    dailyAdventureModifiers: { ...defaultGameState.dailyAdventureModifiers },
     divinationUnlocks: { ...defaultGameState.divinationUnlocks },
     soundJournal: cloneSoundJournal(defaultGameState.soundJournal),
     camperProfileVersion: defaultGameState.camperProfileVersion,

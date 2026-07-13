@@ -11,6 +11,7 @@
 ```text
 assets/
   backgrounds/
+  adventure/
   campfire/
   characters/
   gear/
@@ -58,6 +59,15 @@ assets/gear/<category>/<gearId>/icon_base.png
 - Campfire：level 1-3 base/flame、glow、spark。
 - Resources：`wood_item.png`。
 - UI：status icons、mode buttons、shop button、shop cards/tabs、close/lock/tools icons。
+
+## 深山冒险原型资源
+
+- `assets/adventure/deep-mountain/deep-mountain-background.png`：新生成的 941×1672 深山竖屏场景底图，包含山路、溪流、吊桥、木屋和岔路地标。
+- `assets/adventure/deep-mountain/event-props.png`：新生成并完成透明去色键的 4×3 事件物件图集，包含脚印、宝箱开合、鬼影、树枝、翻动食物、溪流闪光、求救者、灯、木屋变化、桥板和路标。
+- `assets/adventure/deep-mountain/foreground.png`：新生成并完成透明去色键的 2×1 前景树木/岩石图集，用于遮挡 camper。
+- `assets/adventure/deep-mountain/adventure-items.png`：新生成并完成透明去色键的 4×3 冒险物品图集，包含绳组、提灯、急救包、钥匙、信件、工具套组、草药、地图、指南针、护符、木章和干粮。
+- `event-props-chroma.png`、`foreground-chroma.png` 与 `adventure-items-chroma.png` 保留为图集透明处理源文件，不由运行时加载。
+- 原型复用 `assets/weather/light_rain_overlay.png`、`assets/weather/fog_overlay.png` 与现有 7×6 camper 分层动作 sheet。
 
 ## Gear 分类
 

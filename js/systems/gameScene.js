@@ -154,7 +154,12 @@ function setUserDepthOffsetY(item, offsetY) {
   }
 
   const offsets = getUserDepthOffsetMap();
+  const previousOffset = getUserDepthOffsetY(item);
   const nextOffset = Number.isFinite(offsetY) ? offsetY : 0;
+
+  if (nextOffset === previousOffset) {
+    return;
+  }
 
   if (nextOffset === 0) {
     delete offsets[item.id];
@@ -163,6 +168,7 @@ function setUserDepthOffsetY(item, offsetY) {
   }
 
   refreshGearSceneLayout(item);
+  recordCamperHabitCompletion("decorating");
   saveGame();
   setStatus(item.displayName + " layer " + formatDepthOffsetValue(nextOffset) + ".");
 }
@@ -760,6 +766,9 @@ function finishBuildDrag(event) {
   if (item) {
     refreshGearSceneLayout(item);
     refreshMountedGearSceneLayouts();
+    if (endedDragState.moved) {
+      recordCamperHabitCompletion("decorating");
+    }
     saveGame();
   }
 }

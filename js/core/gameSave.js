@@ -2,6 +2,10 @@
 
 function saveGame() {
   const now = Date.now();
+  ensureDailyAdventureModifiersForToday(new Date(), gameState);
+  if (typeof ensureAdventureProgress === "function") {
+    ensureAdventureProgress(gameState, now);
+  }
   gameState.lastSeen = now;
   gameState.lastSaveTime = now;
   localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
@@ -102,10 +106,18 @@ function sanitizeSave(savedGame) {
     }
     cleanState.activityStats = sanitizeActivityStats(savedGame.activityStats);
     cleanState.inventory = sanitizeInventory(savedGame.inventory);
+    cleanState.adventure = typeof sanitizeAdventureProgress === "function"
+      ? sanitizeAdventureProgress(savedGame.adventure)
+      : cleanState.adventure;
     cleanState.fishing = sanitizeFishingProgress(savedGame.fishing);
     cleanState.cooking = sanitizeCookingProgress(savedGame.cooking);
     cleanState.dailyWeather = sanitizeDailyWeather(savedGame.dailyWeather);
     cleanState.todayDivinations = sanitizeTodayDivinations(savedGame.todayDivinations, getDivinationDateKey(), savedGame.todayDivination);
+    cleanState.dailyAdventureModifiers = sanitizeDailyAdventureModifiers(
+      savedGame.dailyAdventureModifiers,
+      getDivinationDateKey(),
+      cleanState.todayDivinations
+    );
     cleanState.divinationUnlocks = sanitizeDivinationUnlocks(savedGame.divinationUnlocks);
     cleanState.soundJournal = sanitizeSoundJournal(savedGame.soundJournal);
     cleanState.economyResetTo500Applied = Boolean(savedGame.economyResetTo500Applied);
@@ -319,6 +331,7 @@ function sanitizeSave(savedGame) {
   cleanState.lastSeen = Number(cleanState.lastSeen) || cleanState.lastSaveTime;
   ensureDailyWeatherForToday(new Date(), cleanState);
   ensureTodayDivinationsForToday(new Date(), cleanState);
+  ensureDailyAdventureModifiersForToday(new Date(), cleanState);
   cleanState.comfort = calculateComfort(cleanState);
 
   return cleanState;
@@ -364,6 +377,7 @@ function loadGame() {
     gameState.comfort = calculateComfort();
     ensureDailyWeatherForToday();
     ensureTodayDivinationsForToday();
+    ensureDailyAdventureModifiersForToday();
     if (saveWasResetFromUrl) {
       showWelcome("Save reset. A quiet day begins beside the lake.");
     } else {
@@ -374,6 +388,9 @@ function loadGame() {
 
   try {
     gameState = sanitizeSave(JSON.parse(savedText));
+    if (typeof recoverInterruptedAdventureBackpack === "function") {
+      recoverInterruptedAdventureBackpack();
+    }
     loadedExistingSaveWithoutCamperProfile = !hasCamperProfile(gameState);
     if (!applyOneTimeEconomyResetMigration()) {
       applyOfflineEarnings();

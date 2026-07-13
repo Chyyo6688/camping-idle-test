@@ -1517,6 +1517,9 @@ function finishCurrentAction() {
     camper.carryingWood = false;
     camper.woodCollectionSource = null;
     addWarmthFromBranches(source);
+    if (source === "manual") {
+      recordCamperHabitCompletion("campfireCare");
+    }
 
     if (activeQueuedAction) {
       completeActiveQueuedAction();
@@ -1535,6 +1538,9 @@ function finishCurrentAction() {
     handleActivityCompletionResult(completedActivityId, {
       source: completedByQueuedAction ? "queued" : "auto"
     });
+    if (completedByQueuedAction) {
+      recordCamperActivityHabitCompletion(completedActivityId);
+    }
     camper.currentActivityId = "";
 
     if (activeQueuedAction) {
@@ -1544,6 +1550,10 @@ function finishCurrentAction() {
     }
 
     return;
+  }
+
+  if (activeQueuedAction) {
+    recordCamperActionHabitCompletion(camper.currentAction);
   }
 
   if (activeQueuedAction) {

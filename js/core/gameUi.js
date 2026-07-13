@@ -446,6 +446,7 @@ function getActiveDepthControlTargetItem() {
 function updateScreen() {
   ensureDailyWeatherForToday();
   ensureTodayDivinationsForToday();
+  ensureDailyAdventureModifiersForToday();
   gameState.comfort = calculateComfort();
 
   cozyPointsAmount.textContent = formatNumber(gameState.cozyPoints);

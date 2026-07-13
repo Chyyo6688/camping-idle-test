@@ -950,6 +950,48 @@ function getActiveCamperPersonality() {
   return profile && CAMPER_PERSONALITIES[profile.personalityId] ? CAMPER_PERSONALITIES[profile.personalityId] : null;
 }
 
+function getDefaultCamperBaseTraits(personalityId) {
+  const preset = CAMPER_DEFAULT_TRAITS[personalityId] || CAMPER_DEFAULT_TRAITS.slowMood;
+
+  return CAMPER_TRAIT_KEYS.reduce(function(baseTraits, traitId) {
+    baseTraits[traitId] = preset[traitId];
+    return baseTraits;
+  }, {});
+}
+
+function clampCamperTrait(value) {
+  return clamp(
+    Number(value) || 0,
+    CAMPER_TRAIT_RANGE.min,
+    CAMPER_TRAIT_RANGE.max
+  );
+}
+
+function sanitizeCamperBaseTraits(baseTraits, personalityId) {
+  const defaults = getDefaultCamperBaseTraits(personalityId);
+  const source = baseTraits && typeof baseTraits === "object" && !Array.isArray(baseTraits) ? baseTraits : {};
+
+  return CAMPER_TRAIT_KEYS.reduce(function(cleanTraits, traitId) {
+    const savedValue = Number(source[traitId]);
+    cleanTraits[traitId] = Number.isFinite(savedValue) ? clampCamperTrait(savedValue) : defaults[traitId];
+    return cleanTraits;
+  }, {});
+}
+
+function buildCamperBaseTraits(personalityId, answers) {
+  const baseTraits = getDefaultCamperBaseTraits(personalityId);
+
+  answers.forEach(function(answer) {
+    const modifiers = answer && answer.traitModifiers && typeof answer.traitModifiers === "object" ? answer.traitModifiers : {};
+
+    CAMPER_TRAIT_KEYS.forEach(function(traitId) {
+      baseTraits[traitId] += Number(modifiers[traitId]) || 0;
+    });
+  });
+
+  return sanitizeCamperBaseTraits(baseTraits, personalityId);
+}
+
 function sanitizeCamperProfile(profile) {
   if (!profile || typeof profile !== "object") {
     return null;
@@ -964,6 +1006,7 @@ function sanitizeCamperProfile(profile) {
 
   const catchphrase = sanitizeCamperCatchphrase(profile.catchphrase) || getDefaultCamperCatchphrase(profile.personalityId);
   const catchphraseEdited = Boolean(profile.catchphraseEdited && sanitizeCamperCatchphrase(profile.catchphrase));
+  const habitStats = sanitizeCamperHabitStats(profile.habitStats);
 
   return {
     id: profile.id || "camper-" + Date.now().toString(36),
@@ -975,6 +1018,9 @@ function sanitizeCamperProfile(profile) {
     catchphraseEdited: catchphraseEdited,
     appearance: normalizeCamperAppearance(profile.appearance),
     traits: profile.traits && typeof profile.traits === "object" ? { ...profile.traits } : {},
+    baseTraits: sanitizeCamperBaseTraits(profile.baseTraits, profile.personalityId),
+    habitStats: habitStats,
+    habitModifiers: calculateCamperHabitModifiers(habitStats),
     quiz: profile.quiz && typeof profile.quiz === "object" ? { ...profile.quiz } : {},
     createdAt: Number(profile.createdAt) || Date.now(),
     updatedAt: Number(profile.updatedAt) || Date.now()
@@ -995,33 +1041,44 @@ function getShuffledCopy(items) {
 }
 
 function pickCamperProfileQuestions() {
-  return getShuffledCopy(CAMPER_PROFILE_QUESTIONS).slice(0, CAMPER_PROFILE_QUESTION_COUNT);
+  const selectedQuestions = CAMPER_PROFILE_QUESTION_CATEGORIES.map(function(category) {
+    return category.questions[Math.floor(Math.random() * category.questions.length)];
+  }).filter(Boolean);
+
+  return getShuffledCopy(selectedQuestions).slice(0, CAMPER_PROFILE_QUESTION_COUNT);
 }
 
 function buildCamperProfileResult(name, questions, answers, appearance) {
   const scores = {};
+  const personalityIds = Object.keys(CAMPER_PERSONALITIES);
 
-  Object.keys(CAMPER_PERSONALITIES).forEach(function(personalityId) {
+  personalityIds.forEach(function(personalityId) {
     scores[personalityId] = 0;
   });
 
   answers.forEach(function(answer) {
-    const traits = answer && answer.traits ? answer.traits : {};
+    const personalityScores = answer && (answer.personalityScores || answer.traits) || {};
 
-    Object.keys(traits).forEach(function(personalityId) {
+    Object.keys(personalityScores).forEach(function(personalityId) {
       if (scores[personalityId] === undefined) {
         scores[personalityId] = 0;
       }
 
-      scores[personalityId] += Number(traits[personalityId]) || 0;
+      scores[personalityId] += Number(personalityScores[personalityId]) || 0;
     });
   });
 
-  const personalityId = Object.keys(CAMPER_PERSONALITIES).sort(function(firstId, secondId) {
-    return scores[secondId] - scores[firstId];
-  })[0] || "slowMood";
+  const highestScore = Math.max.apply(null, personalityIds.map(function(personalityId) {
+    return scores[personalityId];
+  }));
+  const highestScoringIds = personalityIds.filter(function(personalityId) {
+    return scores[personalityId] === highestScore;
+  });
+  const personalityId = highestScoringIds[Math.floor(Math.random() * highestScoringIds.length)] || "slowMood";
   const personality = CAMPER_PERSONALITIES[personalityId];
+  const baseTraits = buildCamperBaseTraits(personalityId, answers);
   const existingProfile = getActiveCamperProfile(gameState);
+  const habitStats = sanitizeCamperHabitStats(existingProfile && existingProfile.habitStats);
   const existingCatchphrase = existingProfile && sanitizeCamperCatchphrase(existingProfile.catchphrase);
   const catchphraseEdited = Boolean(existingProfile && existingProfile.catchphraseEdited && existingCatchphrase);
 
@@ -1035,6 +1092,9 @@ function buildCamperProfileResult(name, questions, answers, appearance) {
     catchphraseEdited: catchphraseEdited,
     appearance: normalizeCamperAppearance(appearance),
     traits: scores,
+    baseTraits: baseTraits,
+    habitStats: habitStats,
+    habitModifiers: calculateCamperHabitModifiers(habitStats),
     quiz: {
       questionCount: questions.length,
       questions: questions.map(function(question) {
