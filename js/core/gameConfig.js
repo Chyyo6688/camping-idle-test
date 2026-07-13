@@ -1,7 +1,7 @@
 // Save schema, defaults, migration support, runtime constants, and asset paths.
 
 const SAVE_KEY = "cozyCampfireSave";
-const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "4.8";
+const APP_VERSION = typeof window !== "undefined" && window.APP_VERSION ? window.APP_VERSION : "4.9";
 
 function withVersion(path) {
   const separator = path.includes("?") ? "&" : "?";
@@ -197,7 +197,8 @@ const defaultGameState = {
   activityStats: {},
   inventory: {
     fish: {},
-    meals: {}
+    meals: {},
+    ingredients: {}
   },
   adventure: {
     version: 4,
@@ -211,16 +212,36 @@ const defaultGameState = {
       value: 100,
       updatedAt: Date.now()
     },
+    unlockedMaps: ["deepMountain"],
+    mapStates: {
+      deepMountain: {
+        bridgeRepaired: false,
+        whiteShadowTrust: 0,
+        cabinSearched: false,
+        rangerCluesFound: 0,
+        recurringEncounters: {}
+      }
+    },
+    adventureMemories: {
+      rescuedSomeone: 0,
+      supernaturalEncounters: 0,
+      seriousFalls: 0,
+      animalTrust: 0,
+      preferredTools: []
+    },
     unlockedRoutes: ["deepMountain"],
     unlockedLocations: ["deepMountain"],
     discoveredKeyItems: [],
     discoveredClues: [],
+    clueStages: {},
+    crossMapMysteryFlags: {},
     collectedClues: [],
     itemSolutionKnowledge: [],
     adventureStarterKitMigrationVersion: 1,
     completedTrips: 0,
     pendingBackpack: {},
     pendingLoot: {},
+    pendingTripSnapshot: null,
     recentAdventureHistory: [],
     lastLog: null
   },
@@ -235,7 +256,8 @@ const defaultGameState = {
   cooking: {
     cooked: 0,
     autoCookDate: "",
-    autoCookedToday: 0
+    autoCookedToday: 0,
+    unlockedRecipes: ["simpleGrilledFish"]
   },
   dailyWeather: {
     userSeed: "",
@@ -309,19 +331,36 @@ function createDefaultGameState() {
         ...defaultGameState.adventure.stamina,
         updatedAt: Date.now()
       },
+      unlockedMaps: defaultGameState.adventure.unlockedMaps.slice(),
+      mapStates: {
+        deepMountain: {
+          ...defaultGameState.adventure.mapStates.deepMountain,
+          recurringEncounters: { ...defaultGameState.adventure.mapStates.deepMountain.recurringEncounters }
+        }
+      },
+      adventureMemories: {
+        ...defaultGameState.adventure.adventureMemories,
+        preferredTools: defaultGameState.adventure.adventureMemories.preferredTools.slice()
+      },
       unlockedRoutes: defaultGameState.adventure.unlockedRoutes.slice(),
       unlockedLocations: defaultGameState.adventure.unlockedLocations.slice(),
       discoveredKeyItems: defaultGameState.adventure.discoveredKeyItems.slice(),
       discoveredClues: defaultGameState.adventure.discoveredClues.slice(),
+      clueStages: { ...defaultGameState.adventure.clueStages },
+      crossMapMysteryFlags: { ...defaultGameState.adventure.crossMapMysteryFlags },
       collectedClues: defaultGameState.adventure.collectedClues.slice(),
       itemSolutionKnowledge: defaultGameState.adventure.itemSolutionKnowledge.slice(),
       pendingBackpack: {},
       pendingLoot: {},
+      pendingTripSnapshot: null,
       recentAdventureHistory: [],
       lastLog: null
     },
     fishing: { ...defaultGameState.fishing },
-    cooking: { ...defaultGameState.cooking },
+    cooking: {
+      ...defaultGameState.cooking,
+      unlockedRecipes: defaultGameState.cooking.unlockedRecipes.slice()
+    },
     dailyWeather: { ...defaultGameState.dailyWeather },
     todayDivinations: {
       ...defaultGameState.todayDivinations,

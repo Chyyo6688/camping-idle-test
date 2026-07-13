@@ -3,7 +3,10 @@
 const adventurePrototypeLayer = document.getElementById("adventurePrototypeLayer");
 const adventurePrototype = document.getElementById("adventurePrototype");
 const adventureScene = document.getElementById("adventureScene");
+const adventureBackground = document.getElementById("adventureBackground");
 const adventureHeader = document.getElementById("adventureHeader");
+const adventureHeaderEyebrow = document.getElementById("adventureHeaderEyebrow");
+const adventureHeaderTitle = document.getElementById("adventureHeaderTitle");
 const adventureAtmosphere = document.getElementById("adventureAtmosphere");
 const adventureRainLayer = document.getElementById("adventureRainLayer");
 const adventureEventProp = document.getElementById("adventureEventProp");
@@ -31,7 +34,14 @@ const adventureStorageLatestList = document.getElementById("adventureStorageLate
 const adventureStorageCountLabel = document.getElementById("adventureStorageCountLabel");
 const adventureStorageItemList = document.getElementById("adventureStorageItemList");
 
+const adventureMapList = document.getElementById("adventureMapList");
+const adventureMapMessage = document.getElementById("adventureMapMessage");
+const adventureMapStamina = document.getElementById("adventureMapStamina");
+const adventureMapStorageCount = document.getElementById("adventureMapStorageCount");
+const adventureMapCloseButton = document.getElementById("adventureMapCloseButton");
+
 const adventurePrepStaminaText = document.getElementById("adventurePrepStaminaText");
+const adventurePrepPanel = document.getElementById("adventurePrepPanel");
 const adventurePrepStaminaFill = document.getElementById("adventurePrepStaminaFill");
 const adventureStaminaHint = document.getElementById("adventureStaminaHint");
 const adventureStorageList = document.getElementById("adventureStorageList");
@@ -41,9 +51,19 @@ const adventurePrepMessage = document.getElementById("adventurePrepMessage");
 const adventureStartButton = document.getElementById("adventureStartButton");
 const adventurePrepResetButton = document.getElementById("adventurePrepResetButton");
 const adventurePrepCloseButton = document.getElementById("adventurePrepCloseButton");
-const adventureGoalList = document.getElementById("adventureGoalList");
+const adventurePrepMapEyebrow = document.getElementById("adventurePrepMapEyebrow");
+const adventurePrepIllustration = document.getElementById("adventurePrepIllustration");
+const adventurePrepIllustrationCaption = document.getElementById("adventurePrepIllustrationCaption");
 const adventureRouteList = document.getElementById("adventureRouteList");
 const adventureStrategyHint = document.getElementById("adventureStrategyHint");
+const adventureHookPreview = document.getElementById("adventureHookPreview");
+const adventureHookEyebrow = document.getElementById("adventureHookEyebrow");
+const adventureHookTitle = document.getElementById("adventureHookTitle");
+const adventureHookIntro = document.getElementById("adventureHookIntro");
+const adventureHookClueMeta = document.getElementById("adventureHookClueMeta");
+const adventureHookDetail = document.getElementById("adventureHookDetail");
+const adventureRecommendationText = document.getElementById("adventureRecommendationText");
+const adventureRecommendationResetButton = document.getElementById("adventureRecommendationResetButton");
 
 const adventureLogStatus = document.getElementById("adventureLogStatus");
 const adventureLogIllustration = document.getElementById("adventureLogIllustration");
@@ -54,9 +74,10 @@ const adventureLogEventCount = document.getElementById("adventureLogEventCount")
 const adventureLogStamina = document.getElementById("adventureLogStamina");
 const adventureLogEndReason = document.getElementById("adventureLogEndReason");
 const adventureLogEventList = document.getElementById("adventureLogEventList");
-const adventureLogGoalStatus = document.getElementById("adventureLogGoalStatus");
+const adventureLogHookStatus = document.getElementById("adventureLogHookStatus");
 const adventureLogStoryTitle = document.getElementById("adventureLogStoryTitle");
 const adventureLogStoryIntro = document.getElementById("adventureLogStoryIntro");
+const adventureLogProgressBlock = document.getElementById("adventureLogProgressBlock");
 const adventureLogStoryBody = document.getElementById("adventureLogStoryBody");
 const adventureLogStoryEnding = document.getElementById("adventureLogStoryEnding");
 const adventureLogDeparted = document.getElementById("adventureLogDeparted");
@@ -65,8 +86,14 @@ const adventureLogLost = document.getElementById("adventureLogLost");
 const adventureLogConsumed = document.getElementById("adventureLogConsumed");
 const adventureLogUnlocked = document.getElementById("adventureLogUnlocked");
 const adventureAgainButton = document.getElementById("adventureAgainButton");
+const adventureLogMapButton = document.getElementById("adventureLogMapButton");
 const adventureLogExitButton = document.getElementById("adventureLogExitButton");
 const adventureLogResetButton = document.getElementById("adventureLogResetButton");
+const adventureLogRouteMapButton = document.getElementById("adventureLogRouteMapButton");
+
+const adventureRouteMapLayer = document.getElementById("adventureRouteMapLayer");
+const adventureRouteMapCloseButton = document.getElementById("adventureRouteMapCloseButton");
+const adventureRouteMapMapButton = document.getElementById("adventureRouteMapMapButton");
 
 const ADVENTURE_WALK_FRAMES = [
   "camper_walk_01.png",
@@ -90,28 +117,17 @@ const ADVENTURE_ACTION_FRAMES = {
   startled: [CAMPER_IDLE_FRAME_NAME, "camper_walk_01.png"]
 };
 
-const ADVENTURE_PROP_SHEET_POSITIONS = {
-  "prop-footprints": ["0%", "0%"],
-  "prop-chest-closed": ["33.333%", "0%"],
-  "prop-chest-open": ["66.667%", "0%"],
-  "prop-ghost": ["100%", "0%"],
-  "prop-branches": ["0%", "50%"],
-  "prop-food": ["33.333%", "50%"],
-  "prop-sparkle": ["66.667%", "50%"],
-  "prop-hiker": ["100%", "50%"],
-  "prop-lantern": ["0%", "100%"],
-  "prop-cabin": ["33.333%", "100%"],
-  "prop-bridge": ["66.667%", "100%"],
-  "prop-sign": ["100%", "100%"]
-};
-
 const adventurePrototypeState = {
   active: false,
-  mode: "preparing",
+  mode: "map-select",
   busy: false,
   draftBackpack: {},
-  draftGoalId: "investigateWhiteShadow",
+  draftBackpackTouched: false,
+  draftMapId: "deepMountain",
   draftRouteId: "creekValley",
+  draftAdventureHook: null,
+  pendingRouteMapReveal: false,
+  recoveredTripSnapshot: null,
   trip: null,
   currentEvent: null,
   seenEventIds: [],
@@ -170,11 +186,586 @@ function getAdventureCountTotal(countMap) {
   }, 0);
 }
 
+function cloneAdventureData(source) {
+  if (Array.isArray(source)) {
+    return source.map(cloneAdventureData);
+  }
+  if (source && typeof source === "object") {
+    return Object.keys(source).reduce(function(copy, key) {
+      copy[key] = cloneAdventureData(source[key]);
+      return copy;
+    }, {});
+  }
+  return source;
+}
+
+function getAdventureMap(mapId) {
+  const maps = getAdventureMapRegistry();
+  return maps[mapId] || maps[ADVENTURE_DEFAULT_MAP_ID] || DEEP_MOUNTAIN_ADVENTURE_MAP;
+}
+
+function getAdventureMapRegistry() {
+  return typeof ADVENTURE_MAPS === "object" && ADVENTURE_MAPS ? ADVENTURE_MAPS : {};
+}
+
+function getDefaultAdventureMapId() {
+  const fallback = getAdventureMap(ADVENTURE_DEFAULT_MAP_ID);
+  return fallback ? fallback.id : "deepMountain";
+}
+
+function getAdventureMapIds() {
+  const maps = getAdventureMapRegistry();
+  const ids = Object.keys(maps);
+  return ids.length ? ids : [getDefaultAdventureMapId()];
+}
+
+function isAdventureMapPlayable(mapId) {
+  const map = getAdventureMapRegistry()[mapId];
+  return Boolean(map && map.status === "ready" && map.scene && Object.keys(map.routes || {}).length && (map.events || []).length);
+}
+
+function isAdventureMapUnlocked(mapId, progress) {
+  const adventureProgress = progress || ensureAdventureProgress();
+  return isAdventureMapPlayable(mapId) && Array.isArray(adventureProgress.unlockedMaps) && adventureProgress.unlockedMaps.indexOf(mapId) !== -1;
+}
+
+function getAdventureMapHooks(mapId) {
+  const map = getAdventureMap(mapId);
+  if (map && map.adventureHooks) return map.adventureHooks;
+  if (map && map.goals) return map.goals;
+  return typeof DEEP_MOUNTAIN_ADVENTURE_HOOKS === "object" ? DEEP_MOUNTAIN_ADVENTURE_HOOKS : DEEP_MOUNTAIN_ADVENTURE_GOALS;
+}
+
+function getAdventureHookDefinition(mapId, hookId) {
+  const hooks = getAdventureMapHooks(mapId);
+  return hookId && hooks[hookId] ? hooks[hookId] : null;
+}
+
+function getAdventureHookClueDefinitions(mapId, hookId) {
+  const hook = getAdventureHookDefinition(mapId, hookId);
+  const seen = {};
+  return (Array.isArray(hook && hook.clues) ? hook.clues : []).filter(function(clue) {
+    if (!clue || typeof clue.id !== "string" || seen[clue.id]) return false;
+    seen[clue.id] = true;
+    return true;
+  }).map(function(clue) {
+    return {
+      id: clue.id,
+      label: typeof clue.label === "string" ? clue.label : clue.id,
+      eventIds: sanitizeAdventureStringArray(clue.eventIds, 12),
+      flagIds: sanitizeAdventureStringArray(clue.flagIds, 12),
+      routeIds: sanitizeAdventureStringArray(clue.routeIds, 8)
+    };
+  });
+}
+
+function sanitizeAdventureHookClues(source) {
+  const clean = {};
+  const sourceClues = source && typeof source === "object" && !Array.isArray(source) ? source : {};
+  getAdventureMapIds().forEach(function(mapId) {
+    const hooks = getAdventureMapHooks(mapId);
+    const mapSource = sourceClues[mapId] && typeof sourceClues[mapId] === "object" && !Array.isArray(sourceClues[mapId])
+      ? sourceClues[mapId]
+      : sourceClues;
+    const hookClean = {};
+    Object.keys(hooks).forEach(function(hookId) {
+      const validClueIds = getAdventureHookClueDefinitions(mapId, hookId).map(function(clue) { return clue.id; });
+      const sourceIds = Array.isArray(mapSource[hookId]) ? mapSource[hookId] : [];
+      const uniqueIds = Array.from(new Set(sourceIds.filter(function(clueId) {
+        return validClueIds.indexOf(clueId) !== -1;
+      })));
+      if (uniqueIds.length) hookClean[hookId] = uniqueIds;
+    });
+    clean[mapId] = hookClean;
+  });
+  return clean;
+}
+
+function getAdventureKnownHookClueIds(progress, mapId, hookId) {
+  const clueSource = progress && progress.hookClues && progress.hookClues[mapId] ? progress.hookClues[mapId][hookId] : [];
+  const validClueIds = getAdventureHookClueDefinitions(mapId, hookId).map(function(clue) { return clue.id; });
+  return Array.from(new Set((Array.isArray(clueSource) ? clueSource : []).filter(function(clueId) {
+    return validClueIds.indexOf(clueId) !== -1;
+  })));
+}
+
+function getAdventureHookClueProgress(progress, mapId, hookId) {
+  const definitions = getAdventureHookClueDefinitions(mapId, hookId);
+  const foundIds = getAdventureKnownHookClueIds(progress || ensureAdventureProgress(), mapId, hookId);
+  return {
+    found: foundIds.length,
+    total: definitions.length,
+    remaining: Math.max(0, definitions.length - foundIds.length),
+    complete: definitions.length > 0 && foundIds.length >= definitions.length,
+    discovered: foundIds.length > 0,
+    foundIds: foundIds,
+    clues: definitions
+  };
+}
+
+function formatAdventureHookClueProgress(progressInfo) {
+  if (!progressInfo || !progressInfo.total) return "尚未发现";
+  if (!progressInfo.discovered) return "尚未发现";
+  return "线索 " + progressInfo.found + " / " + progressInfo.total;
+}
+
+function isAdventureHookRouteEligible(mapId, hook, routeId, progress) {
+  if (!hook) return false;
+  if (Array.isArray(hook.routeIds) && hook.routeIds.length && hook.routeIds.indexOf(routeId) === -1) {
+    return false;
+  }
+  const requirements = hook.routeProgressRequirements && hook.routeProgressRequirements[routeId];
+  if (requirements && Number(requirements.minClues) > 0) {
+    const clueProgress = getAdventureHookClueProgress(progress || ensureAdventureProgress(), mapId, hook.id);
+    if (clueProgress.found < Number(requirements.minClues)) return false;
+  }
+  if (requirements && Array.isArray(requirements.keyClues)) {
+    const knownKeyClues = progress && Array.isArray(progress.keyClues) ? progress.keyClues : [];
+    if (!requirements.keyClues.every(function(clueId) { return knownKeyClues.indexOf(clueId) !== -1; })) return false;
+  }
+  return true;
+}
+
+function getAdventureIngredientName(ingredientId) {
+  const catalog = typeof ingredientCatalog === "object" && ingredientCatalog ? ingredientCatalog : {};
+  return catalog[ingredientId] ? catalog[ingredientId].displayName : ingredientId;
+}
+
+function getAdventureRecipeName(recipeId) {
+  const recipes = typeof cookingRecipeCatalog === "object" && cookingRecipeCatalog ? cookingRecipeCatalog : {};
+  const meals = typeof mealCatalog === "object" && mealCatalog ? mealCatalog : {};
+  const recipe = recipes[recipeId];
+  return recipe && recipe.displayName ? recipe.displayName : (meals[recipeId] ? meals[recipeId].displayName : recipeId);
+}
+
+function getAdventureKeyClueName(clueId) {
+  const catalog = typeof ADVENTURE_KEY_CLUE_CATALOG === "object" && ADVENTURE_KEY_CLUE_CATALOG ? ADVENTURE_KEY_CLUE_CATALOG : {};
+  return catalog[clueId] ? catalog[clueId].label : clueId;
+}
+
+function sanitizeAdventureKeyClues(source, unlockedMaps) {
+  const catalog = typeof ADVENTURE_KEY_CLUE_CATALOG === "object" && ADVENTURE_KEY_CLUE_CATALOG ? ADVENTURE_KEY_CLUE_CATALOG : {};
+  const clues = Array.from(new Set((Array.isArray(source) ? source : []).filter(function(clueId) {
+    return Boolean(catalog[clueId]);
+  })));
+  if (Array.isArray(unlockedMaps) && unlockedMaps.indexOf("fogRainforest") !== -1 && catalog.dampSurveyRouteMap && clues.indexOf("dampSurveyRouteMap") === -1) {
+    clues.push("dampSurveyRouteMap");
+  }
+  return clues;
+}
+
+function getAdventureRouteMapSummaryLines() {
+  return [
+    "旧林务网格：S-17 / E-04",
+    "南侧补给路线：溪谷末端 → 低地调查站",
+    "通联编号：R-03",
+    "雨季后道路停用。",
+    "若藤蔓覆盖路标，沿白色树标继续前进。"
+  ];
+}
+
+function isAdventureRecipeUnlockedForDisplay(recipeId) {
+  if (typeof isCookingRecipeUnlocked === "function") {
+    return isCookingRecipeUnlocked(recipeId);
+  }
+  const cooking = gameState && gameState.cooking && Array.isArray(gameState.cooking.unlockedRecipes)
+    ? gameState.cooking.unlockedRecipes
+    : [];
+  return cooking.indexOf(recipeId) !== -1;
+}
+
+function getAdventureRouteResourceSummary(mapId, routeId) {
+  const routes = getAdventureMapRoutes(mapId);
+  const route = routes[routeId] || routes[getAdventureMapDefaultRouteId(mapId)] || {};
+  const ingredients = sanitizeAdventureStringArray(route.resourceIds, 12).map(getAdventureIngredientName);
+  const lockedRecipes = sanitizeAdventureStringArray(route.recipeIds, 12).filter(function(recipeId) {
+    return !isAdventureRecipeUnlockedForDisplay(recipeId);
+  }).map(getAdventureRecipeName);
+  const lines = [];
+  lines.push("当前路线可能获得：" + (ingredients.length ? ingredients.join("、") : "暂无专属原料"));
+  lines.push("未解锁菜谱：" + (lockedRecipes.length ? lockedRecipes.join("、") : "本路线菜谱已全部掌握"));
+  return lines.join(" ");
+}
+
+function getAdventureMapRoutes(mapId) {
+  const map = getAdventureMap(mapId);
+  return map && map.routes ? map.routes : DEEP_MOUNTAIN_ADVENTURE_ROUTES;
+}
+
+function getAdventureRoutePresentation(mapId, routeId) {
+  const routes = getAdventureMapRoutes(mapId);
+  const route = routes[routeId] || routes[getAdventureMapDefaultRouteId(mapId)];
+  return route && route.presentation ? route.presentation : {};
+}
+
+function getAdventureCssImage(path) {
+  return path ? "url(\"" + String(path).replace(/\"/g, "") + "\")" : "none";
+}
+
+function applyAdventureMapPresentation(mapId) {
+  const map = getAdventureMap(mapId);
+  if (!map || !map.scene) return;
+  const selection = map.selection || {};
+  const scene = map.scene;
+  if (adventurePrototype) {
+    getAdventureMapIds().forEach(function(id) {
+      const mapClass = getAdventureMap(id).selection && getAdventureMap(id).selection.className;
+      if (mapClass) adventurePrototype.classList.remove(mapClass);
+    });
+    if (selection.className) adventurePrototype.classList.add(selection.className);
+    adventurePrototype.style.setProperty("--adventure-event-prop-image", getAdventureCssImage(scene.eventPropSheet));
+    adventurePrototype.style.setProperty("--adventure-foreground-image", getAdventureCssImage(scene.foreground));
+    adventurePrototype.style.setProperty("--adventure-item-sheet-image", getAdventureCssImage(scene.itemSheet));
+  }
+  if (adventureScene) adventureScene.dataset.mapId = map.id;
+  if (adventureBackground && scene.background) {
+    adventureBackground.src = scene.background;
+    adventureBackground.alt = map.name + "冒险场景";
+  }
+  const panelBackground = "linear-gradient(180deg, transparent 45%, rgba(7, 15, 10, 0.76)), " + getAdventureCssImage(scene.background);
+  if (adventurePrepIllustration) adventurePrepIllustration.style.backgroundImage = panelBackground;
+  if (adventureLogIllustration) adventureLogIllustration.style.backgroundImage = panelBackground;
+  if (adventureHeaderEyebrow) adventureHeaderEyebrow.textContent = selection.eyebrow || "Solo Adventure";
+  if (adventureHeaderTitle) adventureHeaderTitle.textContent = map.name;
+  if (adventurePrepMapEyebrow) adventurePrepMapEyebrow.textContent = selection.eyebrow || map.name;
+}
+
+function applyAdventureRoutePresentation(mapId, routeId) {
+  const map = getAdventureMap(mapId);
+  applyAdventureMapPresentation(map.id);
+  const routes = getAdventureMapRoutes(map.id);
+  const route = routes[routeId] || routes[getAdventureMapDefaultRouteId(map.id)];
+  const presentation = route && route.presentation ? route.presentation : {};
+  if (adventurePrototype) {
+    Object.keys(routes).forEach(function(id) {
+      const routeClass = routes[id].presentation && routes[id].presentation.className;
+      if (routeClass) adventurePrototype.classList.remove(routeClass);
+    });
+    if (presentation.className) adventurePrototype.classList.add(presentation.className);
+  }
+  if (adventureScene) adventureScene.dataset.routeId = route ? route.id : "";
+  if (adventureBackground) adventureBackground.style.objectPosition = presentation.cameraPosition || "center";
+  if (adventurePrepIllustration) adventurePrepIllustration.style.backgroundPosition = presentation.prepPosition || "center 42%";
+  if (adventurePrepIllustrationCaption) adventurePrepIllustrationCaption.textContent = map.name + " · " + (route ? route.name : "自由探索");
+}
+
+function resetAdventureRouteAtmosphere() {
+  if (!adventureAtmosphere) return;
+  adventureAtmosphere.className = "adventure-atmosphere";
+  const presentation = getAdventureRoutePresentation(getActiveAdventureMapId(), adventurePrototypeState.trip ? adventurePrototypeState.trip.routeId : adventurePrototypeState.draftRouteId);
+  if (presentation.ambientClass) adventureAtmosphere.classList.add(presentation.ambientClass);
+}
+
+function getAdventureMapEvents(mapId) {
+  const map = getAdventureMap(mapId);
+  return map && map.events ? map.events : DEEP_MOUNTAIN_ADVENTURE_EVENTS;
+}
+
+function getAdventureMapLocations(mapId) {
+  const map = getAdventureMap(mapId);
+  return map && map.locations ? map.locations : ADVENTURE_LOCATION_CATALOG;
+}
+
+function getAllAdventureLocations() {
+  return getAdventureMapIds().reduce(function(locations, mapId) {
+    return Object.assign(locations, getAdventureMapLocations(mapId));
+  }, {});
+}
+
+function isAdventureLocationId(locationId) {
+  return Boolean(getAllAdventureLocations()[locationId]);
+}
+
+function getAdventureMapPathPoints(mapId) {
+  const map = getAdventureMap(mapId);
+  const points = map && map.scene && Array.isArray(map.scene.pathPoints) ? map.scene.pathPoints : ADVENTURE_PROTOTYPE_PATH_POINTS;
+  return points.length ? points : ADVENTURE_PROTOTYPE_PATH_POINTS;
+}
+
+function getAdventureMapPropSheetPositions(mapId) {
+  const map = getAdventureMap(mapId);
+  return map && map.scene && map.scene.propSheetPositions ? map.scene.propSheetPositions : DEEP_MOUNTAIN_PROP_SHEET_POSITIONS;
+}
+
+function getAdventureEventDefinitionById(mapId, eventId) {
+  return getAdventureMapEvents(mapId).find(function(eventDefinition) {
+    return eventDefinition.id === eventId;
+  }) || null;
+}
+
+function getAdventureMapReactionRequirements(mapId) {
+  const map = getAdventureMap(mapId);
+  return map && map.reactionItemRequirements ? map.reactionItemRequirements : ADVENTURE_REACTION_ITEM_REQUIREMENTS;
+}
+
+function getAdventureMapItemSolutionEffects(mapId) {
+  const map = getAdventureMap(mapId);
+  return map && map.itemSolutionEffects ? map.itemSolutionEffects : ADVENTURE_ITEM_SOLUTION_EFFECTS;
+}
+
+function getAdventureMapMissingItemFeedback(mapId) {
+  const map = getAdventureMap(mapId);
+  return map && map.missingItemFeedback ? map.missingItemFeedback : ADVENTURE_MISSING_ITEM_FEEDBACK;
+}
+
+function getAdventureMapEventConsequences(mapId) {
+  const map = getAdventureMap(mapId);
+  return map && map.eventConsequences ? map.eventConsequences : ADVENTURE_EVENT_CONSEQUENCES;
+}
+
+function isAdventureItemSolutionId(solutionId) {
+  return getAdventureMapIds().some(function(mapId) {
+    return Boolean(getAdventureMapItemSolutionEffects(mapId)[solutionId]);
+  });
+}
+
+function getActiveAdventureMapId() {
+  return adventurePrototypeState.trip && adventurePrototypeState.trip.mapId
+    ? adventurePrototypeState.trip.mapId
+    : (adventurePrototypeState.draftMapId || getDefaultAdventureMapId());
+}
+
+function getAdventureMapDefaultHookId(mapId) {
+  const map = getAdventureMap(mapId);
+  const hooks = getAdventureMapHooks(mapId);
+  const configuredId = map && (map.defaultHookId || map.defaultGoalId);
+  return configuredId && hooks[configuredId] ? configuredId : Object.keys(hooks)[0];
+}
+
+function getAdventureMapDefaultRouteId(mapId) {
+  const map = getAdventureMap(mapId);
+  const routes = getAdventureMapRoutes(mapId);
+  return map && routes[map.defaultRouteId] ? map.defaultRouteId : Object.keys(routes)[0];
+}
+
+function createAdventureHookSnapshot(hook, source, introOverride) {
+  if (!hook) return null;
+  return {
+    id: hook.id,
+    title: hook.title || hook.name || "沿途的新动静",
+    intro: introOverride || hook.intro || hook.rumorIntro || hook.shortDescription || "沿途也许会遇见一些没有预料到的事情。",
+    relatedEventIds: sanitizeAdventureStringArray(hook.relatedEventIds || hook.relatedEvents, 12),
+    source: ["unfinishedClue", "mapState", "recentHistory", "routeRumor", "fallback"].indexOf(source) !== -1 ? source : "fallback"
+  };
+}
+
+function createFallbackAdventureHook(mapId, routeId) {
+  const map = getAdventureMap(mapId);
+  const routes = getAdventureMapRoutes(map.id);
+  const route = routes[routeId] || routes[getAdventureMapDefaultRouteId(map.id)];
+  const relatedEventIds = Object.keys(route && route.eventWeights ? route.eventWeights : {})
+    .sort(function(left, right) { return Number(route.eventWeights[right]) - Number(route.eventWeights[left]); })
+    .slice(0, 3);
+  return {
+    id: "openExploration",
+    title: route ? route.name + "上的新动静" : map.name + "里的普通一天",
+    intro: route ? "这次只沿着" + route.name + "走走，看看山里今天留下了什么。" : "这次没有特别牵挂，只是想看看沿途会发生什么。",
+    relatedEventIds: relatedEventIds,
+    source: "fallback"
+  };
+}
+
+function sanitizeAdventureHookSnapshot(source, mapId, legacyHookId) {
+  const hooks = getAdventureMapHooks(mapId);
+  const sourceId = source && typeof source === "object" ? source.id : "";
+  const hook = hooks[sourceId] || hooks[legacyHookId];
+  if (hook) {
+    return createAdventureHookSnapshot(
+      hook,
+      source && typeof source === "object" ? source.source : "recentHistory",
+      source && typeof source.intro === "string" ? source.intro : ""
+    );
+  }
+  if (source && typeof source === "object" && typeof source.title === "string") {
+    return {
+      id: typeof source.id === "string" ? source.id : "openExploration",
+      title: source.title.slice(0, 80),
+      intro: typeof source.intro === "string" ? source.intro.slice(0, 240) : "沿途也许会遇见一些没有预料到的事情。",
+      relatedEventIds: sanitizeAdventureStringArray(source.relatedEventIds, 12).filter(function(eventId) {
+        return Boolean(getAdventureEventDefinitionById(mapId, eventId));
+      }),
+      source: ["unfinishedClue", "mapState", "recentHistory", "routeRumor", "fallback"].indexOf(source.source) !== -1 ? source.source : "fallback"
+    };
+  }
+  return null;
+}
+
+function getAdventureHookItemMatch(hook, backpack) {
+  return (hook.relatedItems || []).some(function(requirement) {
+    if (requirement.indexOf("category:") === 0) {
+      const category = requirement.slice(9);
+      return Object.keys(backpack || {}).some(function(key) {
+        const descriptor = getAdventureItemDescriptor(key);
+        return (Number(backpack[key]) || 0) > 0 && descriptor && (descriptor.type === category || descriptor.category === category);
+      });
+    }
+    return (Number(backpack && backpack["item:" + requirement]) || 0) > 0;
+  });
+}
+
+function chooseAdventureHook(mapId, routeId, progress, backpack, previousHookId) {
+  const map = getAdventureMap(mapId);
+  const hooks = getAdventureMapHooks(mapId);
+  const hookEntries = Object.keys(hooks).filter(function(hookId) {
+    return isAdventureHookRouteEligible(mapId, hooks[hookId], routeId, progress);
+  }).map(function(hookId) {
+    const hook = hooks[hookId];
+    let weight = Number(hook.routeWeight) || 4;
+    let source = "routeRumor";
+    let introOverride = "";
+    const clueProgress = getAdventureHookClueProgress(progress, mapId, hookId);
+    const clueStage = progress.clueStages && progress.clueStages[hookId];
+    if ((clueProgress.discovered && !clueProgress.complete) || (clueStage && clueStage !== "complete" && clueStage !== "resolved")) {
+      weight += 18;
+      source = "unfinishedClue";
+    }
+    const mapState = progress.mapStates && progress.mapStates[mapId] ? progress.mapStates[mapId] : {};
+    const memories = progress.adventureMemories || {};
+    const continuation = map && typeof map.getHookContinuation === "function"
+      ? map.getHookContinuation(hookId, mapState, memories)
+      : null;
+    if (continuation && Number(continuation.weight) > 0) {
+      weight += Number(continuation.weight);
+      introOverride = typeof continuation.intro === "string" ? continuation.intro : "";
+      if (source !== "unfinishedClue" && Number(continuation.weight) >= 3) source = "mapState";
+    }
+    const recent = (progress.recentAdventureHistory || []).slice(-3).reverse().find(function(entry) {
+      return (entry.mapId || getDefaultAdventureMapId()) === mapId && (entry.hookId || entry.goalId) === hookId;
+    });
+    if (recent && ["continuing", "noResult", "partial", "incomplete"].indexOf(recent.outcomeType) !== -1) {
+      weight += 3.5;
+      if (source === "routeRumor") source = "recentHistory";
+    }
+    if (getAdventureHookItemMatch(hook, backpack)) weight += 1.25;
+    const latestOnRoute = (progress.recentAdventureHistory || []).slice().reverse().find(function(entry) {
+      return (entry.mapId || getDefaultAdventureMapId()) === mapId && entry.routeId === routeId;
+    });
+    if (latestOnRoute && (latestOnRoute.hookId || latestOnRoute.goalId) === hookId && source !== "unfinishedClue") {
+      weight *= latestOnRoute.outcomeType === "found" || latestOnRoute.outcomeType === "diverted" ? 0.3 : 0.58;
+    }
+    if (previousHookId === hookId) weight *= 0.55;
+    return { hook: hook, source: source, intro: introOverride, weight: Math.max(0.05, weight * (0.86 + Math.random() * 0.28)) };
+  });
+  if (!hookEntries.length) return createFallbackAdventureHook(mapId, routeId);
+  const selected = pickWeightedAdventureEntry(hookEntries);
+  return createAdventureHookSnapshot(
+    selected.hook,
+    selected.source,
+    selected.intro || (selected.source === "routeRumor" ? selected.hook.rumorIntro : selected.hook.intro)
+  );
+}
+
+function ensureDraftAdventureHook(forceNew) {
+  const progress = ensureAdventureProgress();
+  const mapId = adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
+  const routeId = adventurePrototypeState.draftRouteId || getAdventureMapDefaultRouteId(mapId);
+  const current = sanitizeAdventureHookSnapshot(adventurePrototypeState.draftAdventureHook, mapId);
+  if (!forceNew && current) {
+    adventurePrototypeState.draftAdventureHook = current;
+    return current;
+  }
+  adventurePrototypeState.draftAdventureHook = chooseAdventureHook(
+    mapId,
+    routeId,
+    progress,
+    adventurePrototypeState.draftBackpack,
+    forceNew && current ? current.id : ""
+  );
+  return adventurePrototypeState.draftAdventureHook;
+}
+
+function sanitizeAdventureStringArray(source, limit) {
+  const values = Array.isArray(source) ? source : [];
+  return Array.from(new Set(values.filter(function(value) {
+    return typeof value === "string" && value.length > 0 && value.length <= 120;
+  }))).slice(0, limit || 80);
+}
+
+function createDefaultAdventureMapStates() {
+  return getAdventureMapIds().reduce(function(states, mapId) {
+    const map = getAdventureMap(mapId);
+    states[mapId] = cloneAdventureData(map && map.localStateDefaults ? map.localStateDefaults : {});
+    return states;
+  }, {});
+}
+
+function sanitizeAdventureMapStates(source) {
+  const sourceStates = source && typeof source === "object" && !Array.isArray(source) ? source : {};
+  const states = createDefaultAdventureMapStates();
+  getAdventureMapIds().forEach(function(mapId) {
+    const current = sourceStates[mapId];
+    if (current && typeof current === "object" && !Array.isArray(current)) {
+      states[mapId] = Object.assign(states[mapId], cloneAdventureData(current));
+    }
+    const map = getAdventureMap(mapId);
+    if (map && typeof map.sanitizeLocalState === "function") {
+      states[mapId] = map.sanitizeLocalState(states[mapId]);
+    }
+  });
+  return states;
+}
+
+function createDefaultAdventureMapVisitCounts() {
+  return getAdventureMapIds().reduce(function(counts, mapId) {
+    counts[mapId] = 0;
+    return counts;
+  }, {});
+}
+
+function sanitizeAdventureMapVisitCounts(source) {
+  const clean = createDefaultAdventureMapVisitCounts();
+  const sourceCounts = source && typeof source === "object" && !Array.isArray(source) ? source : {};
+  getAdventureMapIds().forEach(function(mapId) {
+    clean[mapId] = Math.max(0, Math.floor(Number(sourceCounts[mapId]) || 0));
+  });
+  return clean;
+}
+
+function hasVisitedAdventureMap(progress, mapId) {
+  const visits = progress && progress.mapVisitCounts && Number(progress.mapVisitCounts[mapId]);
+  if (visits > 0) return true;
+  return (progress && Array.isArray(progress.recentAdventureHistory) ? progress.recentAdventureHistory : []).some(function(entry) {
+    return (entry.mapId || getDefaultAdventureMapId()) === mapId;
+  });
+}
+
+function createDefaultAdventureMemories() {
+  return {
+    rescuedSomeone: 0,
+    supernaturalEncounters: 0,
+    seriousFalls: 0,
+    animalTrust: 0,
+    frightenedByApparition: 0,
+    canopyCrossings: 0,
+    stationRecordsRecovered: 0,
+    sharedSymbolEncounters: 0,
+    preferredTools: []
+  };
+}
+
+function sanitizeAdventureMemories(source) {
+  const memories = createDefaultAdventureMemories();
+  const sourceMemories = source && typeof source === "object" && !Array.isArray(source) ? source : {};
+  memories.rescuedSomeone = clampAdventureValue(Math.floor(Number(sourceMemories.rescuedSomeone) || 0), 0, 25);
+  memories.supernaturalEncounters = clampAdventureValue(Math.floor(Number(sourceMemories.supernaturalEncounters) || 0), 0, 99);
+  memories.seriousFalls = clampAdventureValue(Math.floor(Number(sourceMemories.seriousFalls) || 0), 0, 25);
+  memories.animalTrust = clampAdventureValue(Math.floor(Number(sourceMemories.animalTrust) || 0), -5, 5);
+  memories.frightenedByApparition = clampAdventureValue(Math.floor(Number(sourceMemories.frightenedByApparition) || 0), 0, 50);
+  memories.canopyCrossings = clampAdventureValue(Math.floor(Number(sourceMemories.canopyCrossings) || 0), 0, 99);
+  memories.stationRecordsRecovered = clampAdventureValue(Math.floor(Number(sourceMemories.stationRecordsRecovered) || 0), 0, 99);
+  memories.sharedSymbolEncounters = clampAdventureValue(Math.floor(Number(sourceMemories.sharedSymbolEncounters) || 0), 0, 99);
+  memories.preferredTools = sanitizeAdventureStringArray(sourceMemories.preferredTools, 12).filter(function(itemId) {
+    return Boolean(ADVENTURE_ITEM_CATALOG[itemId]);
+  });
+  return memories;
+}
+
 function getAdventureItemRule(itemId) {
   return ADVENTURE_ITEM_RULES[itemId] || { maxOwned: Infinity, carryable: true, repeatable: true };
 }
 
 function createDefaultAdventureProgress(now) {
+  const defaultMapId = getDefaultAdventureMapId();
   return {
     version: ADVENTURE_SAVE_VERSION,
     storage: Object.assign({}, ADVENTURE_DEFAULT_STORAGE),
@@ -182,16 +773,25 @@ function createDefaultAdventureProgress(now) {
       value: ADVENTURE_STAMINA_MAX,
       updatedAt: Number(now) || Date.now()
     },
+    unlockedMaps: [defaultMapId],
+    mapStates: createDefaultAdventureMapStates(),
+    mapVisitCounts: createDefaultAdventureMapVisitCounts(),
+    adventureMemories: createDefaultAdventureMemories(),
     unlockedRoutes: ["deepMountain"],
     unlockedLocations: ["deepMountain"],
     discoveredKeyItems: [],
     discoveredClues: [],
+    keyClues: [],
+    hookClues: sanitizeAdventureHookClues(),
+    clueStages: {},
+    crossMapMysteryFlags: {},
     collectedClues: [],
     itemSolutionKnowledge: [],
     adventureStarterKitMigrationVersion: ADVENTURE_STARTER_KIT_MIGRATION_VERSION,
     completedTrips: 0,
     pendingBackpack: {},
     pendingLoot: {},
+    pendingTripSnapshot: null,
     recentAdventureHistory: [],
     lastLog: null
   };
@@ -225,22 +825,85 @@ function sanitizeAdventureBackpackMap(source) {
   return clean;
 }
 
+function sanitizeAdventureIngredientCountMap(source) {
+  const catalog = typeof ingredientCatalog === "object" && ingredientCatalog ? ingredientCatalog : {};
+  const clean = {};
+  Object.keys(source && typeof source === "object" ? source : {}).forEach(function(key) {
+    const count = Math.max(0, Math.floor(Number(source[key]) || 0));
+    if (count > 0 && catalog[key]) clean[key] = count;
+  });
+  return clean;
+}
+
+function sanitizeAdventureImportantDiscoveries(source) {
+  return (Array.isArray(source) ? source : []).filter(function(entry) {
+    return entry && typeof entry.id === "string" && typeof entry.title === "string";
+  }).slice(0, 8).map(function(entry) {
+    return {
+      id: entry.id.slice(0, 80),
+      title: entry.title.slice(0, 100),
+      lines: Array.isArray(entry.lines) ? entry.lines.filter(function(line) { return typeof line === "string"; }).slice(0, 8) : []
+    };
+  });
+}
+
+function sanitizeAdventureHookClueProgressSnapshot(source, mapId, hookId) {
+  const snapshot = source && typeof source === "object" && !Array.isArray(source) ? source : {};
+  const definitionTotal = getAdventureHookClueDefinitions(mapId, hookId).length;
+  const total = Math.max(definitionTotal, Math.floor(Number(snapshot.total) || 0));
+  const found = clampAdventureValue(Math.floor(Number(snapshot.found) || 0), 0, total || 0);
+  return {
+    found: found,
+    total: total,
+    remaining: Math.max(0, total - found),
+    complete: total > 0 && found >= total,
+    discovered: found > 0
+  };
+}
+
 function sanitizeAdventureLog(log) {
   if (!log || typeof log !== "object" || Array.isArray(log)) {
     return null;
   }
+  const maps = getAdventureMapRegistry();
+  const mapId = maps[log.mapId] && isAdventureMapPlayable(log.mapId)
+    ? log.mapId
+    : (maps[log.locationId] && isAdventureMapPlayable(log.locationId) ? log.locationId : getDefaultAdventureMapId());
+  const map = getAdventureMap(mapId);
+  const hooks = getAdventureMapHooks(map.id);
+  const routes = getAdventureMapRoutes(map.id);
+  const locations = getAdventureMapLocations(map.id);
+  const legacyHookId = hooks[log.goalId] ? log.goalId : "";
+  const hook = sanitizeAdventureHookSnapshot(log.adventureHook, map.id, legacyHookId) || createFallbackAdventureHook(map.id, log.routeId);
+  const legacyResultMap = { complete: "found", partial: "continuing", incomplete: "noResult", unexpected: "diverted" };
+  const hookResult = ["found", "continuing", "noResult", "diverted"].indexOf(log.hookResult) !== -1
+    ? log.hookResult
+    : (legacyResultMap[log.goalResult] || "noResult");
   return {
     id: typeof log.id === "string" ? log.id : "",
     createdAt: Math.max(0, Number(log.createdAt) || 0),
-    locationId: ADVENTURE_LOCATION_CATALOG[log.locationId] ? log.locationId : "deepMountain",
-    goalId: DEEP_MOUNTAIN_ADVENTURE_GOALS[log.goalId] ? log.goalId : "investigateWhiteShadow",
-    routeId: DEEP_MOUNTAIN_ADVENTURE_ROUTES[log.routeId] ? log.routeId : "creekValley",
-    goalResult: ["complete", "partial", "incomplete", "unexpected"].indexOf(log.goalResult) !== -1 ? log.goalResult : "incomplete",
-    goalScore: Math.max(0, Math.floor(Number(log.goalScore) || 0)),
+    mapId: map.id,
+    locationId: locations[log.locationId] ? log.locationId : map.id,
+    routeId: routes[log.routeId] ? log.routeId : getAdventureMapDefaultRouteId(map.id),
+    adventureHook: hook,
+    hookResult: hookResult,
+    hookScore: Math.max(0, Math.floor(Number(log.hookScore !== undefined ? log.hookScore : log.goalScore) || 0)),
     storyIntro: typeof log.storyIntro === "string" ? log.storyIntro : "",
     storyBeats: Array.isArray(log.storyBeats) ? log.storyBeats.filter(function(beat) { return typeof beat === "string"; }).slice(0, ADVENTURE_MAX_EVENTS_PER_TRIP + 2) : [],
     storyEnding: typeof log.storyEnding === "string" ? log.storyEnding : "",
-    rewardNotes: Array.isArray(log.rewardNotes) ? log.rewardNotes.filter(function(note) { return typeof note === "string"; }).slice(0, 4) : [],
+    participants: sanitizeAdventureParticipants(log.participants, ADVENTURE_FUTURE_PARTY_MAX),
+    participantHighlights: sanitizeAdventureParticipantHighlights(log.participantHighlights),
+    rewardNotes: Array.isArray(log.rewardNotes) ? log.rewardNotes.filter(function(note) { return typeof note === "string"; }).slice(0, 4).map(function(note) {
+      return note.replace(/^目标奖励：/, "本次发现：");
+    }) : [],
+    newHookClues: Array.isArray(log.newHookClues) ? log.newHookClues.filter(function(clue) {
+      return clue && typeof clue.id === "string" && typeof clue.label === "string";
+    }).slice(0, 8).map(function(clue) {
+      return { id: clue.id.slice(0, 80), label: clue.label.slice(0, 100) };
+    }) : [],
+    hookClueProgress: sanitizeAdventureHookClueProgressSnapshot(log.hookClueProgress, map.id, hook.id),
+    keyCluesFound: sanitizeAdventureKeyClues(log.keyCluesFound),
+    importantDiscoveries: sanitizeAdventureImportantDiscoveries(log.importantDiscoveries),
     events: Array.isArray(log.events) ? log.events.slice(0, ADVENTURE_MAX_EVENTS_PER_TRIP).map(function(entry) {
       return {
         eventId: typeof entry.eventId === "string" ? entry.eventId : "",
@@ -254,14 +917,28 @@ function sanitizeAdventureLog(log) {
         storyText: typeof entry.storyText === "string" ? entry.storyText : "",
         chainId: typeof entry.chainId === "string" ? entry.chainId : "",
         usedItemKey: isValidAdventureBackpackKey(entry.usedItemKey) ? entry.usedItemKey : "",
-        missedItemOpportunity: Boolean(entry.missedItemOpportunity)
+        missedItemOpportunity: Boolean(entry.missedItemOpportunity),
+        participants: sanitizeAdventureEventParticipantRefs(entry.participants),
+        actorCamperId: typeof entry.actorCamperId === "string" ? entry.actorCamperId : "localCamper",
+        helperCamperIds: sanitizeAdventureStringArray(entry.helperCamperIds, 3),
+        itemOwnerId: typeof entry.itemOwnerId === "string" ? entry.itemOwnerId : "",
+        contributorIds: sanitizeAdventureStringArray(entry.contributorIds, 4),
+        decisionSource: ADVENTURE_PARTY_DECISION_SOURCES.indexOf(entry.decisionSource) !== -1 ? entry.decisionSource : "auto",
+        participantObservations: sanitizeAdventureParticipantObservations(entry.participantObservations),
+        participationText: typeof entry.participationText === "string" ? entry.participationText.slice(0, 360) : ""
       };
     }) : [],
     gained: sanitizeAdventureBackpackMap(log.gained),
+    gainedIngredients: sanitizeAdventureIngredientCountMap(log.gainedIngredients),
     departedWith: sanitizeAdventureBackpackMap(log.departedWith),
     lost: sanitizeAdventureBackpackMap(log.lost),
     consumed: sanitizeAdventureBackpackMap(log.consumed),
-    unlocked: Array.isArray(log.unlocked) ? log.unlocked.filter(function(id) { return Boolean(ADVENTURE_LOCATION_CATALOG[id]); }) : [],
+    unlockedRecipes: Array.isArray(log.unlockedRecipes) ? Array.from(new Set(log.unlockedRecipes.filter(function(recipeId) {
+      const recipes = typeof cookingRecipeCatalog === "object" && cookingRecipeCatalog ? cookingRecipeCatalog : {};
+      return Boolean(recipes[recipeId]);
+    }))) : [],
+    unlocked: Array.isArray(log.unlocked) ? log.unlocked.filter(function(id) { return Boolean(locations[id]); }) : [],
+    unlockedMaps: Array.isArray(log.unlockedMaps) ? log.unlockedMaps.filter(function(id) { return Boolean(getAdventureMapRegistry()[id]) && isAdventureMapPlayable(id); }) : [],
     staminaStart: clampAdventureValue(log.staminaStart, 0, ADVENTURE_STAMINA_MAX),
     staminaEnd: clampAdventureValue(log.staminaEnd, 0, ADVENTURE_STAMINA_MAX),
     endReason: typeof log.endReason === "string" ? log.endReason : "routeComplete",
@@ -276,6 +953,14 @@ function sanitizeAdventureProgress(progress) {
   }
   const storageSource = progress.storage && typeof progress.storage === "object" ? progress.storage : {};
   const storage = {};
+  const knownMaps = typeof ADVENTURE_MAPS === "object" && ADVENTURE_MAPS ? ADVENTURE_MAPS : {};
+  const defaultMapId = getDefaultAdventureMapId();
+  const unlockedMaps = sanitizeAdventureStringArray(progress.unlockedMaps, 20).filter(function(mapId) {
+    return Boolean(knownMaps[mapId]);
+  });
+  if (unlockedMaps.indexOf(defaultMapId) === -1) {
+    unlockedMaps.unshift(defaultMapId);
+  }
   Object.keys(ADVENTURE_ITEM_CATALOG).forEach(function(itemId) {
     const rule = getAdventureItemRule(itemId);
     const count = Math.min(rule.maxOwned, Math.max(0, Math.floor(Number(storageSource[itemId]) || 0)));
@@ -286,13 +971,21 @@ function sanitizeAdventureProgress(progress) {
   const staminaSource = progress.stamina && typeof progress.stamina === "object" ? progress.stamina : {};
   const routeSource = Array.isArray(progress.unlockedRoutes) ? progress.unlockedRoutes : progress.unlockedLocations;
   const unlocked = Array.isArray(routeSource)
-    ? routeSource.filter(function(id) { return Boolean(ADVENTURE_LOCATION_CATALOG[id]); })
+    ? routeSource.filter(isAdventureLocationId)
     : ["deepMountain"];
   if (unlocked.indexOf("deepMountain") === -1) {
     unlocked.unshift("deepMountain");
   }
   const pendingBackpack = sanitizeAdventureBackpackMap(progress.pendingBackpack);
   const pendingLoot = sanitizeAdventureBackpackMap(progress.pendingLoot);
+  const pendingSource = progress.pendingTripSnapshot && typeof progress.pendingTripSnapshot === "object" ? progress.pendingTripSnapshot : null;
+  const pendingMapId = pendingSource && knownMaps[pendingSource.mapId] && isAdventureMapPlayable(pendingSource.mapId) ? pendingSource.mapId : defaultMapId;
+  const pendingRoutes = getAdventureMapRoutes(pendingMapId);
+  const pendingTripSnapshot = pendingSource ? {
+    mapId: pendingMapId,
+    routeId: pendingRoutes[pendingSource.routeId] ? pendingSource.routeId : getAdventureMapDefaultRouteId(pendingMapId),
+    adventureHook: sanitizeAdventureHookSnapshot(pendingSource.adventureHook, pendingMapId, pendingSource.goalId)
+  } : null;
   const log = sanitizeAdventureLog(progress.lastLog);
   const sourceVersion = Math.max(0, Math.floor(Number(progress.version) || 0));
   const recordedLetter = Boolean(storage.sealedLetter) || Boolean(log && log.gained["item:sealedLetter"]);
@@ -302,6 +995,9 @@ function sanitizeAdventureProgress(progress) {
   const discoveredKeyItems = Array.from(new Set((Array.isArray(discoveredSource) ? discoveredSource : []).filter(function(id) {
     return id === "sealedLetter";
   })));
+  const keyClueSource = Array.isArray(progress.keyClues) ? progress.keyClues : [];
+  const keyClues = sanitizeAdventureKeyClues(keyClueSource, unlockedMaps);
+  const hookClues = sanitizeAdventureHookClues(progress.hookClues);
   let starterKitMigrationVersion = Math.max(0, Math.floor(Number(progress.adventureStarterKitMigrationVersion) || 0));
   if (starterKitMigrationVersion < ADVENTURE_STARTER_KIT_MIGRATION_VERSION) {
     const gatewayItemIds = ["fieldLantern", "ropeKit", "repairToolkit", "oldKey", "forestCharm", "trailMap", "silverCompass", "rangerToken"];
@@ -329,18 +1025,34 @@ function sanitizeAdventureProgress(progress) {
   const discoveredClues = Array.from(new Set((Array.isArray(progress.discoveredClues) ? progress.discoveredClues : []).filter(function(id) {
     return typeof id === "string" && id.length <= 80;
   })));
+  const clueStages = progress.clueStages && typeof progress.clueStages === "object" && !Array.isArray(progress.clueStages)
+    ? cloneAdventureData(progress.clueStages)
+    : {};
+  const crossMapMysteryFlags = progress.crossMapMysteryFlags && typeof progress.crossMapMysteryFlags === "object" && !Array.isArray(progress.crossMapMysteryFlags)
+    ? cloneAdventureData(progress.crossMapMysteryFlags)
+    : {};
   const recentAdventureHistory = (Array.isArray(progress.recentAdventureHistory) ? progress.recentAdventureHistory : []).filter(function(entry) {
-    return entry && DEEP_MOUNTAIN_ADVENTURE_GOALS[entry.goalId] && DEEP_MOUNTAIN_ADVENTURE_ROUTES[entry.routeId];
+    const historyMapId = entry && knownMaps[entry.mapId] ? entry.mapId : defaultMapId;
+    const hookId = entry && (entry.hookId || entry.goalId);
+    return entry && (hookId === "openExploration" || getAdventureMapHooks(historyMapId)[hookId]) && getAdventureMapRoutes(historyMapId)[entry.routeId];
   }).slice(-8).map(function(entry) {
+    const historyMapId = knownMaps[entry.mapId] ? entry.mapId : defaultMapId;
+    const hookId = entry.hookId || entry.goalId;
+    const legacyOutcomeMap = { complete: "found", partial: "continuing", incomplete: "noResult", unexpected: "diverted" };
     return {
-      goalId: entry.goalId,
+      mapId: historyMapId,
+      hookId: hookId,
       routeId: entry.routeId,
       eventIds: Array.isArray(entry.eventIds) ? entry.eventIds.filter(function(id) {
-        return DEEP_MOUNTAIN_ADVENTURE_EVENTS.some(function(eventDefinition) { return eventDefinition.id === id; });
+        return Boolean(getAdventureEventDefinitionById(historyMapId, id));
       }).slice(0, ADVENTURE_MAX_EVENTS_PER_TRIP) : [],
-      outcomeType: ["complete", "partial", "incomplete", "unexpected"].indexOf(entry.outcomeType) !== -1 ? entry.outcomeType : "incomplete",
+      outcomeType: ["found", "continuing", "noResult", "diverted"].indexOf(entry.outcomeType) !== -1 ? entry.outcomeType : (legacyOutcomeMap[entry.outcomeType] || "noResult"),
       createdAt: Math.max(0, Number(entry.createdAt) || 0)
     };
+  });
+  const mapVisitCounts = sanitizeAdventureMapVisitCounts(progress.mapVisitCounts);
+  recentAdventureHistory.forEach(function(entry) {
+    mapVisitCounts[entry.mapId] = Math.max(mapVisitCounts[entry.mapId] || 0, 1);
   });
   return {
     version: ADVENTURE_SAVE_VERSION,
@@ -349,18 +1061,27 @@ function sanitizeAdventureProgress(progress) {
       value: clampAdventureValue(staminaSource.value, 0, ADVENTURE_STAMINA_MAX),
       updatedAt: Math.max(0, Number(staminaSource.updatedAt) || Date.now())
     },
+    unlockedMaps: unlockedMaps,
+    mapStates: sanitizeAdventureMapStates(progress.mapStates),
+    mapVisitCounts: mapVisitCounts,
+    adventureMemories: sanitizeAdventureMemories(progress.adventureMemories),
     unlockedRoutes: uniqueRoutes,
     unlockedLocations: uniqueRoutes.slice(),
     discoveredKeyItems: discoveredKeyItems,
     discoveredClues: discoveredClues,
+    keyClues: keyClues,
+    hookClues: hookClues,
+    clueStages: clueStages,
+    crossMapMysteryFlags: crossMapMysteryFlags,
     collectedClues: discoveredKeyItems.slice(),
     itemSolutionKnowledge: Array.isArray(progress.itemSolutionKnowledge)
-      ? Array.from(new Set(progress.itemSolutionKnowledge.filter(function(id) { return typeof id === "string" && ADVENTURE_ITEM_SOLUTION_EFFECTS[id]; })))
+      ? Array.from(new Set(progress.itemSolutionKnowledge.filter(function(id) { return typeof id === "string" && isAdventureItemSolutionId(id); })))
       : [],
     completedTrips: Math.max(0, Math.floor(Number(progress.completedTrips) || 0)),
     adventureStarterKitMigrationVersion: starterKitMigrationVersion,
     pendingBackpack: pendingBackpack,
     pendingLoot: pendingLoot,
+    pendingTripSnapshot: pendingTripSnapshot,
     recentAdventureHistory: recentAdventureHistory,
     lastLog: log
   };
@@ -371,9 +1092,17 @@ function ensureAdventureProgress(state, now) {
   const currentTime = Number(now) || Date.now();
   if (!campState.adventure ||
     Number(campState.adventure.version) !== ADVENTURE_SAVE_VERSION ||
+    !Array.isArray(campState.adventure.unlockedMaps) ||
+    !campState.adventure.mapStates ||
+    !campState.adventure.mapVisitCounts ||
+    !campState.adventure.adventureMemories ||
     !Array.isArray(campState.adventure.unlockedRoutes) ||
     !Array.isArray(campState.adventure.discoveredKeyItems) ||
     !Array.isArray(campState.adventure.discoveredClues) ||
+    !Array.isArray(campState.adventure.keyClues) ||
+    !campState.adventure.hookClues ||
+    !campState.adventure.clueStages ||
+    !campState.adventure.crossMapMysteryFlags ||
     !Array.isArray(campState.adventure.recentAdventureHistory) ||
     !campState.adventure.pendingLoot ||
     Number(campState.adventure.adventureStarterKitMigrationVersion) < ADVENTURE_STARTER_KIT_MIGRATION_VERSION) {
@@ -429,6 +1158,9 @@ function getAdventureItemDescriptor(key) {
     name: special.name,
     detail: special.detail,
     iconClass: special.iconClass,
+    image: special.image,
+    imagePosition: special.imagePosition,
+    imageSize: special.imageSize,
     carryable: getAdventureItemRule(itemId).carryable !== false
   } : null;
 }
@@ -510,6 +1242,8 @@ function applyAdventureItemIcon(icon, descriptor) {
   if (descriptor.image) {
     icon.classList.add("is-external-item");
     icon.style.backgroundImage = 'url("' + descriptor.image + '")';
+    icon.style.backgroundPosition = descriptor.imagePosition || "center";
+    icon.style.backgroundSize = descriptor.imageSize || "contain";
   } else if (descriptor.iconClass) {
     icon.classList.add(descriptor.iconClass);
   }
@@ -722,52 +1456,222 @@ function getAdventureStaminaRecoveryText(progress) {
   return "每次出发消耗 25 点；约 " + minutes + " 分钟后恢复下一点。";
 }
 
-function isDeepMountainRouteUnlocked(routeDefinition, progress) {
+function isAdventureRouteUnlocked(mapId, routeDefinition, progress) {
   const unlocked = Array.isArray(progress.unlockedRoutes) ? progress.unlockedRoutes : progress.unlockedLocations;
-  return routeDefinition.unlockAny.some(function(locationId) { return unlocked.indexOf(locationId) !== -1; });
+  const unlockedMaps = Array.isArray(progress.unlockedMaps) ? progress.unlockedMaps : [getDefaultAdventureMapId()];
+  if (!routeDefinition || unlockedMaps.indexOf(mapId || getDefaultAdventureMapId()) === -1) {
+    return false;
+  }
+  return routeDefinition.unlockAny.some(function(locationId) {
+    return locationId === mapId || unlocked.indexOf(locationId) !== -1;
+  });
 }
 
-function getFirstUnlockedAdventureRouteId(progress) {
-  return Object.keys(DEEP_MOUNTAIN_ADVENTURE_ROUTES).find(function(routeId) {
-    return isDeepMountainRouteUnlocked(DEEP_MOUNTAIN_ADVENTURE_ROUTES[routeId], progress);
-  }) || "creekValley";
+function isDeepMountainRouteUnlocked(routeDefinition, progress) {
+  return isAdventureRouteUnlocked("deepMountain", routeDefinition, progress);
 }
 
-function renderAdventureGoalChoices() {
-  if (!adventureGoalList) return;
-  adventureGoalList.innerHTML = "";
-  Object.keys(DEEP_MOUNTAIN_ADVENTURE_GOALS).forEach(function(goalId) {
-    const goal = DEEP_MOUNTAIN_ADVENTURE_GOALS[goalId];
-    const button = document.createElement("button");
+function getFirstUnlockedAdventureRouteId(progress, mapId) {
+  const currentMapId = mapId || adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
+  const routes = getAdventureMapRoutes(currentMapId);
+  return Object.keys(routes).find(function(routeId) {
+    return isAdventureRouteUnlocked(currentMapId, routes[routeId], progress);
+  }) || getAdventureMapDefaultRouteId(currentMapId);
+}
+
+function renderAdventureMapSelection() {
+  const progress = ensureAdventureProgress();
+  refreshAdventureMapUnlocks(progress);
+  if (adventureMapStamina) adventureMapStamina.textContent = progress.stamina.value + " / " + ADVENTURE_STAMINA_MAX;
+  if (adventureMapStorageCount) {
+    const storedCount = getAdventureStorageEntries().reduce(function(total, entry) { return total + entry.count; }, 0);
+    adventureMapStorageCount.textContent = storedCount + " 件";
+  }
+  if (!adventureMapList) return;
+  adventureMapList.innerHTML = "";
+  getAdventureMapIds().forEach(function(mapId) {
+    const map = getAdventureMapRegistry()[mapId];
+    const selection = map.selection || {};
+    const playable = isAdventureMapPlayable(mapId);
+    const unlocked = isAdventureMapUnlocked(mapId, progress);
+    const card = document.createElement("button");
+    const visual = document.createElement("span");
+    const copy = document.createElement("span");
+    const eyebrow = document.createElement("small");
     const title = document.createElement("strong");
     const description = document.createElement("span");
-    button.type = "button";
-    button.className = "adventure-choice-card goal-choice";
-    button.classList.toggle("is-selected", adventurePrototypeState.draftGoalId === goalId);
-    button.setAttribute("aria-pressed", adventurePrototypeState.draftGoalId === goalId ? "true" : "false");
-    title.textContent = goal.name;
-    description.textContent = goal.shortDescription;
-    button.appendChild(title);
-    button.appendChild(description);
-    button.addEventListener("click", function() {
-      adventurePrototypeState.draftGoalId = goalId;
-      setAdventurePrepMessage("本次目标已改为：“" + goal.name + "”。", false);
-      renderAdventurePreparation();
-    });
-    adventureGoalList.appendChild(button);
+    const meta = document.createElement("em");
+    card.type = "button";
+    card.className = "adventure-map-card";
+    card.classList.toggle("is-locked", !unlocked);
+    card.classList.toggle("is-preview", !playable);
+    card.disabled = !unlocked;
+    card.setAttribute("aria-label", map.name + (unlocked ? "，选择地图" : "，尚未开放"));
+    visual.className = "adventure-map-card-visual";
+    if (selection.image) visual.style.backgroundImage = getAdventureCssImage(selection.image);
+    copy.className = "adventure-map-card-copy";
+    eyebrow.textContent = selection.eyebrow || "Adventure Map";
+    title.textContent = map.name;
+    description.textContent = selection.description || "还有许多沿途经历等待发现。";
+    if (unlocked) {
+      if (mapId === "fogRainforest" && progressHasRouteMapDiscovery()) {
+        meta.textContent = "路线图已归档 · 点击查看";
+        meta.className = "adventure-map-route-map-link";
+        meta.addEventListener("click", function(event) {
+          event.preventDefault();
+          event.stopPropagation();
+          openAdventureRouteMapReveal(false);
+        });
+      } else {
+        meta.textContent = Object.keys(map.routes || {}).length + " 条路线 · " + (map.events || []).length + " 种沿途事件";
+      }
+      card.addEventListener("click", function() { chooseAdventureMapForPreparation(mapId); });
+    } else if (!playable) {
+      meta.textContent = "远行准备中 · " + (selection.unlockHint || "入口暂时还看不清");
+    } else {
+      meta.textContent = "尚未解锁 · " + (selection.unlockHint || "继续从营地出发看看");
+    }
+    copy.appendChild(eyebrow);
+    copy.appendChild(title);
+    copy.appendChild(description);
+    copy.appendChild(meta);
+    card.appendChild(visual);
+    card.appendChild(copy);
+    adventureMapList.appendChild(card);
   });
+}
+
+function chooseAdventureMapForPreparation(mapId) {
+  const progress = ensureAdventureProgress();
+  if (!isAdventureMapUnlocked(mapId, progress)) return false;
+  adventurePrototypeState.draftMapId = mapId;
+  adventurePrototypeState.draftRouteId = getFirstUnlockedAdventureRouteId(progress, mapId);
+  adventurePrototypeState.draftAdventureHook = null;
+  showAdventurePreparation("已经选好“" + getAdventureMap(mapId).name + "”，再挑一条路线并整理背包。 ");
+  return true;
+}
+
+function renderAdventureHookPreview() {
+  const progress = ensureAdventureProgress();
+  const mapId = adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
+  const routeId = adventurePrototypeState.draftRouteId || getAdventureMapDefaultRouteId(mapId);
+  const hook = ensureDraftAdventureHook(false);
+  const clueProgress = getAdventureHookClueProgress(progress, mapId, hook.id);
+  if (adventureHookPreview) adventureHookPreview.dataset.hookSource = hook.source;
+  if (adventureHookEyebrow) {
+    adventureHookEyebrow.textContent = hasVisitedAdventureMap(progress, mapId) || ["unfinishedClue", "mapState", "recentHistory"].indexOf(hook.source) !== -1
+      ? "最近挂心的事"
+      : "这次出发前听到的传闻";
+  }
+  if (adventureHookTitle) adventureHookTitle.textContent = hook.title + (clueProgress.complete ? " · 已查清" : "");
+  if (adventureHookClueMeta) adventureHookClueMeta.textContent = formatAdventureHookClueProgress(clueProgress);
+  if (adventureHookIntro) adventureHookIntro.textContent = clueProgress.complete ? "这件事已经查清，接下来可以按路线资源整理背包。" : hook.intro;
+  if (adventureHookDetail) {
+    adventureHookDetail.textContent = clueProgress.complete
+      ? getAdventureRouteResourceSummary(mapId, routeId)
+      : (clueProgress.discovered ? "还剩 " + clueProgress.remaining + " 条线索。" : "尚未发现");
+  }
+}
+
+function addAdventureRecommendationCandidate(candidates, key, priority, label) {
+  const descriptor = getAdventureItemDescriptor(key);
+  if (!descriptor || descriptor.carryable === false || getAdventureStorageCount(key) <= 0) return;
+  const existing = candidates.find(function(entry) { return entry.key === key; });
+  if (existing) {
+    existing.priority = Math.min(existing.priority, priority);
+    return;
+  }
+  candidates.push({ key: key, priority: priority, label: label || "" });
+}
+
+function addAdventureRecommendationRequirement(candidates, requirement, priority, label) {
+  if (!requirement) return;
+  if (String(requirement).indexOf("category:") === 0) {
+    const category = String(requirement).slice("category:".length);
+    getAdventureStorageEntries().filter(function(entry) {
+      return entry.descriptor && entry.descriptor.carryable !== false && (
+        entry.descriptor.category === category ||
+        entry.descriptor.type === category ||
+        (category === "food" && (entry.descriptor.category === "food" || entry.descriptor.type === "meal"))
+      );
+    }).sort(function(left, right) {
+      if (left.descriptor.type !== right.descriptor.type) return left.descriptor.type === "meal" ? -1 : 1;
+      return left.descriptor.name.localeCompare(right.descriptor.name);
+    }).slice(0, 2).forEach(function(entry) {
+      addAdventureRecommendationCandidate(candidates, entry.key, priority, label);
+    });
+    return;
+  }
+  addAdventureRecommendationCandidate(candidates, "item:" + requirement, priority, label);
+}
+
+function getAdventureRecommendationCandidates(mapId, routeId, hook) {
+  const route = getAdventureMapRoutes(mapId)[routeId] || {};
+  const candidates = [];
+  (hook && Array.isArray(hook.relatedItems) ? hook.relatedItems : []).forEach(function(requirement) {
+    addAdventureRecommendationRequirement(candidates, requirement, 1, "hook");
+  });
+  sanitizeAdventureStringArray(route.recommendedItems, 12).forEach(function(itemId) {
+    addAdventureRecommendationRequirement(candidates, itemId, 2, "route");
+  });
+  sanitizeAdventureStringArray(route.riskItems, 12).forEach(function(itemId) {
+    addAdventureRecommendationRequirement(candidates, itemId, 3, "risk");
+  });
+  ["trailRation", "firstAidPouch", "mountainHerb", "insectRepellent"].forEach(function(itemId) {
+    addAdventureRecommendationRequirement(candidates, itemId, 4, "consumable");
+  });
+  const memories = ensureAdventureProgress().adventureMemories || {};
+  sanitizeAdventureStringArray(memories.preferredTools, 12).concat(["fieldLantern", "ropeKit", "trailMap", "repairToolkit"]).forEach(function(itemId) {
+    addAdventureRecommendationRequirement(candidates, itemId, 5, "habit");
+  });
+  return candidates.sort(function(left, right) {
+    if (left.priority !== right.priority) return left.priority - right.priority;
+    const leftDescriptor = getAdventureItemDescriptor(left.key);
+    const rightDescriptor = getAdventureItemDescriptor(right.key);
+    return (leftDescriptor ? leftDescriptor.name : left.key).localeCompare(rightDescriptor ? rightDescriptor.name : right.key);
+  });
+}
+
+function buildRecommendedAdventureBackpack(mapId, routeId, hook) {
+  const backpack = {};
+  getAdventureRecommendationCandidates(mapId, routeId, hook).some(function(candidate) {
+    if (getAdventureCountTotal(backpack) >= ADVENTURE_BACKPACK_CAPACITY) return true;
+    const available = getAdventureStorageCount(candidate.key);
+    const selected = Number(backpack[candidate.key]) || 0;
+    if (available > selected) addAdventureCount(backpack, candidate.key, 1);
+    return getAdventureCountTotal(backpack) >= ADVENTURE_BACKPACK_CAPACITY;
+  });
+  return backpack;
+}
+
+function applyAdventureBackpackRecommendation(force) {
+  if (adventurePrototypeState.draftBackpackTouched && !force) return false;
+  const mapId = adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
+  const routeId = adventurePrototypeState.draftRouteId || getAdventureMapDefaultRouteId(mapId);
+  const hook = ensureDraftAdventureHook(false);
+  adventurePrototypeState.draftBackpack = buildRecommendedAdventureBackpack(mapId, routeId, hook);
+  adventurePrototypeState.draftBackpackTouched = false;
+  return true;
+}
+
+function renderAdventureRecommendationStatus() {
+  if (!adventureRecommendationText) return;
+  const selectedCount = getAdventureCountTotal(adventurePrototypeState.draftBackpack);
+  adventureRecommendationText.textContent = "推荐携带 " + selectedCount + " / " + ADVENTURE_BACKPACK_CAPACITY + "。根据当前路线和挂心之事整理，可自由调整。";
 }
 
 function renderAdventureRouteChoices(progress) {
   if (!adventureRouteList) return;
   adventureRouteList.innerHTML = "";
-  if (!DEEP_MOUNTAIN_ADVENTURE_ROUTES[adventurePrototypeState.draftRouteId] ||
-    !isDeepMountainRouteUnlocked(DEEP_MOUNTAIN_ADVENTURE_ROUTES[adventurePrototypeState.draftRouteId], progress)) {
-    adventurePrototypeState.draftRouteId = getFirstUnlockedAdventureRouteId(progress);
+  const mapId = adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
+  const routes = getAdventureMapRoutes(mapId);
+  if (!routes[adventurePrototypeState.draftRouteId] ||
+    !isAdventureRouteUnlocked(mapId, routes[adventurePrototypeState.draftRouteId], progress)) {
+    adventurePrototypeState.draftRouteId = getFirstUnlockedAdventureRouteId(progress, mapId);
   }
-  Object.keys(DEEP_MOUNTAIN_ADVENTURE_ROUTES).forEach(function(routeId) {
-    const route = DEEP_MOUNTAIN_ADVENTURE_ROUTES[routeId];
-    const unlocked = isDeepMountainRouteUnlocked(route, progress);
+  Object.keys(routes).forEach(function(routeId) {
+    const route = routes[routeId];
+    const unlocked = isAdventureRouteUnlocked(mapId, route, progress);
     const button = document.createElement("button");
     const title = document.createElement("strong");
     const risk = document.createElement("em");
@@ -787,6 +1691,8 @@ function renderAdventureRouteChoices(progress) {
     if (unlocked) {
       button.addEventListener("click", function() {
         adventurePrototypeState.draftRouteId = routeId;
+        ensureDraftAdventureHook(true);
+        applyAdventureBackpackRecommendation(false);
         setAdventurePrepMessage("已选择“" + route.name + "”。", false);
         renderAdventurePreparation();
       });
@@ -794,10 +1700,11 @@ function renderAdventureRouteChoices(progress) {
     adventureRouteList.appendChild(button);
   });
   if (adventureStrategyHint) {
-    const route = DEEP_MOUNTAIN_ADVENTURE_ROUTES[adventurePrototypeState.draftRouteId];
-    const goal = DEEP_MOUNTAIN_ADVENTURE_GOALS[adventurePrototypeState.draftGoalId];
-    adventureStrategyHint.textContent = route.preparationHint + " “" + goal.name + "”也可能从不同线索取得进展。";
+    const route = routes[adventurePrototypeState.draftRouteId];
+    adventureStrategyHint.textContent = route.preparationHint + " " + getAdventureRouteResourceSummary(mapId, adventurePrototypeState.draftRouteId);
   }
+  applyAdventureRoutePresentation(mapId, adventurePrototypeState.draftRouteId);
+  resetAdventureRouteAtmosphere();
 }
 
 function renderAdventurePreparation() {
@@ -819,7 +1726,9 @@ function renderAdventurePreparation() {
     adventurePrepStaminaFill.style.width = staminaPercent + "%";
   }
   if (adventureStaminaHint) {
-    const route = DEEP_MOUNTAIN_ADVENTURE_ROUTES[adventurePrototypeState.draftRouteId] || DEEP_MOUNTAIN_ADVENTURE_ROUTES.creekValley;
+    const mapId = adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
+    const routes = getAdventureMapRoutes(mapId);
+    const route = routes[adventurePrototypeState.draftRouteId] || routes[getAdventureMapDefaultRouteId(mapId)];
     adventureStaminaHint.textContent = getAdventureStaminaRecoveryText(progress) + (route.staminaCost ? " 此路线额外消耗 " + route.staminaCost + " 点。" : "");
   }
   if (adventureBackpackCapacity) {
@@ -827,13 +1736,16 @@ function renderAdventurePreparation() {
   }
   renderAdventureSourceList(adventureStorageList, storageEntries);
   renderAdventureList(adventureBackpackList, backpackEntries, "backpack", "背包还是空的。可以空手出发。 ");
-  renderAdventureGoalChoices();
   renderAdventureRouteChoices(progress);
+  renderAdventureHookPreview();
+  renderAdventureRecommendationStatus();
   if (adventureStorageList && selectedCount >= ADVENTURE_BACKPACK_CAPACITY) {
     adventureStorageList.querySelectorAll("button").forEach(function(button) { button.disabled = true; });
   }
   if (adventureStartButton) {
-    const selectedRoute = DEEP_MOUNTAIN_ADVENTURE_ROUTES[adventurePrototypeState.draftRouteId] || DEEP_MOUNTAIN_ADVENTURE_ROUTES.creekValley;
+    const mapId = adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
+    const routes = getAdventureMapRoutes(mapId);
+    const selectedRoute = routes[adventurePrototypeState.draftRouteId] || routes[getAdventureMapDefaultRouteId(mapId)];
     adventureStartButton.disabled = progress.stamina.value < ADVENTURE_STAMINA_TRIP_COST + selectedRoute.staminaCost;
   }
 }
@@ -861,12 +1773,14 @@ function addItemToAdventureDraft(key) {
     return;
   }
   addAdventureCount(adventurePrototypeState.draftBackpack, key, 1);
+  adventurePrototypeState.draftBackpackTouched = true;
   setAdventurePrepMessage("已装入 " + getAdventureItemDescriptor(key).name + "。", false);
   renderAdventurePreparation();
 }
 
 function removeItemFromAdventureDraft(key) {
   if (removeAdventureCount(adventurePrototypeState.draftBackpack, key, 1) > 0) {
+    adventurePrototypeState.draftBackpackTouched = true;
     setAdventurePrepMessage("已将 " + getAdventureItemDescriptor(key).name + " 放回 Storage。", false);
     renderAdventurePreparation();
   }
@@ -884,6 +1798,7 @@ function setAdventureMode(mode) {
   if (!adventurePrototype) {
     return;
   }
+  adventurePrototype.classList.toggle("is-map-select", mode === "map-select");
   adventurePrototype.classList.toggle("is-preparing", mode === "preparing");
   adventurePrototype.classList.toggle("is-running", mode === "running");
   adventurePrototype.classList.toggle("is-log", mode === "log");
@@ -920,6 +1835,25 @@ function getAdventureProfileSnapshot() {
     finalTraits: finalTraits,
     dailyAdventureModifiers: Object.assign(createNeutralAdventureLuck(), savedLuck && typeof savedLuck === "object" ? savedLuck : {})
   };
+}
+
+function getAdventureCamperId(snapshot) {
+  const profile = snapshot && snapshot.profile;
+  return profile && (profile.id || profile.camperId || profile.createdAt)
+    ? String(profile.id || profile.camperId || profile.createdAt)
+    : "localCamper";
+}
+
+function createSoloAdventureParticipants(snapshot, backpack, adventureMemories) {
+  return createLocalAdventureParty(1, snapshot, {
+    lead: { camperId: getAdventureCamperId(snapshot) },
+    leadItemKeys: Object.keys(backpack || {}),
+    leadMemories: adventureMemories || {}
+  });
+}
+
+function createAdventureEventParticipation(trip, eventDefinition, reaction, outcome, participationPlan) {
+  return completeAdventureEventParticipation(trip, eventDefinition, reaction, outcome, participationPlan);
 }
 
 function pickAdventureArrayValue(values) {
@@ -985,7 +1919,7 @@ function getAdventureReactionLuckAdjustment(reaction, luck) {
 }
 
 function getAdventureReactionCandidates(eventDefinition, snapshot, backpack) {
-  const requirementMap = ADVENTURE_REACTION_ITEM_REQUIREMENTS[eventDefinition.id] || {};
+  const requirementMap = getAdventureMapReactionRequirements(getActiveAdventureMapId())[eventDefinition.id] || {};
   return eventDefinition.reactions.map(function(reaction) {
     const requirements = requirementMap[reaction.id] || [];
     let hasRequiredItem = !requirements.length || requirements.some(function(itemId) {
@@ -1016,11 +1950,12 @@ function chooseAdventureReaction(eventDefinition, snapshot, backpack) {
 
 function getAdventureMissingItemOpportunity(eventDefinition, reactionSelection, progress) {
   if (eventDefinition.id === "hiddenFork") return null;
+  const itemSolutionEffects = getAdventureMapItemSolutionEffects(getActiveAdventureMapId());
   const solutionCandidates = reactionSelection.candidates.filter(function(candidate) {
-    return candidate.requirements.length > 0 && ADVENTURE_ITEM_SOLUTION_EFFECTS[eventDefinition.id + ":" + candidate.reaction.id];
+    return candidate.requirements.length > 0 && itemSolutionEffects[eventDefinition.id + ":" + candidate.reaction.id];
   });
   if (!solutionCandidates.length || solutionCandidates.some(function(candidate) { return candidate.hasRequiredItem; })) return null;
-  const feedback = ADVENTURE_MISSING_ITEM_FEEDBACK[eventDefinition.id];
+  const feedback = getAdventureMapMissingItemFeedback(getActiveAdventureMapId())[eventDefinition.id];
   if (!feedback) return null;
   const known = solutionCandidates.some(function(candidate) {
     return progress.itemSolutionKnowledge.indexOf(eventDefinition.id + ":" + candidate.reaction.id) !== -1;
@@ -1070,9 +2005,10 @@ function resolveAdventureOutcome(eventDefinition, reaction, snapshot, backpack) 
   const eventLuck = Number(luck[eventDefinition.luckKey]) || 0;
   const dangerSense = Number(luck.dangerSense) || 0;
   const alignment = getAdventureReactionAlignment(reaction, snapshot.finalTraits);
-  const requirements = (ADVENTURE_REACTION_ITEM_REQUIREMENTS[eventDefinition.id] || {})[reaction.id] || [];
+  const mapId = getActiveAdventureMapId();
+  const requirements = (getAdventureMapReactionRequirements(mapId)[eventDefinition.id] || {})[reaction.id] || [];
   const solutionId = eventDefinition.id + ":" + reaction.id;
-  const configuredSolution = ADVENTURE_ITEM_SOLUTION_EFFECTS[solutionId] || null;
+  const configuredSolution = getAdventureMapItemSolutionEffects(mapId)[solutionId] || null;
   const orderedRequirements = configuredSolution && configuredSolution.requirementPriority
     ? configuredSolution.requirementPriority.concat(requirements.filter(function(requirement) {
       return configuredSolution.requirementPriority.indexOf(requirement) === -1;
@@ -1123,92 +2059,159 @@ function resolveAdventureOutcome(eventDefinition, reaction, snapshot, backpack) 
   };
 }
 
-function calculateAdventureGoalScore(goalDefinition, eventFlags) {
-  return Object.keys(goalDefinition.progressFlags).reduce(function(total, flagId) {
+function calculateAdventureHookScore(hookDefinition, eventFlags) {
+  return Object.keys(hookDefinition && hookDefinition.progressFlags ? hookDefinition.progressFlags : {}).reduce(function(total, flagId) {
     if (!eventFlags[flagId]) return total;
     const multiplier = typeof eventFlags[flagId] === "number" ? Math.max(1, eventFlags[flagId]) : 1;
-    return total + goalDefinition.progressFlags[flagId] * Math.min(2, multiplier);
+    return total + hookDefinition.progressFlags[flagId] * Math.min(2, multiplier);
   }, 0);
 }
 
-function evaluateAdventureGoalProgress(trip) {
-  const goal = DEEP_MOUNTAIN_ADVENTURE_GOALS[trip.goalId];
-  const score = calculateAdventureGoalScore(goal, trip.eventFlags || {});
+function doesAdventureTripMeetHookClue(clue, trip) {
+  if (Array.isArray(clue.routeIds) && clue.routeIds.length && clue.routeIds.indexOf(trip.routeId) === -1) return false;
+  const eventIds = Array.isArray(clue.eventIds) ? clue.eventIds : [];
+  const flagIds = Array.isArray(clue.flagIds) ? clue.flagIds : [];
+  const eventFound = eventIds.some(function(eventId) {
+    return (trip.events || []).some(function(entry) { return entry.eventId === eventId; });
+  });
+  const flagFound = flagIds.some(function(flagId) {
+    return Boolean(trip.eventFlags && trip.eventFlags[flagId]);
+  });
+  return eventFound || flagFound;
+}
+
+function collectAdventureHookClues(trip, progress) {
+  const mapId = trip.mapId || getDefaultAdventureMapId();
+  const hookId = trip.adventureHook && trip.adventureHook.id ? trip.adventureHook.id : trip.goalId;
+  const definitions = getAdventureHookClueDefinitions(mapId, hookId);
+  if (!definitions.length) {
+    trip.newHookClues = [];
+    trip.hookClueProgress = getAdventureHookClueProgress(progress, mapId, hookId);
+    return trip.newHookClues;
+  }
+  if (!progress.hookClues || typeof progress.hookClues !== "object" || Array.isArray(progress.hookClues)) {
+    progress.hookClues = sanitizeAdventureHookClues();
+  }
+  if (!progress.hookClues[mapId]) progress.hookClues[mapId] = {};
+  if (!Array.isArray(progress.hookClues[mapId][hookId])) progress.hookClues[mapId][hookId] = [];
+  const known = progress.hookClues[mapId][hookId];
+  const newClues = [];
+  definitions.forEach(function(clue) {
+    if (known.indexOf(clue.id) !== -1 || !doesAdventureTripMeetHookClue(clue, trip)) return;
+    known.push(clue.id);
+    newClues.push({ id: clue.id, label: clue.label });
+    const keyCatalog = typeof ADVENTURE_KEY_CLUE_CATALOG === "object" && ADVENTURE_KEY_CLUE_CATALOG ? ADVENTURE_KEY_CLUE_CATALOG : {};
+    if (keyCatalog[clue.id]) {
+      grantAdventureKeyClue(trip, clue.id, [], []);
+    }
+  });
+  const clueProgress = getAdventureHookClueProgress(progress, mapId, hookId);
+  if (!progress.clueStages || typeof progress.clueStages !== "object" || Array.isArray(progress.clueStages)) progress.clueStages = {};
+  if (clueProgress.complete) progress.clueStages[hookId] = "complete";
+  else if (clueProgress.found > 0) progress.clueStages[hookId] = "seenAgain";
+  trip.newHookClues = newClues;
+  trip.hookClueProgress = clueProgress;
+  return newClues;
+}
+
+function evaluateAdventureHookProgress(trip) {
+  const mapId = trip.mapId || getDefaultAdventureMapId();
+  const hookId = trip.adventureHook && trip.adventureHook.id ? trip.adventureHook.id : trip.goalId;
+  const hook = getAdventureMapHooks(mapId)[hookId];
+  const score = calculateAdventureHookScore(hook, trip.eventFlags || {});
+  if (!hook) return { score: 0, status: "noResult" };
+  if (trip.hookClueProgress && trip.hookClueProgress.total) {
+    if (trip.hookClueProgress.complete) return { score: Math.max(score, hook.successScore || trip.hookClueProgress.total), status: "found" };
+    if (trip.newHookClues && trip.newHookClues.length) return { score: Math.max(score, trip.hookClueProgress.found), status: "continuing" };
+  }
   return {
     score: score,
-    status: score >= goal.successScore ? "complete" : (score >= goal.partialScore ? "partial" : "incomplete")
+    status: score >= hook.successScore ? "found" : (score >= hook.partialScore ? "continuing" : "noResult")
   };
 }
 
-function getAdventureChainWeight(eventId, flags) {
-  let multiplier = 1;
-  if (flags.foundAnimalTracks && ["forestFootsteps", "missingFood"].indexOf(eventId) !== -1) multiplier *= 2.2;
-  if (flags.heardStrangeFootsteps && eventId === "whiteShadow") multiplier *= 2.5;
-  if (flags.sawWhiteShadow && ["lostBeforeDark", "hiddenFork"].indexOf(eventId) !== -1) multiplier *= 2.15;
-  if (flags.discoveredCabinClue && eventId === "lockedChest") multiplier *= 2.6;
-  if (flags.openedChest && eventId === "distantCry") multiplier *= 1.8;
-  if (flags.enduredDownpour && eventId === "unstableBridge") multiplier *= 2.4;
-  if (flags.repairedBridge && ["hiddenFork", "lostBeforeDark"].indexOf(eventId) !== -1) multiplier *= 2.1;
-  return multiplier;
+function getAdventureChainWeight(eventId, flags, mapId) {
+  const map = getAdventureMap(mapId || getDefaultAdventureMapId());
+  return map && typeof map.getChainWeight === "function" ? map.getChainWeight(eventId, flags || {}) : 1;
 }
 
 function getAdventureHistoryWeight(eventId, trip, progress) {
   const recent = progress.recentAdventureHistory || [];
-  const sameGoal = recent.filter(function(entry) { return entry.goalId === trip.goalId; }).slice(-2);
+  const mapId = trip.mapId || getDefaultAdventureMapId();
+  const hookId = trip.adventureHook && trip.adventureHook.id ? trip.adventureHook.id : trip.goalId;
+  const sameRoute = recent.filter(function(entry) {
+    return (entry.mapId || getDefaultAdventureMapId()) === mapId && entry.routeId === trip.routeId;
+  }).slice(-3);
   let multiplier = 1;
-  sameGoal.forEach(function(entry, reverseIndex) {
-    if (entry.eventIds.indexOf(eventId) !== -1) multiplier *= reverseIndex === sameGoal.length - 1 ? 0.58 : 0.78;
-    if (entry.eventIds[trip.events.length] === eventId) multiplier *= 0.45;
+  sameRoute.forEach(function(entry, historyIndex) {
+    const isLatest = historyIndex === sameRoute.length - 1;
+    const sameHook = (entry.hookId || entry.goalId) === hookId;
+    if (entry.eventIds.indexOf(eventId) !== -1) multiplier *= isLatest ? 0.5 : 0.76;
+    if (entry.eventIds[trip.events.length] === eventId) multiplier *= isLatest ? 0.36 : 0.62;
+    if (sameHook && entry.eventIds.indexOf(eventId) !== -1) multiplier *= 0.84;
   });
-  return Math.max(0.18, multiplier);
+  return Math.max(0.12, multiplier);
 }
 
 function chooseNextAdventureEvent(snapshot) {
   const trip = adventurePrototypeState.trip;
   const progress = ensureAdventureProgress();
-  const remaining = DEEP_MOUNTAIN_ADVENTURE_EVENTS.filter(function(eventDefinition) {
+  const mapId = trip.mapId || getDefaultAdventureMapId();
+  const remaining = getAdventureMapEvents(mapId).filter(function(eventDefinition) {
     return adventurePrototypeState.seenEventIds.indexOf(eventDefinition.id) === -1;
   });
   const dangerSense = Number(snapshot.dailyAdventureModifiers.dangerSense) || 0;
-  const route = DEEP_MOUNTAIN_ADVENTURE_ROUTES[trip.routeId];
-  const goal = DEEP_MOUNTAIN_ADVENTURE_GOALS[trip.goalId];
-  const goalProgress = evaluateAdventureGoalProgress(trip);
-  const remainingSlots = ADVENTURE_MAX_EVENTS_PER_TRIP - trip.events.length;
+  const route = getAdventureMapRoutes(mapId)[trip.routeId];
+  const hookEventIds = trip.adventureHook && Array.isArray(trip.adventureHook.relatedEventIds) ? trip.adventureHook.relatedEventIds : [];
   const entries = remaining.map(function(eventDefinition) {
     const routeWeight = Number(route.eventWeights[eventDefinition.id]) || 1;
-    let goalWeight = goal.relatedEvents.indexOf(eventDefinition.id) !== -1 ? 1.85 : 1;
-    if (remainingSlots <= 2 && goalProgress.score === 0 && goal.relatedEvents.indexOf(eventDefinition.id) !== -1) goalWeight *= 3.2;
+    const hookWeight = hookEventIds.indexOf(eventDefinition.id) !== -1 ? 1.55 : 1;
     const dangerWeight = clampAdventureValue(1 - dangerSense * eventDefinition.risk * 0.025, 0.3, 1.7);
-    const chainWeight = getAdventureChainWeight(eventDefinition.id, trip.eventFlags || {});
+    const chainWeight = getAdventureChainWeight(eventDefinition.id, trip.eventFlags || {}, mapId);
     const historyWeight = getAdventureHistoryWeight(eventDefinition.id, trip, progress);
-    return { eventDefinition: eventDefinition, weight: Math.max(0.05, routeWeight * goalWeight * dangerWeight * chainWeight * historyWeight) };
+    return { eventDefinition: eventDefinition, weight: Math.max(0.05, routeWeight * hookWeight * dangerWeight * chainWeight * historyWeight) };
   });
   return pickWeightedAdventureEntry(entries).eventDefinition;
 }
 
 function applyAdventureStoryContext(eventDefinition, reaction, outcome, trip) {
   const flags = trip.eventFlags || {};
-  const context = { bubble: "", result: "", chainId: "", visualClass: "" };
+  const map = getAdventureMap(trip.mapId || getDefaultAdventureMapId());
+  const mapStoryContext = map && (map.getStoryContext || map.getRecurringStoryContext);
+  const recurringContext = typeof mapStoryContext === "function"
+    ? mapStoryContext(eventDefinition, reaction, outcome, trip)
+    : null;
+  const context = Object.assign({ bubble: "", result: "", chainId: "", visualClass: "" }, recurringContext || {});
   if (eventDefinition.id === "forestFootsteps" && flags.foundAnimalTracks) {
     context.bubble = flags.followedAnimal ? "是刚才那串脚印，它又转进树林了。" : "这步子和溪边的痕迹很像。";
-    context.result = flags.befriendedAnimal ? "熟悉的动物在林边短暂停下，没有再躲开你。" : "你把树林里的声音与先前脚印对应起来，确认了动物移动的方向。";
+    context.result = flags.befriendedAnimal
+      ? "熟悉的动物在林边短暂停下，没有再躲开你。"
+      : (flags.animalStartled ? "受惊的动物又从灌木后冲过，脚步比先前更加慌乱。" : "你把树林里的声音与先前脚印对应起来，确认了动物移动的方向。");
     context.chainId = "animalTrail";
+    context.visualClass = flags.befriendedAnimal ? "story-friendly-animal" : (flags.animalStartled ? "story-startled-animal" : "story-tracked-animal");
   } else if (eventDefinition.id === "missingFood" && flags.foundAnimalTracks) {
-    context.bubble = flags.befriendedAnimal ? "看来它记住了鱼的味道。" : "这些小爪印和刚才的是同一组。";
-    context.result = flags.befriendedAnimal ? "那只动物只翻动了外袋，旁边还留下几枚完整坚果。" : "先前的脚印终于有了解释：动物一路跟到了休息点。";
+    context.bubble = flags.befriendedAnimal ? "看来它记住了鱼的味道。" : (flags.animalStartled ? "是刚才被惊动的那只……" : "这些小爪印和刚才的是同一组。");
+    context.result = flags.befriendedAnimal
+      ? "那只动物只翻动了外袋，旁边还留下几枚完整坚果。"
+      : (flags.animalStartled ? "被惊动的动物一路跟到休息点，叼走食物后只留下凌乱抓痕。" : "先前的脚印终于有了解释：动物一路跟到了休息点。");
     context.chainId = "animalTrail";
+    context.visualClass = flags.befriendedAnimal ? "story-friendly-animal" : (flags.animalStartled ? "story-food-theft" : "story-tracked-animal");
+    if (flags.animalStartled && ["rareGood", "good"].indexOf(outcome.tier) !== -1) outcome.tier = "mixed";
   } else if (eventDefinition.id === "whiteShadow" && flags.heardStrangeFootsteps) {
     context.bubble = "刚才跟着我的脚步声，是你吗？";
     context.result = "白影在同样的脚步声中停下，像是在等你先表明来意。";
     context.chainId = "whiteShadow";
   } else if (eventDefinition.id === "lostBeforeDark" && flags.sawWhiteShadow) {
-    context.bubble = flags.whiteShadowTrust > 0 ? "它又在路口出现了……是在等我吗？" : "那道影子怎么又挡在前面？";
+    context.bubble = flags.whiteShadowTrust > 0
+      ? "它又在路口出现了……是在等我吗？"
+      : (flags.whiteShadowTrust < 0 ? "它又把我带回同一个路口了。" : "那道影子只在雾外看着我。它想让我跟吗？");
     context.result = flags.whiteShadowTrust > 0
       ? "白影在雾中停了两次，留下的间隔正好把你引回清楚路标。"
-      : "白影忽远忽近，你没有贸然跟随，而是靠自己的痕迹退回安全处。";
+      : (flags.whiteShadowTrust < 0 ? "白影故意在错误路标旁停留，你跟出一段才发现自己被引回原地。" : "白影始终隔着雾旁观，你没有贸然跟随，而是靠自己的痕迹退回安全处。");
     context.chainId = "whiteShadow";
-    context.visualClass = flags.whiteShadowTrust > 0 ? "story-guiding-shadow" : "story-distant-shadow";
+    context.visualClass = flags.whiteShadowTrust > 0 ? "story-guiding-shadow" : (flags.whiteShadowTrust < 0 ? "story-misleading-shadow" : "story-distant-shadow");
     if (flags.whiteShadowTrust > 0 && ["bad", "rareBad"].indexOf(outcome.tier) !== -1) outcome.tier = "good";
+    if (flags.whiteShadowTrust < 0 && ["rareGood", "good"].indexOf(outcome.tier) !== -1) outcome.tier = "bad";
   } else if (eventDefinition.id === "hiddenFork" && flags.sawWhiteShadow) {
     context.bubble = "白影刚才就在这堆树枝后消失。";
     context.result = "树枝后的路留着与白影相同的淡色痕迹，至少证明它确实来过这里。";
@@ -1341,7 +2344,7 @@ function showAdventureMissingItemVisual(eventDefinition) {
 }
 
 function resetAdventureVisuals() {
-  if (adventureAtmosphere) adventureAtmosphere.className = "adventure-atmosphere";
+  resetAdventureRouteAtmosphere();
   if (adventureRainLayer) adventureRainLayer.className = "adventure-rain-layer";
   if (adventureEventProp) {
     adventureEventProp.className = "adventure-event-prop";
@@ -1361,7 +2364,13 @@ function resetAdventureVisuals() {
 
 function showAdventureEventVisual(eventDefinition) {
   if (adventureEventProp) {
+    const propSheetPositions = getAdventureMapPropSheetPositions(getActiveAdventureMapId());
+    const propPosition = propSheetPositions[eventDefinition.prop.className];
     adventureEventProp.className = "adventure-event-prop " + eventDefinition.prop.className;
+    if (propPosition) {
+      adventureEventProp.style.setProperty("--prop-position-x", propPosition[0]);
+      adventureEventProp.style.setProperty("--prop-position-y", propPosition[1]);
+    }
     adventureEventProp.style.left = eventDefinition.prop.x + "%";
     adventureEventProp.style.top = eventDefinition.prop.y + "%";
     adventureEventProp.style.zIndex = String(18 + Math.round(eventDefinition.prop.y));
@@ -1436,8 +2445,9 @@ function updateAdventureRunHud(pendingEventNumber) {
 }
 
 function getNextAdventurePathPoint() {
-  adventurePrototypeState.pathIndex = (adventurePrototypeState.pathIndex + 1) % ADVENTURE_PROTOTYPE_PATH_POINTS.length;
-  return ADVENTURE_PROTOTYPE_PATH_POINTS[adventurePrototypeState.pathIndex];
+  const pathPoints = getAdventureMapPathPoints(getActiveAdventureMapId());
+  adventurePrototypeState.pathIndex = (adventurePrototypeState.pathIndex + 1) % pathPoints.length;
+  return pathPoints[adventurePrototypeState.pathIndex];
 }
 
 function formatAdventureEffectItem(key, quantity) {
@@ -1451,16 +2461,43 @@ function getAdventureOwnedItemCount(progress, trip, itemId) {
     Math.max(0, Number(trip && trip.loot && trip.loot["item:" + itemId]) || 0);
 }
 
-function unlockAdventureLocation(progress, trip, locationId, messages, itemNotes) {
+function unlockAdventureLocation(progress, trip, locationId, messages, itemNotes, mapId) {
+  const locations = getAdventureMapLocations(mapId || (trip && trip.mapId) || getActiveAdventureMapId());
   const routes = Array.isArray(progress.unlockedRoutes) ? progress.unlockedRoutes : progress.unlockedLocations;
-  if (!ADVENTURE_LOCATION_CATALOG[locationId] || routes.indexOf(locationId) !== -1) return false;
+  if (!locations[locationId] || routes.indexOf(locationId) !== -1) return false;
   routes.push(locationId);
   progress.unlockedRoutes = routes;
   progress.unlockedLocations = routes.slice();
   if (trip.unlocked.indexOf(locationId) === -1) trip.unlocked.push(locationId);
-  messages.push("解锁 " + ADVENTURE_LOCATION_CATALOG[locationId].name);
-  if (itemNotes) itemNotes.push("永久解锁路线：" + ADVENTURE_LOCATION_CATALOG[locationId].name);
+  messages.push("解锁 " + locations[locationId].name);
+  if (itemNotes) itemNotes.push("永久解锁路线：" + locations[locationId].name);
   return true;
+}
+
+function unlockAdventureMap(progress, trip, mapId, messages, itemNotes) {
+  const map = getAdventureMapRegistry()[mapId];
+  if (!map || !isAdventureMapPlayable(mapId) || progress.unlockedMaps.indexOf(mapId) !== -1) return false;
+  progress.unlockedMaps.push(mapId);
+  if (trip) {
+    if (!Array.isArray(trip.unlockedMaps)) trip.unlockedMaps = [];
+    if (trip.unlockedMaps.indexOf(mapId) === -1) trip.unlockedMaps.push(mapId);
+  }
+  if (messages) messages.push("解锁地图 " + map.name);
+  if (itemNotes) itemNotes.push("永久解锁地图：" + map.name);
+  return true;
+}
+
+function refreshAdventureMapUnlocks(progress, trip, messages, itemNotes) {
+  const adventureProgress = progress || ensureAdventureProgress();
+  getAdventureMapIds().forEach(function(mapId) {
+    const map = getAdventureMapRegistry()[mapId];
+    if (!map || !isAdventureMapPlayable(mapId) || adventureProgress.unlockedMaps.indexOf(mapId) !== -1) return;
+    const eligible = typeof map.isUnlockEligible === "function"
+      ? map.isUnlockEligible(adventureProgress, trip || null)
+      : false;
+    if (eligible) unlockAdventureMap(adventureProgress, trip || null, mapId, messages, itemNotes);
+  });
+  return adventureProgress.unlockedMaps;
 }
 
 function addAdventureLoot(trip, key, quantity) {
@@ -1524,6 +2561,71 @@ function grantAdventureItem(trip, itemId, quantity, messages, itemFeedback, item
     }
   }
   return granted;
+}
+
+function changeAdventureIngredientCount(ingredientId, quantity) {
+  const catalog = typeof ingredientCatalog === "object" && ingredientCatalog ? ingredientCatalog : {};
+  const amount = Math.max(1, Math.floor(Number(quantity) || 1));
+  if (!catalog[ingredientId] || !gameState) return 0;
+  if (typeof addInventoryItem === "function") {
+    return addInventoryItem("ingredients", ingredientId, amount) ? amount : 0;
+  }
+  if (!gameState.inventory || typeof gameState.inventory !== "object" || Array.isArray(gameState.inventory)) {
+    gameState.inventory = { fish: {}, meals: {}, ingredients: {} };
+  }
+  if (!gameState.inventory.ingredients || typeof gameState.inventory.ingredients !== "object" || Array.isArray(gameState.inventory.ingredients)) {
+    gameState.inventory.ingredients = {};
+  }
+  gameState.inventory.ingredients[ingredientId] = Math.max(0, Math.floor(Number(gameState.inventory.ingredients[ingredientId]) || 0)) + amount;
+  return amount;
+}
+
+function unlockAdventureCookingRecipe(recipeId) {
+  const recipes = typeof cookingRecipeCatalog === "object" && cookingRecipeCatalog ? cookingRecipeCatalog : {};
+  if (!recipes[recipeId] || !gameState) return false;
+  if (typeof unlockCookingRecipe === "function") return unlockCookingRecipe(recipeId);
+  if (!gameState.cooking || typeof gameState.cooking !== "object" || Array.isArray(gameState.cooking)) {
+    gameState.cooking = { cooked: 0, autoCookDate: "", autoCookedToday: 0, unlockedRecipes: [] };
+  }
+  if (!Array.isArray(gameState.cooking.unlockedRecipes)) gameState.cooking.unlockedRecipes = [];
+  if (gameState.cooking.unlockedRecipes.indexOf(recipeId) !== -1) return false;
+  gameState.cooking.unlockedRecipes.push(recipeId);
+  return true;
+}
+
+function ensureAdventureTripArray(trip, key) {
+  if (!Array.isArray(trip[key])) trip[key] = [];
+  return trip[key];
+}
+
+function grantAdventureKeyClue(trip, clueId, messages, itemNotes) {
+  const progress = ensureAdventureProgress();
+  const catalog = typeof ADVENTURE_KEY_CLUE_CATALOG === "object" && ADVENTURE_KEY_CLUE_CATALOG ? ADVENTURE_KEY_CLUE_CATALOG : {};
+  if (!catalog[clueId]) return false;
+  if (!Array.isArray(progress.keyClues)) progress.keyClues = [];
+  if (progress.keyClues.indexOf(clueId) !== -1) return false;
+  progress.keyClues.push(clueId);
+  ensureAdventureTripArray(trip, "keyCluesFound").push(clueId);
+  messages.push("获得关键线索：" + getAdventureKeyClueName(clueId));
+  if (itemNotes) itemNotes.push("关键线索：" + getAdventureKeyClueName(clueId));
+
+  const fragments = Array.isArray(typeof ADVENTURE_ROUTE_MAP_FRAGMENT_IDS !== "undefined" ? ADVENTURE_ROUTE_MAP_FRAGMENT_IDS : null)
+    ? ADVENTURE_ROUTE_MAP_FRAGMENT_IDS
+    : ["rangerLeafRouteMark", "southSupplyCode", "oldForestryCoordinate"];
+  const routeMapId = typeof ADVENTURE_ROUTE_MAP_KEY_CLUE_ID === "string" ? ADVENTURE_ROUTE_MAP_KEY_CLUE_ID : "dampSurveyRouteMap";
+  const hasAllFragments = fragments.every(function(fragmentId) {
+    return progress.keyClues.indexOf(fragmentId) !== -1;
+  });
+  if (hasAllFragments && catalog[routeMapId] && progress.keyClues.indexOf(routeMapId) === -1) {
+    progress.keyClues.push(routeMapId);
+    ensureAdventureTripArray(trip, "keyCluesFound").push(routeMapId);
+    const discoveries = ensureAdventureTripArray(trip, "importantDiscoveries");
+    discoveries.push({ id: routeMapId, title: getAdventureKeyClueName(routeMapId), lines: getAdventureRouteMapSummaryLines() });
+    messages.push("拼出 " + getAdventureKeyClueName(routeMapId));
+    if (itemNotes) itemNotes.push("重要发现：" + getAdventureKeyClueName(routeMapId));
+    unlockAdventureMap(progress, trip, "fogRainforest", messages, itemNotes);
+  }
+  return true;
 }
 
 function clearAdventureItemFeedback() {
@@ -1592,10 +2694,20 @@ function changeAdventureStamina(amount, trip) {
   return applied;
 }
 
+function getAdventureInjuryLabel(eventDefinition) {
+  const eventId = eventDefinition && eventDefinition.id;
+  if (["unstableBridge", "ridgeWindGust", "canopyWalkway", "muddyCrossing"].indexOf(eventId) !== -1) return "扭伤的脚踝";
+  if (["streamSparkle", "floodedSupplyCrate", "lockedChest", "oldWaterGauge"].indexOf(eventId) !== -1) return "割伤的手指";
+  if (["snaredAnimal"].indexOf(eventId) !== -1) return "抓伤";
+  if (["insectSwarm"].indexOf(eventId) !== -1) return "虫咬";
+  if (["flashFloodDebris", "suddenDownpour"].indexOf(eventId) !== -1) return "擦伤";
+  return "擦伤";
+}
+
 function applyAdventureConsequences(eventDefinition, reaction, outcome) {
   const trip = adventurePrototypeState.trip;
   const progress = ensureAdventureProgress();
-  const effects = outcome.skipBaseConsequences ? [] : ((ADVENTURE_EVENT_CONSEQUENCES[eventDefinition.id] || {})[outcome.tier] || []);
+  const effects = outcome.skipBaseConsequences ? [] : ((getAdventureMapEventConsequences(trip.mapId || getDefaultAdventureMapId())[eventDefinition.id] || {})[outcome.tier] || []);
   const messages = [];
   const itemFeedback = [];
   const itemNotes = [];
@@ -1645,6 +2757,22 @@ function applyAdventureConsequences(eventDefinition, reaction, outcome) {
   effects.forEach(function(effect) {
     if (effect.type === "gain" && ADVENTURE_ITEM_CATALOG[effect.itemId]) {
       grantAdventureItem(trip, effect.itemId, effect.quantity || 1, messages, itemFeedback, itemNotes);
+    } else if (effect.type === "gainIngredient") {
+      const gained = changeAdventureIngredientCount(effect.ingredientId, effect.quantity || 1);
+      if (gained > 0) {
+        if (!trip.gainedIngredients) trip.gainedIngredients = {};
+        addAdventureCount(trip.gainedIngredients, effect.ingredientId, gained);
+        messages.push("获得料理原料：" + getAdventureIngredientName(effect.ingredientId) + (gained > 1 ? " ×" + gained : ""));
+        itemNotes.push("料理原料：" + getAdventureIngredientName(effect.ingredientId) + (gained > 1 ? " ×" + gained : ""));
+      }
+    } else if (effect.type === "unlockRecipe") {
+      if (unlockAdventureCookingRecipe(effect.recipeId)) {
+        ensureAdventureTripArray(trip, "unlockedRecipes").push(effect.recipeId);
+        messages.push("解锁菜谱：" + getAdventureRecipeName(effect.recipeId));
+        itemNotes.push("永久菜谱：" + getAdventureRecipeName(effect.recipeId));
+      }
+    } else if (effect.type === "keyClue") {
+      grantAdventureKeyClue(trip, effect.clueId, messages, itemNotes);
     } else if (effect.type === "loseCategory") {
       const removed = removeAdventureItemsByCategory(trip, effect.categories || [], effect.quantity || 1, "lost");
       messages.push(removed.length ? "丢失 " + removed.map(function(entry) { return formatAdventureEffectItem(entry.key, entry.quantity); }).join("、") : "背包中没有可丢失的食物");
@@ -1672,8 +2800,10 @@ function applyAdventureConsequences(eventDefinition, reaction, outcome) {
       const applied = changeAdventureStamina(effect.amount, trip);
       eventStaminaDelta += applied;
       if (applied !== 0) messages.push("体力 " + (applied > 0 ? "+" : "") + applied);
-    } else if (effect.type === "unlock" && ADVENTURE_LOCATION_CATALOG[effect.locationId]) {
+    } else if (effect.type === "unlock" && getAdventureMapLocations(trip.mapId || getDefaultAdventureMapId())[effect.locationId]) {
       unlockAdventureLocation(progress, trip, effect.locationId, messages, itemNotes);
+    } else if (effect.type === "unlockMap") {
+      unlockAdventureMap(progress, trip, effect.mapId, messages, itemNotes);
     } else if (effect.type === "status") {
       if (trip.statuses.indexOf(effect.label) === -1) trip.statuses.push(effect.label);
       messages.push(effect.label);
@@ -1705,25 +2835,32 @@ function applyAdventureConsequences(eventDefinition, reaction, outcome) {
     if (definition.unlockLocationId) unlockAdventureLocation(progress, trip, definition.unlockLocationId, messages, itemNotes);
   }
 
-  const injuryEvent = ["suddenDownpour", "unstableBridge", "whiteShadow", "streamSparkle"].indexOf(eventDefinition.id) !== -1;
-  const fatigueEvent = ["suddenDownpour", "unstableBridge", "streamSparkle", "lostBeforeDark"].indexOf(eventDefinition.id) !== -1;
+  const eventTags = Array.isArray(eventDefinition.tags) ? eventDefinition.tags : [];
+  const injuryEvent = eventTags.indexOf("injury") !== -1 || ["unstableBridge", "streamSparkle", "ridgeWindGust", "snaredAnimal", "oldWaterGauge", "flashFloodDebris", "floodedSupplyCrate", "insectSwarm", "canopyWalkway"].indexOf(eventDefinition.id) !== -1;
+  const fatigueEvent = eventTags.indexOf("fatigue") !== -1 || ["suddenDownpour", "unstableBridge", "streamSparkle", "lostBeforeDark", "morningFogPockets", "ridgeWindGust", "fallenTrailMarker", "mushroomRing", "washedOutCache", "watchtowerSignal", "nightCampEcho"].indexOf(eventDefinition.id) !== -1;
   if (!usedRecoveryConsumable && injuryEvent && eventStaminaDelta <= -4 && backpackHasAdventureItem(trip.backpack, "firstAidPouch")) {
     removeAdventureCount(trip.backpack, "item:firstAidPouch", 1);
     addAdventureCount(trip.consumed, "item:firstAidPouch", 1);
-    const recovered = changeAdventureStamina(8, trip);
-    messages.push("及时使用 急救包，体力 +" + recovered);
+    const injuryLabel = getAdventureInjuryLabel(eventDefinition);
+    const recovered = changeAdventureStamina(4, trip);
+    messages.push("使用急救包固定了" + injuryLabel + "，避免伤势继续恶化。" + (recovered > 0 ? " 体力稍微恢复。" : ""));
     itemFeedback.push({ kind: "consumed", key: "item:firstAidPouch", quantity: 1 });
-    itemNotes.push("伤口得到及时处理。消耗：急救包 ×1");
+    itemNotes.push("处理伤势：" + injuryLabel + "。消耗：急救包 ×1");
     showAdventureUsedItemVisual("item:firstAidPouch", eventDefinition, "solution-first-aid");
     playAdventureAction("open");
     usedRecoveryConsumable = true;
+  } else if (injuryEvent && eventStaminaDelta <= -4) {
+    const injuryLabel = getAdventureInjuryLabel(eventDefinition);
+    if (!trip.injuries || typeof trip.injuries !== "object" || Array.isArray(trip.injuries)) trip.injuries = {};
+    trip.injuries[injuryLabel] = true;
+    itemNotes.push("本趟伤势：" + injuryLabel + "。");
   } else if (!usedRecoveryConsumable && fatigueEvent && eventStaminaDelta <= -2 && backpackHasAdventureItem(trip.backpack, "mountainHerb")) {
     removeAdventureCount(trip.backpack, "item:mountainHerb", 1);
     addAdventureCount(trip.consumed, "item:mountainHerb", 1);
     const recovered = changeAdventureStamina(4, trip);
     messages.push("使用 山地草药，体力 +" + recovered);
     itemFeedback.push({ kind: "consumed", key: "item:mountainHerb", quantity: 1 });
-    itemNotes.push("你用山地草药缓解了伤痛。消耗：山地草药 ×1");
+    itemNotes.push("你用山地草药缓解了疲劳。消耗：山地草药 ×1");
     showAdventureUsedItemVisual("item:mountainHerb", eventDefinition, "solution-herb");
     playAdventureAction("rest");
     usedRecoveryConsumable = true;
@@ -1732,9 +2869,9 @@ function applyAdventureConsequences(eventDefinition, reaction, outcome) {
     removeAdventureCount(trip.backpack, "item:trailRation", 1);
     addAdventureCount(trip.consumed, "item:trailRation", 1);
     const recovered = changeAdventureStamina(6, trip);
-    messages.push("自动吃下 干粮包，体力 +" + recovered);
+    messages.push("自动吃下干粮包补充体力，脚步稳了一些。");
     itemFeedback.push({ kind: "consumed", key: "item:trailRation", quantity: 1 });
-    itemNotes.push("体力不足时补充了干粮。消耗：干粮包 ×1");
+    itemNotes.push("干粮只补充体力，没有处理伤势。消耗：干粮包 ×1" + (recovered > 0 ? "，体力恢复 " + recovered + " 点。" : "。"));
     showAdventureUsedItemVisual("item:trailRation", eventDefinition, "solution-ration");
     playAdventureAction("rest");
   }
@@ -1742,6 +2879,7 @@ function applyAdventureConsequences(eventDefinition, reaction, outcome) {
   progress.pendingBackpack = cloneAdventureCountMap(trip.backpack);
   progress.pendingLoot = cloneAdventureCountMap(trip.loot);
   saveGame();
+  if (typeof renderInventoryPanel === "function") renderInventoryPanel();
   playAdventureItemFeedback(itemFeedback);
   return { messages: messages, itemNotes: itemNotes };
 }
@@ -1753,6 +2891,8 @@ function updateAdventureEventFlags(eventDefinition, reaction, outcome, storyCont
     flags.foundAnimalTracks = true;
     if (reaction.id === "followTracks" && !outcome.missedItemOpportunity) flags.followedAnimal = true;
     if (reaction.id === "offerFish" && outcome.itemSolution) flags.befriendedAnimal = true;
+    if (["followTracks", "markArea"].indexOf(reaction.id) !== -1 && ["bad", "rareBad"].indexOf(outcome.tier) !== -1) flags.animalStartled = true;
+    if (reaction.id === "giveSpace") flags.animalGivenSpace = true;
     if (favorable || (!outcome.missedItemOpportunity && ["followTracks", "measureTracks"].indexOf(reaction.id) !== -1)) flags.observedAnimal = true;
   } else if (eventDefinition.id === "forestFootsteps") {
     flags.heardStrangeFootsteps = true;
@@ -1760,6 +2900,7 @@ function updateAdventureEventFlags(eventDefinition, reaction, outcome, storyCont
     if (reaction.id === "holdCharm" && outcome.itemSolution) flags.supernaturalTrail = true;
   } else if (eventDefinition.id === "missingFood") {
     if (flags.foundAnimalTracks && ["rareBad", "bad"].indexOf(outcome.tier) === -1) flags.identifiedFoodThief = true;
+    if (flags.animalStartled) flags.animalFoodStolen = true;
   } else if (eventDefinition.id === "whiteShadow") {
     flags.sawWhiteShadow = true;
     flags.whiteShadowTrust = Number(flags.whiteShadowTrust) || 0;
@@ -1794,9 +2935,52 @@ function updateAdventureEventFlags(eventDefinition, reaction, outcome, storyCont
   } else if (eventDefinition.id === "lostBeforeDark") {
     if (favorable) flags.routeRecovered = true;
     if (flags.sawWhiteShadow && flags.whiteShadowTrust > 0 && favorable) flags.whiteShadowGuided = true;
+    if (flags.sawWhiteShadow && flags.whiteShadowTrust < 0) flags.whiteShadowMisled = true;
+    if (flags.sawWhiteShadow && flags.whiteShadowTrust === 0) flags.whiteShadowObserved = true;
     if (favorable && (flags.mappedFork || flags.repairedBridge)) flags.securedRoute = true;
+  } else if (eventDefinition.id === "morningFogPockets") {
+    flags.crossedMorningFog = true;
+    if (outcome.itemSolution || favorable) flags.mappedMorningFog = true;
+  } else if (eventDefinition.id === "ridgeWindGust") {
+    flags.enduredRidgeWind = true;
+    if (reaction.id === "securePack" && outcome.itemSolution) flags.securedWindGear = true;
+  } else if (eventDefinition.id === "fallenTrailMarker") {
+    flags.foundFallenTrailMarker = true;
+    if (outcome.itemSolution || favorable) flags.restoredTrailMarker = true;
+  } else if (eventDefinition.id === "rangerNotebook") {
+    flags.foundRangerNotebook = true;
+    if (outcome.itemSolution || favorable) flags.decodedRangerNotebook = true;
+    if (favorable) flags.foundRangerEvidence = true;
+  } else if (eventDefinition.id === "snaredAnimal") {
+    flags.foundSnaredAnimal = true;
+    if (outcome.itemSolution || favorable) {
+      flags.rescuedAnimal = true;
+      flags.observedAnimal = true;
+    }
+    if (["bad", "rareBad"].indexOf(outcome.tier) !== -1) flags.animalStartled = true;
+  } else if (eventDefinition.id === "mushroomRing") {
+    flags.foundMushroomRing = true;
+    if (reaction.id === "showCharm" && outcome.itemSolution) flags.supernaturalTrail = true;
+  } else if (eventDefinition.id === "washedOutCache") {
+    flags.foundWashedOutCache = true;
+    if (outcome.itemSolution) flags.openedWashedOutCache = true;
+  } else if (eventDefinition.id === "oldWaterGauge") {
+    flags.foundOldWaterGauge = true;
+    if (outcome.itemSolution || favorable) flags.readWaterGauge = true;
+    if (reaction.id === "repairGauge" && outcome.itemSolution) flags.repairedWaterGauge = true;
+  } else if (eventDefinition.id === "watchtowerSignal") {
+    flags.sawWatchtowerSignal = true;
+    if (outcome.itemSolution || favorable) flags.answeredWatchtowerSignal = true;
+    if (favorable) flags.foundRangerEvidence = true;
+  } else if (eventDefinition.id === "nightCampEcho") {
+    flags.heardNightEcho = true;
+    if (reaction.id === "showCharm" && outcome.itemSolution) flags.supernaturalTrail = true;
   }
-  trip.goalProgress = evaluateAdventureGoalProgress(trip);
+  const map = getAdventureMap(trip.mapId || getDefaultAdventureMapId());
+  if (map && typeof map.updateEventFlags === "function") {
+    map.updateEventFlags(eventDefinition, reaction, outcome, storyContext, trip);
+  }
+  trip.hookProgress = evaluateAdventureHookProgress(trip);
   const connectors = ["最初，", "继续深入后，", "沿着先前的痕迹，", "接近返程时，", "最后，"];
   const storyText = connectors[Math.min(trip.events.length, connectors.length - 1)] +
     "你遇到了“" + eventDefinition.title + "”。" + outcome.text;
@@ -1838,8 +3022,10 @@ function triggerNextAdventureEvent() {
   if (!trip || adventurePrototypeState.busy || adventurePrototypeState.mode !== "running") return;
   clearAdventureTimers();
   adventurePrototypeState.busy = true;
-  const snapshot = getAdventureProfileSnapshot();
-  const eventDefinition = chooseNextAdventureEvent(snapshot);
+  const leadSnapshot = getAdventureProfileSnapshot();
+  const eventDefinition = chooseNextAdventureEvent(leadSnapshot);
+  const participationPlan = prepareAdventureEventParticipation(trip, eventDefinition, leadSnapshot);
+  const snapshot = participationPlan.actorSnapshot;
   const reactionSelection = chooseAdventureReaction(eventDefinition, snapshot, trip.backpack);
   const reaction = reactionSelection.reaction;
   const outcome = resolveAdventureOutcome(eventDefinition, reaction, snapshot, trip.backpack);
@@ -1884,7 +3070,10 @@ function triggerNextAdventureEvent() {
     }
     if (adventurePhaseLabel) adventurePhaseLabel.textContent = reaction.type;
   }, 2250);
-  scheduleAdventureStep(function() { applyAdventureResolvedVisual(eventDefinition, outcome); }, 3150);
+  scheduleAdventureStep(function() {
+    applyAdventureResolvedVisual(eventDefinition, outcome);
+    if (adventureEventProp && outcome.storyVisualClass) adventureEventProp.classList.add(outcome.storyVisualClass);
+  }, 3150);
   scheduleAdventureStep(function() {
     const staminaBefore = ensureAdventureProgress().stamina.value;
     const consequenceResult = applyAdventureConsequences(eventDefinition, reaction, outcome);
@@ -1894,6 +3083,7 @@ function triggerNextAdventureEvent() {
       carriedButUnusedNotes
     );
     const storyUpdate = updateAdventureEventFlags(eventDefinition, reaction, outcome, storyContext, trip);
+    const participation = createAdventureEventParticipation(trip, eventDefinition, reaction, outcome, participationPlan);
     const eventLog = {
       eventId: eventDefinition.id,
       title: eventDefinition.title,
@@ -1908,10 +3098,19 @@ function triggerNextAdventureEvent() {
       chainId: storyUpdate.chainId,
       usedItemKey: outcome.itemSolution ? outcome.itemSolution.itemKey : "",
       missedItemOpportunity: Boolean(missingItemOpportunity),
+      participants: participation.participants,
+      actorCamperId: participation.actorCamperId,
+      helperCamperIds: participation.helperCamperIds,
+      itemOwnerId: participation.itemOwnerId,
+      contributorIds: participation.contributorIds,
+      decisionSource: participation.decisionSource,
+      participantObservations: participation.participantObservations,
+      participationText: participation.participationText,
       staminaBefore: staminaBefore,
       staminaAfter: ensureAdventureProgress().stamina.value
     };
     trip.events.push(eventLog);
+    trip.eventIndex = trip.events.length;
     updateAdventureStatus(eventDefinition.title, outcome.text, eventLog.effectText, true);
     updateAdventureRunHud();
     logAdventureDecision(eventDefinition, snapshot, reactionSelection, outcome, effectMessages.concat(itemNotes));
@@ -1923,7 +3122,7 @@ function triggerNextAdventureEvent() {
   }, 5050);
   scheduleAdventureStep(function() {
     playAdventureAction("idle");
-    if (adventureAtmosphere) adventureAtmosphere.className = "adventure-atmosphere";
+    resetAdventureRouteAtmosphere();
     if (adventureRainLayer) adventureRainLayer.className = "adventure-rain-layer";
     finishAdventureEventCycle();
   }, 6500);
@@ -1941,75 +3140,124 @@ function chooseAdventureLogHighlight(events) {
   return rare || good || events[events.length - 1] || null;
 }
 
-function resolveAdventureGoalResult(trip) {
-  const progress = evaluateAdventureGoalProgress(trip);
-  const hasUnexpectedDiscovery = trip.unlocked.length > 0 || Object.keys(trip.gained).length > 0 || trip.events.some(function(entry) {
+function resolveAdventureHookResult(trip) {
+  const progress = evaluateAdventureHookProgress(trip);
+  const hasUnexpectedDiscovery = trip.unlocked.length > 0 || (trip.unlockedMaps || []).length > 0 || Object.keys(trip.gained).length > 0 || trip.events.some(function(entry) {
     return entry.outcomeTier === "rareGood";
   });
-  if (progress.status === "incomplete" && hasUnexpectedDiscovery) progress.status = "unexpected";
+  if (progress.status === "noResult" && hasUnexpectedDiscovery) progress.status = "diverted";
   return progress;
 }
 
-function applyAdventureGoalReward(trip, goalResult) {
-  const goal = DEEP_MOUNTAIN_ADVENTURE_GOALS[trip.goalId];
-  const progress = ensureAdventureProgress();
-  const notes = [];
-  if (goalResult.status !== "complete") return notes;
-  if (goal.reward.type === "item") {
-    const messages = [];
-    grantAdventureItem(trip, goal.reward.itemId, goal.reward.quantity || 1, messages, [], notes);
-    notes.unshift("目标奖励：" + messages.join("、"));
-  } else if (goal.reward.type === "clue") {
-    if (progress.discoveredClues.indexOf(goal.reward.clueId) === -1) {
-      progress.discoveredClues.push(goal.reward.clueId);
-      notes.push("收藏记录：" + goal.reward.label);
-    } else {
-      notes.push("已补充记录：" + goal.reward.label);
-    }
-  } else if (goal.reward.type === "unlock") {
-    const messages = [];
-    if (!unlockAdventureLocation(progress, trip, goal.reward.locationId, messages, notes)) {
-      const surveyClue = "routeSurvey:" + trip.goalId;
-      if (progress.discoveredClues.indexOf(surveyClue) === -1) progress.discoveredClues.push(surveyClue);
-      notes.push("路线已解锁，本次勘察转为安全路线补充记录。");
-    }
-  }
-  return notes;
-}
-
 function createAdventureStoryIntro(trip) {
-  const goal = DEEP_MOUNTAIN_ADVENTURE_GOALS[trip.goalId];
-  const route = DEEP_MOUNTAIN_ADVENTURE_ROUTES[trip.routeId];
-  return "你沿着" + route.name + "进入深山，本次想要“" + goal.name + "”。" + route.description;
+  const map = getAdventureMap(trip.mapId || getDefaultAdventureMapId());
+  const route = getAdventureMapRoutes(map.id)[trip.routeId];
+  const presentation = getAdventureRoutePresentation(map.id, trip.routeId);
+  const hook = trip.adventureHook || createFallbackAdventureHook(map.id, trip.routeId);
+  const opening = presentation.opening || ("你沿着" + route.name + "进入" + map.name + "。");
+  const participants = sanitizeAdventureParticipants(trip.participants, ADVENTURE_FUTURE_PARTY_MAX);
+  const teamText = participants.length > 1
+    ? " 这次由" + participants.map(function(participant) { return participant.displayName; }).join("、") + "一同出发。"
+    : "";
+  return opening + teamText + " 出发前仍挂心着“" + hook.title + "”。";
 }
 
-function createAdventureGoalEnding(trip, goalResult) {
-  const goal = DEEP_MOUNTAIN_ADVENTURE_GOALS[trip.goalId];
+function createAdventureHookEnding(trip, hookResult) {
+  const map = getAdventureMap(trip.mapId || getDefaultAdventureMapId());
+  if (map && typeof map.createHookEnding === "function") {
+    const mapEnding = map.createHookEnding(trip, hookResult);
+    if (mapEnding) return mapEnding;
+  }
+  const hook = trip.adventureHook || createFallbackAdventureHook(trip.mapId || getDefaultAdventureMapId(), trip.routeId);
+  const hookId = hook.id;
   const flags = trip.eventFlags || {};
-  if (goalResult.status !== "complete") return goal.endings[goalResult.status];
-  if (trip.goalId === "investigateWhiteShadow") {
+  if (hookResult.status === "continuing") return "沿途出现了与“" + hook.title + "”有关的新痕迹，这件事还会继续留在心上。";
+  if (hookResult.status === "noResult") return "这次没有找到与“" + hook.title + "”有关的确切痕迹，山里仍有许多事情没有答案。";
+  if (hookResult.status === "diverted") return "没有沿着“" + hook.title + "”继续下去，不过途中出现了别的发现。";
+  if (hookId === "investigateWhiteShadow") {
     if (flags.whiteShadowGuided) return "白影在浓雾中为你停下脚步，留下了一段能够再次辨认的隐蔽山路。";
+    if (flags.foundMushroomRing && flags.heardNightEcho) return "菌环空缺与夜间回声少掉的那一步朝向一致，却仍不足以解释白影。";
     if (flags.supernaturalTrail) return "异常脚步与护符的回应互相印证，你确认白影并非普通雾气。";
   }
-  if (trip.goalId === "findWatchtowerClue") {
+  if (hookId === "findWatchtowerClue") {
     if (flags.archivedSealedLetter) return "木屋、旧锁与封蜡信件终于连成了一条清楚的旧瞭望塔路线。";
+    if (flags.answeredWatchtowerSignal && flags.restoredTrailMarker) return "修复后的路标与高处信号彼此对应，你把旧瞭望塔的位置缩小到一段明确山脊。";
+    if (flags.decodedRangerNotebook) return "巡查笔记里的日期、路标编号与信号节奏互相吻合，旧瞭望塔留下了新的定位依据。";
     return "旧设施上的锁具编号彼此吻合，你整理出一份可继续追查的瞭望塔勘察记录。";
   }
-  if (trip.goalId === "findMissingRanger") {
+  if (hookId === "findMissingRanger") {
     if (flags.completedRescue) return "你用绳组抵达受困位置并处理伤情，把护林员安全带回清楚山路。";
     if (flags.rangerTrusted) return "护林员认出木章并确认自己已经安全，同时交给你后续搜救所需的情报。";
+    if (flags.foundRangerNotebook && flags.sawWatchtowerSignal) return "巡查笔记与高处信号证明有人仍在使用旧护林路线，但山谷里的回应还需继续确认。";
   }
-  if (trip.goalId === "investigateWildlife") {
+  if (hookId === "investigateWildlife") {
     if (flags.identifiedFoodThief) return "脚印、兽径和被翻动的食物互相印证，你确认了动物在山中的活动范围。";
+    if (flags.rescuedAnimal) return "你沿脚印找到废弃套索并帮助动物脱困，也标记了需要再次清理的危险兽径。";
     if (flags.befriendedAnimal) return "动物接受了你留下的食物，并在不受惊扰的距离里短暂停留。";
     return "溪边脚印与树林里的动静互相吻合，你记录下动物移动的方向和安全距离。";
   }
-  if (trip.goalId === "findSafeRoute") {
+  if (hookId === "findSafeRoute") {
     if (flags.repairedBridge && flags.mappedFork) return "加固后的吊桥与手绘岔路接成了一条能够再次通行的安全路线。";
+    if (flags.restoredTrailMarker && flags.enduredRidgeWind) return "你在山风间修正了倒伏路标，高处路线终于有了可靠方向。";
+    if (flags.crossedMorningFog && flags.readWaterGauge) return "晨雾中的溪湾与旧水位记录连成一条不会被涨水截断的低地路线。";
     if (flags.whiteShadowGuided) return "白影留下的停顿位置意外组成了一条避开险路的返程路线。";
-    return "岔路标记与返程方向互相印证，你完成了这段山路的安全勘察。";
+    return "岔路标记与返程方向互相印证，这段山路的轮廓变得清楚起来。";
   }
-  return goal.endings.complete;
+  return "沿途的细节彼此呼应，你带回了与“" + hook.title + "”有关的新发现。";
+}
+
+function applyAdventureTripMapState(trip, progress) {
+  const mapId = trip.mapId || getDefaultAdventureMapId();
+  const states = progress.mapStates || sanitizeAdventureMapStates(progress.mapStates);
+  const map = getAdventureMap(mapId);
+  const state = states[mapId] || cloneAdventureData(map.localStateDefaults || {});
+  const updated = map && typeof map.applyTripLocalState === "function"
+    ? map.applyTripLocalState(state, trip)
+    : state;
+  states[mapId] = map && typeof map.sanitizeLocalState === "function" ? map.sanitizeLocalState(updated) : updated;
+  progress.mapStates = states;
+}
+
+function applyAdventureTripMemories(trip, progress) {
+  const memories = sanitizeAdventureMemories(progress.adventureMemories);
+  const flags = trip.eventFlags || {};
+  const events = Array.isArray(trip.events) ? trip.events : [];
+  if (flags.completedRescue) memories.rescuedSomeone = clampAdventureValue(memories.rescuedSomeone + 1, 0, 25);
+  if (flags.supernaturalTrail || flags.sawWhiteShadow) {
+    memories.supernaturalEncounters = clampAdventureValue(memories.supernaturalEncounters + 1, 0, 99);
+  }
+  let animalTrustDelta = 0;
+  if (flags.befriendedAnimal || flags.rescuedAnimal) animalTrustDelta = 2;
+  else if (flags.observedAnimal || flags.animalGivenSpace) animalTrustDelta = 1;
+  if (flags.animalStartled || flags.animalFoodStolen) animalTrustDelta -= 1;
+  memories.animalTrust = clampAdventureValue(memories.animalTrust + animalTrustDelta, -5, 5);
+  const frighteningWhiteShadow = flags.sawWhiteShadow && ((Number(flags.whiteShadowTrust) || 0) < 0 || events.some(function(entry) {
+    return entry.eventId === "whiteShadow" && ["bad", "rareBad"].indexOf(entry.outcomeTier) !== -1;
+  }));
+  if (frighteningWhiteShadow) {
+    memories.frightenedByApparition = clampAdventureValue(memories.frightenedByApparition + 1, 0, 50);
+  }
+  const mapId = trip.mapId || getDefaultAdventureMapId();
+  if (events.some(function(entry) {
+    const eventDefinition = getAdventureEventDefinitionById(mapId, entry.eventId);
+    const hasInjuryRisk = eventDefinition && Array.isArray(eventDefinition.tags) && eventDefinition.tags.indexOf("injury") !== -1;
+    return entry.outcomeTier === "rareBad" && (hasInjuryRisk || ["unstableBridge", "streamSparkle", "lostBeforeDark", "morningFogPockets", "ridgeWindGust"].indexOf(entry.eventId) !== -1);
+  })) {
+    memories.seriousFalls = clampAdventureValue(memories.seriousFalls + 1, 0, 25);
+  }
+  events.forEach(function(entry) {
+    const descriptor = getAdventureItemDescriptor(entry.usedItemKey);
+    if (descriptor && descriptor.type === "item" && descriptor.category === "tool") {
+      memories.preferredTools = memories.preferredTools.filter(function(itemId) { return itemId !== descriptor.id; });
+      memories.preferredTools.push(descriptor.id);
+    }
+  });
+  memories.preferredTools = memories.preferredTools.slice(-12);
+  const map = getAdventureMap(mapId);
+  const updatedMemories = map && typeof map.applyTripMemories === "function"
+    ? map.applyTripMemories(memories, trip)
+    : memories;
+  progress.adventureMemories = sanitizeAdventureMemories(updatedMemories || memories);
 }
 
 function finishAdventureTrip(endReason, endLabel) {
@@ -2020,32 +3268,50 @@ function finishAdventureTrip(endReason, endLabel) {
   stopAdventureFrameAnimation();
   adventurePrototypeState.busy = false;
   const progress = ensureAdventureProgress();
-  const goalResult = resolveAdventureGoalResult(trip);
-  const rewardNotes = applyAdventureGoalReward(trip, goalResult);
+  trip.status = endReason || "complete";
+  collectAdventureHookClues(trip, progress);
+  const hookResult = resolveAdventureHookResult(trip);
+  applyAdventureTripMapState(trip, progress);
+  applyAdventureTripMemories(trip, progress);
   returnAdventureBackpackToStorage(trip.backpack);
   returnAdventureBackpackToStorage(trip.loot);
   progress.pendingBackpack = {};
   progress.pendingLoot = {};
+  progress.pendingTripSnapshot = null;
   progress.completedTrips += 1;
+  progress.mapVisitCounts = sanitizeAdventureMapVisitCounts(progress.mapVisitCounts);
+  const completedMapId = trip.mapId || getDefaultAdventureMapId();
+  progress.mapVisitCounts[completedMapId] = Math.max(0, Math.floor(Number(progress.mapVisitCounts[completedMapId]) || 0)) + 1;
+  refreshAdventureMapUnlocks(progress, trip);
   const highlight = chooseAdventureLogHighlight(trip.events);
   const log = {
-    id: "deep-mountain-" + Date.now(),
+    id: (trip.mapId || getDefaultAdventureMapId()) + "-" + Date.now(),
     createdAt: Date.now(),
-    locationId: "deepMountain",
-    goalId: trip.goalId,
+    mapId: trip.mapId || getDefaultAdventureMapId(),
+    locationId: trip.mapId || getDefaultAdventureMapId(),
+    adventureHook: trip.adventureHook,
     routeId: trip.routeId,
-    goalResult: goalResult.status,
-    goalScore: goalResult.score,
+    hookResult: hookResult.status,
+    hookScore: hookResult.score,
     storyIntro: createAdventureStoryIntro(trip),
     storyBeats: trip.storyBeats.slice(),
-    storyEnding: createAdventureGoalEnding(trip, goalResult),
-    rewardNotes: rewardNotes,
+    storyEnding: createAdventureHookEnding(trip, hookResult),
+    participants: cloneAdventureData(trip.participants || []),
+    participantHighlights: buildAdventureParticipantHighlights(trip),
+    rewardNotes: [],
     events: trip.events.slice(),
     departedWith: cloneAdventureCountMap(trip.departedWith),
     gained: cloneAdventureCountMap(trip.gained),
+    gainedIngredients: cloneAdventureCountMap(trip.gainedIngredients),
     lost: cloneAdventureCountMap(trip.lost),
     consumed: cloneAdventureCountMap(trip.consumed),
     unlocked: trip.unlocked.slice(),
+    unlockedMaps: (trip.unlockedMaps || []).slice(),
+    unlockedRecipes: (trip.unlockedRecipes || []).slice(),
+    keyCluesFound: (trip.keyCluesFound || []).slice(),
+    importantDiscoveries: cloneAdventureData(trip.importantDiscoveries || []),
+    newHookClues: cloneAdventureData(trip.newHookClues || []),
+    hookClueProgress: cloneAdventureData(trip.hookClueProgress || null),
     staminaStart: trip.staminaStart,
     staminaEnd: progress.stamina.value,
     endReason: endReason,
@@ -2054,18 +3320,23 @@ function finishAdventureTrip(endReason, endLabel) {
   };
   progress.lastLog = log;
   progress.recentAdventureHistory.push({
-    goalId: trip.goalId,
+    mapId: trip.mapId || getDefaultAdventureMapId(),
+    hookId: trip.adventureHook.id,
     routeId: trip.routeId,
     eventIds: trip.events.map(function(entry) { return entry.eventId; }),
-    outcomeType: goalResult.status,
+    outcomeType: hookResult.status,
     createdAt: log.createdAt
   });
   progress.recentAdventureHistory = progress.recentAdventureHistory.slice(-8);
   adventurePrototypeState.trip = null;
+  adventurePrototypeState.draftAdventureHook = null;
   saveGame();
   renderMainAdventureStorage();
   renderAdventureLog(log);
   setAdventureMode("log");
+  if (logHasRouteMapDiscovery(log)) {
+    openAdventureRouteMapReveal(true);
+  }
 }
 
 function formatAdventureLedger(countMap, emptyText) {
@@ -2073,15 +3344,111 @@ function formatAdventureLedger(countMap, emptyText) {
   return entries.length ? entries.map(function(entry) { return formatAdventureEffectItem(entry.key, entry.count); }).join("、") : emptyText;
 }
 
+function formatAdventureIngredientLedger(countMap, emptyText) {
+  const entries = Object.keys(countMap || {}).filter(function(ingredientId) {
+    return Number(countMap[ingredientId]) > 0;
+  }).map(function(ingredientId) {
+    const count = Math.max(0, Math.floor(Number(countMap[ingredientId]) || 0));
+    return getAdventureIngredientName(ingredientId) + (count > 1 ? " ×" + count : "");
+  });
+  return entries.length ? entries.join("、") : emptyText;
+}
+
+function formatAdventureRecipeLedger(recipeIds, emptyText) {
+  const entries = Array.from(new Set(Array.isArray(recipeIds) ? recipeIds : [])).map(getAdventureRecipeName);
+  return entries.length ? entries.join("、") : emptyText;
+}
+
+function logHasRouteMapDiscovery(log) {
+  return (Array.isArray(log && log.importantDiscoveries) ? log.importantDiscoveries : []).some(function(entry) {
+    return entry.id === "dampSurveyRouteMap";
+  });
+}
+
+function progressHasRouteMapDiscovery() {
+  const progress = ensureAdventureProgress();
+  const routeMapId = typeof ADVENTURE_ROUTE_MAP_KEY_CLUE_ID === "string" ? ADVENTURE_ROUTE_MAP_KEY_CLUE_ID : "dampSurveyRouteMap";
+  return Array.isArray(progress.keyClues) && progress.keyClues.indexOf(routeMapId) !== -1;
+}
+
+function openAdventureRouteMapReveal(showMapAction) {
+  if (!adventureRouteMapLayer) return;
+  adventureRouteMapLayer.classList.remove("hidden");
+  adventureRouteMapLayer.setAttribute("aria-hidden", "false");
+  adventureRouteMapLayer.classList.toggle("can-open-map", Boolean(showMapAction));
+  document.body.classList.add("adventure-route-map-open");
+}
+
+function closeAdventureRouteMapReveal() {
+  if (!adventureRouteMapLayer) return;
+  adventureRouteMapLayer.classList.add("hidden");
+  adventureRouteMapLayer.setAttribute("aria-hidden", "true");
+  adventureRouteMapLayer.classList.remove("can-open-map");
+  document.body.classList.remove("adventure-route-map-open");
+}
+
+function renderAdventureLogProgressBlock(log, hook) {
+  if (!adventureLogProgressBlock) return;
+  const clueProgress = log.hookClueProgress || { found: 0, total: 0, remaining: 0, complete: false, discovered: false };
+  const hasNewClues = Array.isArray(log.newHookClues) && log.newHookClues.length > 0;
+  adventureLogProgressBlock.innerHTML = "";
+  adventureLogProgressBlock.classList.toggle("has-important-discovery", Boolean(log.importantDiscoveries && log.importantDiscoveries.length));
+  (log.importantDiscoveries || []).forEach(function(discovery) {
+    const section = document.createElement("section");
+    const title = document.createElement("strong");
+    const body = document.createElement("p");
+    section.className = "adventure-important-discovery";
+    title.textContent = "重要发现：" + discovery.title;
+    body.textContent = discovery.lines && discovery.lines.length ? discovery.lines.join(" / ") : "新的路线信息已经归档。";
+    section.appendChild(title);
+    section.appendChild(body);
+    adventureLogProgressBlock.appendChild(section);
+  });
+  if (hasNewClues) {
+    const section = document.createElement("section");
+    const title = document.createElement("strong");
+    const list = document.createElement("div");
+    section.className = "adventure-new-clues";
+    title.textContent = "发现新线索：";
+    list.className = "adventure-new-clue-list";
+    log.newHookClues.forEach(function(clue) {
+      const clueLine = document.createElement("span");
+      clueLine.textContent = clue.label;
+      list.appendChild(clueLine);
+    });
+    section.appendChild(title);
+    section.appendChild(list);
+    adventureLogProgressBlock.appendChild(section);
+  }
+  const progressLine = document.createElement("section");
+  const title = document.createElement("strong");
+  const remain = document.createElement("p");
+  progressLine.className = "adventure-hook-progress-summary";
+  if (clueProgress.total && clueProgress.discovered) {
+    title.textContent = hook.title + (clueProgress.complete ? " · 已查清" : "") + "：" + clueProgress.found + " / " + clueProgress.total;
+    remain.textContent = clueProgress.complete ? "线索已经收齐。" : "还剩 " + clueProgress.remaining + " 条";
+  } else {
+    title.textContent = hook.title + "：尚未发现";
+    remain.textContent = "当前还没有确认的新线索。";
+  }
+  progressLine.appendChild(title);
+  progressLine.appendChild(remain);
+  adventureLogProgressBlock.appendChild(progressLine);
+}
+
 function renderAdventureLog(logSource) {
   const log = sanitizeAdventureLog(logSource) || sanitizeAdventureLog(ensureAdventureProgress().lastLog);
   if (!log) return;
-  const location = ADVENTURE_LOCATION_CATALOG[log.locationId] || ADVENTURE_LOCATION_CATALOG.deepMountain;
-  const goal = DEEP_MOUNTAIN_ADVENTURE_GOALS[log.goalId] || DEEP_MOUNTAIN_ADVENTURE_GOALS.investigateWhiteShadow;
-  const route = DEEP_MOUNTAIN_ADVENTURE_ROUTES[log.routeId] || DEEP_MOUNTAIN_ADVENTURE_ROUTES.creekValley;
-  const goalResultLabels = { complete: "完成", partial: "部分完成", incomplete: "未完成", unexpected: "意外发现" };
+  const map = getAdventureMap(log.mapId || log.locationId);
+  const locations = getAdventureMapLocations(map.id);
+  const location = locations[log.locationId] || locations[map.id];
+  const routes = getAdventureMapRoutes(map.id);
+  const route = routes[log.routeId] || routes[getAdventureMapDefaultRouteId(map.id)];
+  const presentation = getAdventureRoutePresentation(map.id, route.id);
+  const hook = log.adventureHook || createFallbackAdventureHook(map.id, route.id);
+  const hookResultLabels = { found: "有所发现", continuing: "线索继续", noResult: "暂无结果", diverted: "意外偏离" };
   const highlight = log.events.find(function(entry) { return entry.eventId === log.highlightEventId; }) || log.events[log.events.length - 1];
-  const highlightDefinition = highlight && DEEP_MOUNTAIN_ADVENTURE_EVENTS.find(function(eventDefinition) { return eventDefinition.id === highlight.eventId; });
+  const highlightDefinition = highlight && getAdventureEventDefinitionById(map.id, highlight.eventId);
   if (adventureLogStatus) adventureLogStatus.textContent = log.endLabel;
   if (adventureLogLocation) adventureLogLocation.textContent = route.name;
   if (adventureLogEventCount) adventureLogEventCount.textContent = log.events.length + " / " + ADVENTURE_MAX_EVENTS_PER_TRIP;
@@ -2090,12 +3457,14 @@ function renderAdventureLog(logSource) {
     adventureLogStamina.textContent = log.staminaStart + " → " + log.staminaEnd + " (" + (delta > 0 ? "+" : "") + delta + ")";
   }
   if (adventureLogEndReason) adventureLogEndReason.textContent = log.endLabel;
-  if (adventureLogGoalStatus) {
-    adventureLogGoalStatus.textContent = "目标：" + goal.name + " · " + goalResultLabels[log.goalResult];
-    adventureLogGoalStatus.className = "adventure-goal-status is-" + log.goalResult;
+  if (adventureLogHookStatus) {
+    adventureLogHookStatus.textContent = "这次挂心的事：" + hook.title + " · " + hookResultLabels[log.hookResult];
+    adventureLogHookStatus.className = "adventure-hook-status is-" + log.hookResult;
   }
-  if (adventureLogStoryTitle) adventureLogStoryTitle.textContent = goal.logTitle;
+  applyAdventureRoutePresentation(map.id, route.id);
+  if (adventureLogStoryTitle) adventureLogStoryTitle.textContent = (presentation.journalTitle ? presentation.journalTitle + " · " : "") + hook.title;
   if (adventureLogStoryIntro) adventureLogStoryIntro.textContent = log.storyIntro || ("你沿着" + route.name + "进入" + location.name + "。");
+  renderAdventureLogProgressBlock(log, hook);
   if (adventureLogStoryBody) {
     adventureLogStoryBody.innerHTML = "";
     (log.storyBeats || []).forEach(function(beatText) {
@@ -2103,21 +3472,30 @@ function renderAdventureLog(logSource) {
       paragraph.textContent = beatText;
       adventureLogStoryBody.appendChild(paragraph);
     });
+    if ((log.participants || []).length > 1 && (log.participantHighlights || []).length) {
+      const teamSummary = document.createElement("p");
+      teamSummary.textContent = "队伍记录：" + log.participantHighlights.map(function(entry) { return entry.text; }).join(" ");
+      adventureLogStoryBody.appendChild(teamSummary);
+    }
   }
   if (adventureLogStoryEnding) {
-    adventureLogStoryEnding.textContent = (log.storyEnding || goal.endings[log.goalResult]) +
+    adventureLogStoryEnding.textContent = (log.storyEnding || "这次的经历仍会留在之后的山路上。") +
       (log.rewardNotes.length ? " " + log.rewardNotes.join(" ") : "");
   }
-  if (adventureLogIllustrationCaption) adventureLogIllustrationCaption.textContent = highlight ? highlight.title + " · " + highlight.reactionType : "深山里的一个片刻";
+  if (adventureLogIllustrationCaption) {
+    const highlightText = highlight ? highlight.title + " · " + highlight.reactionType : "沿途没有停留太久";
+    adventureLogIllustrationCaption.textContent = (presentation.journalCaption ? presentation.journalCaption + " · " : "") + highlightText;
+  }
   if (adventureLogIllustrationProp) {
     const propClass = highlightDefinition ? highlightDefinition.prop.className : "prop-sign";
-    const position = ADVENTURE_PROP_SHEET_POSITIONS[propClass] || ADVENTURE_PROP_SHEET_POSITIONS["prop-sign"];
+    const propSheetPositions = getAdventureMapPropSheetPositions(map.id);
+    const position = propSheetPositions[propClass] || propSheetPositions["prop-sign"];
     adventureLogIllustrationProp.className = "adventure-log-illustration-prop " + propClass;
     adventureLogIllustrationProp.style.setProperty("--prop-position-x", position[0]);
     adventureLogIllustrationProp.style.setProperty("--prop-position-y", position[1]);
   }
   if (adventureLogIllustration) {
-    adventureLogIllustration.style.setProperty("--journal-position-y", highlightDefinition && highlightDefinition.atmosphere ? "34%" : "48%");
+    adventureLogIllustration.style.backgroundPosition = presentation.journalPosition || (highlightDefinition && highlightDefinition.atmosphere ? "center 34%" : "center 48%");
   }
   if (adventureLogEventList) {
     adventureLogEventList.innerHTML = "";
@@ -2142,6 +3520,16 @@ function renderAdventureLog(logSource) {
         note.textContent = noteText;
         notes.appendChild(note);
       });
+      if (entry.participationText) {
+        const participationNote = document.createElement("em");
+        participationNote.textContent = entry.participationText;
+        notes.appendChild(participationNote);
+      }
+      (entry.participantObservations || []).forEach(function(observation) {
+        const observationNote = document.createElement("em");
+        observationNote.textContent = observation.text;
+        notes.appendChild(observationNote);
+      });
       copy.appendChild(title);
       copy.appendChild(reaction);
       copy.appendChild(result);
@@ -2158,29 +3546,45 @@ function renderAdventureLog(logSource) {
     }
   }
   if (adventureLogDeparted) adventureLogDeparted.textContent = formatAdventureLedger(log.departedWith, "空背包出发");
-  if (adventureLogGained) adventureLogGained.textContent = formatAdventureLedger(log.gained, "没有新物品");
+  if (adventureLogGained) {
+    const gainedItems = formatAdventureLedger(log.gained, "");
+    const gainedIngredients = formatAdventureIngredientLedger(log.gainedIngredients, "");
+    const recipes = formatAdventureRecipeLedger(log.unlockedRecipes, "");
+    adventureLogGained.textContent = [gainedItems, gainedIngredients, recipes ? "菜谱：" + recipes : ""].filter(Boolean).join("、") || "没有新物品";
+  }
   if (adventureLogLost) adventureLogLost.textContent = formatAdventureLedger(log.lost, "没有丢失物品");
   if (adventureLogConsumed) adventureLogConsumed.textContent = formatAdventureLedger(log.consumed, "没有消耗物品");
-  if (adventureLogUnlocked) adventureLogUnlocked.textContent = log.unlocked.length ? log.unlocked.map(function(id) { return ADVENTURE_LOCATION_CATALOG[id].name; }).join("、") : "没有新路线";
+  if (adventureLogUnlocked) {
+    const routeLabels = log.unlocked.map(function(id) { return locations[id].name; });
+    const mapLabels = (log.unlockedMaps || []).map(function(id) { return getAdventureMap(id).name; });
+    adventureLogUnlocked.textContent = routeLabels.concat(mapLabels).join("、") || "没有新路线或地图";
+  }
+  if (adventureLogRouteMapButton) {
+    adventureLogRouteMapButton.classList.toggle("hidden", !progressHasRouteMapDiscovery());
+  }
 }
 
 function recoverInterruptedAdventureBackpack() {
   const progress = ensureAdventureProgress();
-  if (adventurePrototypeState.trip || getAdventureCountTotal(progress.pendingBackpack) + getAdventureCountTotal(progress.pendingLoot) <= 0) return false;
+  const snapshot = progress.pendingTripSnapshot ? cloneAdventureData(progress.pendingTripSnapshot) : null;
+  if (adventurePrototypeState.trip || (!snapshot && getAdventureCountTotal(progress.pendingBackpack) + getAdventureCountTotal(progress.pendingLoot) <= 0)) return null;
   returnAdventureBackpackToStorage(progress.pendingBackpack);
   returnAdventureBackpackToStorage(progress.pendingLoot);
   progress.pendingBackpack = {};
   progress.pendingLoot = {};
+  progress.pendingTripSnapshot = null;
+  adventurePrototypeState.recoveredTripSnapshot = snapshot;
   saveGame();
-  return true;
+  return snapshot || { mapId: getDefaultAdventureMapId(), routeId: getAdventureMapDefaultRouteId(getDefaultAdventureMapId()), adventureHook: null };
 }
 
 function startAdventureTrip() {
   const progress = ensureAdventureProgress();
-  const goal = DEEP_MOUNTAIN_ADVENTURE_GOALS[adventurePrototypeState.draftGoalId];
-  const route = DEEP_MOUNTAIN_ADVENTURE_ROUTES[adventurePrototypeState.draftRouteId];
-  if (!goal || !route || !isDeepMountainRouteUnlocked(route, progress)) {
-    setAdventurePrepMessage("请先选择一个可用目标和已解锁路线。", true);
+  const mapId = adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
+  const map = getAdventureMap(mapId);
+  const route = getAdventureMapRoutes(map.id)[adventurePrototypeState.draftRouteId];
+  if (!route || !isAdventureRouteUnlocked(map.id, route, progress)) {
+    setAdventurePrepMessage("请先选择一条已解锁路线。", true);
     renderAdventurePreparation();
     return;
   }
@@ -2207,40 +3611,64 @@ function startAdventureTrip() {
   progress.stamina.updatedAt = Date.now();
   progress.pendingBackpack = cloneAdventureCountMap(selected);
   progress.pendingLoot = {};
+  const adventureHook = cloneAdventureData(ensureDraftAdventureHook(false));
+  const snapshot = getAdventureProfileSnapshot();
   adventurePrototypeState.trip = {
     startedAt: Date.now(),
+    mapId: map.id,
     staminaStart: staminaStart,
     staminaEventDelta: 0,
-    goalId: goal.id,
+    adventureHook: adventureHook,
     routeId: route.id,
+    participants: createSoloAdventureParticipants(snapshot, selected, progress.adventureMemories),
+    mapStateSnapshot: cloneAdventureData(progress.mapStates[map.id] || map.localStateDefaults || {}),
+    adventureMemorySnapshot: cloneAdventureData(progress.adventureMemories || createDefaultAdventureMemories()),
     eventFlags: {},
-    goalProgress: { score: 0, status: "incomplete" },
+    hookProgress: { score: 0, status: "noResult" },
     storyBeats: [],
+    eventIndex: 0,
+    status: "running",
     backpack: cloneAdventureCountMap(selected),
     departedWith: cloneAdventureCountMap(selected),
     loot: {},
     gained: {},
+    gainedIngredients: {},
     lost: {},
     consumed: {},
     unlocked: [],
+    unlockedMaps: [],
+    unlockedRecipes: [],
+    keyCluesFound: [],
+    importantDiscoveries: [],
+    newHookClues: [],
+    hookClueProgress: null,
+    injuries: {},
     statuses: [],
     events: []
+  };
+  progress.pendingTripSnapshot = {
+    mapId: map.id,
+    routeId: route.id,
+    adventureHook: cloneAdventureData(adventureHook)
   };
   adventurePrototypeState.seenEventIds = [];
   adventurePrototypeState.pathIndex = 0;
   adventurePrototypeState.busy = false;
   adventurePrototypeState.draftBackpack = {};
+  adventurePrototypeState.draftBackpackTouched = false;
   clearAdventureItemFeedback();
   saveGame();
   setAdventureMode("running");
+  applyAdventureRoutePresentation(map.id, route.id);
   resetAdventureVisuals();
-  setAdventureCamperPosition(ADVENTURE_PROTOTYPE_PATH_POINTS[0], false);
+  const pathPoints = getAdventureMapPathPoints(map.id);
+  setAdventureCamperPosition(pathPoints[0], false);
   playAdventureAction("idle");
-  updateAdventureStatus(goal.name, "Camper 整理好背包，沿" + route.name + "出发。", "体力 -" + tripStaminaCost, true);
+  updateAdventureStatus(adventureHook.title, "Camper 整理好背包，沿" + route.name + "出发。", "体力 -" + tripStaminaCost, true);
   updateAdventureRunHud();
-  if (adventurePhaseLabel) adventurePhaseLabel.textContent = route.name + " · " + goal.name;
+  if (adventurePhaseLabel) adventurePhaseLabel.textContent = route.name + " · " + adventureHook.title;
   scheduleAdventureStep(function() {
-    setAdventureCamperPosition(ADVENTURE_PROTOTYPE_PATH_POINTS[1], true);
+    setAdventureCamperPosition(pathPoints[1] || pathPoints[0], true);
   }, 450);
   scheduleAdventureStep(function() {
     playAdventureAction("idle");
@@ -2254,15 +3682,37 @@ function showAdventurePreparation(message) {
   stopAdventureFrameAnimation();
   adventurePrototypeState.busy = false;
   adventurePrototypeState.draftBackpack = {};
-  if (!DEEP_MOUNTAIN_ADVENTURE_GOALS[adventurePrototypeState.draftGoalId]) adventurePrototypeState.draftGoalId = "investigateWhiteShadow";
+  adventurePrototypeState.draftBackpackTouched = false;
   const progress = ensureAdventureProgress();
-  if (!DEEP_MOUNTAIN_ADVENTURE_ROUTES[adventurePrototypeState.draftRouteId] ||
-    !isDeepMountainRouteUnlocked(DEEP_MOUNTAIN_ADVENTURE_ROUTES[adventurePrototypeState.draftRouteId], progress)) {
-    adventurePrototypeState.draftRouteId = getFirstUnlockedAdventureRouteId(progress);
+  const maps = getAdventureMapRegistry();
+  if (!maps[adventurePrototypeState.draftMapId] || !isAdventureMapUnlocked(adventurePrototypeState.draftMapId, progress)) {
+    adventurePrototypeState.draftMapId = getDefaultAdventureMapId();
   }
+  const mapId = adventurePrototypeState.draftMapId;
+  const routes = getAdventureMapRoutes(mapId);
+  if (!routes[adventurePrototypeState.draftRouteId] ||
+    !isAdventureRouteUnlocked(mapId, routes[adventurePrototypeState.draftRouteId], progress)) {
+    adventurePrototypeState.draftRouteId = getFirstUnlockedAdventureRouteId(progress, mapId);
+  }
+  ensureDraftAdventureHook(false);
+  applyAdventureBackpackRecommendation(false);
   setAdventureMode("preparing");
+  if (adventurePrepPanel) adventurePrepPanel.scrollTop = 0;
   setAdventurePrepMessage(message || "背包最多携带 5 件，途中发现的物品会另行收好。", false);
   renderAdventurePreparation();
+}
+
+function showAdventureMapSelection(message) {
+  clearAdventureTimers();
+  clearAdventureItemFeedback();
+  stopAdventureFrameAnimation();
+  adventurePrototypeState.busy = false;
+  adventurePrototypeState.draftBackpack = {};
+  adventurePrototypeState.draftBackpackTouched = false;
+  adventurePrototypeState.draftAdventureHook = null;
+  setAdventureMode("map-select");
+  if (adventureMapMessage) adventureMapMessage.textContent = message || "今天想去哪里走走？";
+  renderAdventureMapSelection();
 }
 
 function closeAdventurePrototypeLayer() {
@@ -2284,8 +3734,18 @@ function openAdventurePrototype() {
   adventurePrototypeLayer.classList.remove("hidden");
   adventurePrototypeLayer.setAttribute("aria-hidden", "false");
   document.body.classList.add("adventure-prototype-open");
-  const recovered = recoverInterruptedAdventureBackpack();
-  showAdventurePreparation(recovered ? "上次中断的携带物与途中发现已安全放回对应仓库。" : "背包最多携带 5 件，途中发现的物品会另行收好。");
+  const recovered = recoverInterruptedAdventureBackpack() || adventurePrototypeState.recoveredTripSnapshot;
+  if (recovered) {
+    adventurePrototypeState.draftMapId = recovered.mapId;
+    adventurePrototypeState.draftRouteId = recovered.routeId;
+    adventurePrototypeState.draftAdventureHook = recovered.adventureHook;
+  }
+  adventurePrototypeState.recoveredTripSnapshot = null;
+  if (recovered && isAdventureMapUnlocked(recovered.mapId, ensureAdventureProgress())) {
+    showAdventurePreparation("上次中断的携带物与途中发现已安全放回对应仓库，出发契机也已保留。");
+  } else {
+    showAdventureMapSelection(recovered ? "上次中断的物品已安全归还，请重新选择地图。" : "今天想去哪里走走？");
+  }
 }
 
 function resetDeepMountainAdventureTestState() {
@@ -2305,13 +3765,16 @@ function resetDeepMountainAdventureTestState() {
   adventurePrototypeState.trip = null;
   adventurePrototypeState.busy = false;
   adventurePrototypeState.draftBackpack = {};
-  adventurePrototypeState.draftGoalId = "investigateWhiteShadow";
-  adventurePrototypeState.draftRouteId = "creekValley";
+  adventurePrototypeState.draftBackpackTouched = false;
+  adventurePrototypeState.draftMapId = getDefaultAdventureMapId();
+  adventurePrototypeState.draftRouteId = getAdventureMapDefaultRouteId(adventurePrototypeState.draftMapId);
+  adventurePrototypeState.draftAdventureHook = null;
+  adventurePrototypeState.recoveredTripSnapshot = null;
   adventurePrototypeState.seenEventIds = [];
   saveGame();
   renderMainAdventureStorage();
   if (adventurePrototypeState.active) {
-    showAdventurePreparation("测试状态已重置：体力已满，基础工具已补充。鱼和料理库存未重置。 ");
+    showAdventureMapSelection("测试状态已重置：体力已满，基础工具已补充。 ");
   }
   console.info("[Adventure Test] reset complete", gameState.adventure);
   return {
@@ -2322,6 +3785,45 @@ function resetDeepMountainAdventureTestState() {
 }
 
 window.resetDeepMountainAdventureTest = resetDeepMountainAdventureTestState;
+window.configureDeepMountainAdventureTestState = function(options) {
+  const source = options && typeof options === "object" ? options : {};
+  const progress = ensureAdventureProgress();
+  const map = getAdventureMap("deepMountain");
+  const currentState = progress.mapStates.deepMountain || map.localStateDefaults || {};
+  const nextState = Object.assign({}, currentState, source.mapState || {});
+  progress.mapStates.deepMountain = typeof map.sanitizeLocalState === "function" ? map.sanitizeLocalState(nextState) : nextState;
+  progress.adventureMemories = sanitizeAdventureMemories(Object.assign({}, progress.adventureMemories, source.adventureMemories || {}));
+  if (source.unfinishedHookId && getAdventureMapHooks("deepMountain")[source.unfinishedHookId]) {
+    progress.clueStages[source.unfinishedHookId] = "seenAgain";
+  }
+  adventurePrototypeState.draftAdventureHook = null;
+  saveGame();
+  if (adventurePrototypeState.active && adventurePrototypeState.mode === "preparing") renderAdventurePreparation();
+  return {
+    mapState: cloneAdventureData(progress.mapStates.deepMountain),
+    adventureMemories: cloneAdventureData(progress.adventureMemories)
+  };
+};
+window.getAdventureTestSnapshot = function() {
+  const progress = ensureAdventureProgress();
+  return {
+    version: progress.version,
+    mapStates: cloneAdventureData(progress.mapStates),
+    adventureMemories: cloneAdventureData(progress.adventureMemories),
+    recentAdventureHistory: cloneAdventureData(progress.recentAdventureHistory),
+    trip: adventurePrototypeState.trip ? cloneAdventureData(adventurePrototypeState.trip) : null
+  };
+};
+window.simulateLocalAdventurePartyTest = function(options) {
+  const source = options && typeof options === "object" ? options : {};
+  return simulateLocalAdventurePartyTrip(
+    source.mapId || getDefaultAdventureMapId(),
+    source.size || 3,
+    source.eventIds,
+    getAdventureProfileSnapshot(),
+    source.partyOptions
+  );
+};
 
 if (adventureStorageButton) adventureStorageButton.addEventListener("click", openMainAdventureStorage);
 if (adventureStorageCloseButton) adventureStorageCloseButton.addEventListener("click", closeMainAdventureStorage);
@@ -2330,15 +3832,35 @@ if (adventureStorageLayer) adventureStorageLayer.addEventListener("click", funct
 });
 if (settingsAdventurePrototypeItem) settingsAdventurePrototypeItem.addEventListener("click", openAdventurePrototype);
 if (adventureStartButton) adventureStartButton.addEventListener("click", startAdventureTrip);
-if (adventurePrepCloseButton) adventurePrepCloseButton.addEventListener("click", closeAdventurePrototypeLayer);
+if (adventureMapCloseButton) adventureMapCloseButton.addEventListener("click", closeAdventurePrototypeLayer);
+if (adventurePrepCloseButton) adventurePrepCloseButton.addEventListener("click", function() { showAdventureMapSelection("换个方向看看。 "); });
+if (adventureRecommendationResetButton) adventureRecommendationResetButton.addEventListener("click", function() {
+  applyAdventureBackpackRecommendation(true);
+  setAdventurePrepMessage("已按当前路线和挂心之事重新整理背包草稿。", false);
+  renderAdventurePreparation();
+});
 if (adventurePrepResetButton) adventurePrepResetButton.addEventListener("click", resetDeepMountainAdventureTestState);
 if (adventureEndEarlyButton) adventureEndEarlyButton.addEventListener("click", function() { finishAdventureTrip("earlyReturn", "提前返回"); });
 if (adventureAgainButton) adventureAgainButton.addEventListener("click", function() { showAdventurePreparation("上一趟物品已经结算回 Storage。 "); });
+if (adventureLogMapButton) adventureLogMapButton.addEventListener("click", function() { showAdventureMapSelection("上一趟已经安全结算，可以选择下一处目的地。 "); });
 if (adventureLogExitButton) adventureLogExitButton.addEventListener("click", closeAdventurePrototypeLayer);
 if (adventureLogResetButton) adventureLogResetButton.addEventListener("click", resetDeepMountainAdventureTestState);
+if (adventureLogRouteMapButton) adventureLogRouteMapButton.addEventListener("click", function() { openAdventureRouteMapReveal(false); });
+if (adventureRouteMapCloseButton) adventureRouteMapCloseButton.addEventListener("click", closeAdventureRouteMapReveal);
+if (adventureRouteMapMapButton) adventureRouteMapMapButton.addEventListener("click", function() {
+  closeAdventureRouteMapReveal();
+  showAdventureMapSelection("新地图已记录，可以从这里前往雾雨林。");
+});
+if (adventureRouteMapLayer) adventureRouteMapLayer.addEventListener("click", function(event) {
+  if (event.target === adventureRouteMapLayer) closeAdventureRouteMapReveal();
+});
 
 document.addEventListener("keydown", function(event) {
   if (event.key !== "Escape") return;
+  if (adventureRouteMapLayer && !adventureRouteMapLayer.classList.contains("hidden")) {
+    closeAdventureRouteMapReveal();
+    return;
+  }
   if (adventureStorageLayer && !adventureStorageLayer.classList.contains("hidden")) {
     closeMainAdventureStorage();
     return;
@@ -2356,5 +3878,7 @@ window.addEventListener("load", renderMainAdventureStorage);
 window.setInterval(function() {
   if (adventurePrototypeState.active && adventurePrototypeState.mode === "preparing") {
     renderAdventurePreparation();
+  } else if (adventurePrototypeState.active && adventurePrototypeState.mode === "map-select") {
+    renderAdventureMapSelection();
   }
 }, 60000);

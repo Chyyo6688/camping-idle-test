@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cozy Camping Idle V4.8</title>
   <script>
-    window.APP_VERSION = "4.8";
+    window.APP_VERSION = "4.9";
   </script>
   <link id="appStylesheet" rel="stylesheet" href="style.css?v=3.0">
   <script>
@@ -202,6 +202,11 @@
                 <h3>Meals</h3>
                 <div id="inventoryMealList" class="inventory-list"></div>
               </section>
+
+              <section class="inventory-section" aria-label="Cooking ingredients inventory">
+                <h3>Ingredients</h3>
+                <div id="inventoryIngredientList" class="inventory-list"></div>
+              </section>
             </div>
 
             <div id="inventoryFishMenu" class="inventory-fish-menu hidden" role="menu" aria-hidden="true"></div>
@@ -272,7 +277,7 @@
 
               <button id="settingsAdventurePrototypeItem" class="settings-item settings-item-adventure" type="button">
                 <span class="settings-item-icon" aria-hidden="true">🏔️</span>
-                <span class="settings-item-label">深山冒险测试</span>
+                <span class="settings-item-label">冒险测试</span>
                 <span class="settings-item-badge">DEV</span>
               </button>
 
@@ -285,9 +290,9 @@
         </div>
 
         <div id="adventurePrototypeLayer" class="adventure-prototype-layer hidden" aria-hidden="true">
-          <section id="adventurePrototype" class="adventure-prototype is-preparing" aria-label="深山冒险测试">
+          <section id="adventurePrototype" class="adventure-prototype is-map-select" aria-label="冒险测试">
             <div id="adventureScene" class="adventure-scene">
-              <img class="adventure-background" src="assets/adventure/deep-mountain/deep-mountain-background.png?v=4.8" alt="">
+              <img id="adventureBackground" class="adventure-background" src="assets/adventure/deep-mountain/deep-mountain-background.png?v=4.8" alt="">
               <div id="adventureAtmosphere" class="adventure-atmosphere" aria-hidden="true"></div>
               <div id="adventureRainLayer" class="adventure-rain-layer" aria-hidden="true"></div>
               <div id="adventureEventProp" class="adventure-event-prop" aria-hidden="true"></div>
@@ -302,8 +307,8 @@
 
             <header id="adventureHeader" class="adventure-header">
               <div>
-                <p class="eyebrow">Solo Prototype</p>
-                <h2>深山</h2>
+                <p id="adventureHeaderEyebrow" class="eyebrow">Solo Adventure</p>
+                <h2 id="adventureHeaderTitle">深山</h2>
               </div>
               <span id="adventurePhaseLabel" class="adventure-phase-label">沿山路前进</span>
             </header>
@@ -326,26 +331,36 @@
               </nav>
             </div>
 
-            <section id="adventurePrepPanel" class="adventure-screen-panel adventure-prep-panel" aria-label="深山出发准备">
+            <section id="adventureMapPanel" class="adventure-screen-panel adventure-map-panel" aria-label="选择冒险地图">
               <header class="adventure-panel-header">
                 <div>
-                  <p class="eyebrow">Deep Mountain</p>
-                  <h2>出发准备</h2>
+                  <p class="eyebrow">Adventure Maps</p>
+                  <h2>选择地图</h2>
                 </div>
-                <button id="adventurePrepCloseButton" class="adventure-panel-close" type="button">返回营地</button>
+                <button id="adventureMapCloseButton" class="adventure-panel-close" type="button">返回营地</button>
               </header>
 
-              <div class="adventure-prep-illustration" aria-hidden="true">
-                <span>深山 · 单人路线</span>
-              </div>
+              <p id="adventureMapMessage" class="adventure-map-message" aria-live="polite">今天想去哪里走走？</p>
+              <div id="adventureMapList" class="adventure-map-list"></div>
 
-              <section class="adventure-choice-section" aria-label="本次目标">
-                <div class="adventure-section-heading">
-                  <strong>本次目标</strong>
-                  <span>Camper 会自动判断和行动</span>
+              <div class="adventure-map-shared-status" aria-label="共享冒险状态">
+                <span>冒险体力 <strong id="adventureMapStamina">100 / 100</strong></span>
+                <span>Adventure Storage <strong id="adventureMapStorageCount">0</strong></span>
+              </div>
+            </section>
+
+            <section id="adventurePrepPanel" class="adventure-screen-panel adventure-prep-panel" aria-label="出发准备">
+              <header class="adventure-panel-header">
+                <div>
+                  <p id="adventurePrepMapEyebrow" class="eyebrow">Deep Mountain</p>
+                  <h2>出发准备</h2>
                 </div>
-                <div id="adventureGoalList" class="adventure-choice-grid adventure-goal-grid"></div>
-              </section>
+                <button id="adventurePrepCloseButton" class="adventure-panel-close" type="button">选择地图</button>
+              </header>
+
+              <div id="adventurePrepIllustration" class="adventure-prep-illustration" aria-hidden="true">
+                <span id="adventurePrepIllustrationCaption">深山 · 单人路线</span>
+              </div>
 
               <section class="adventure-choice-section" aria-label="路线选择">
                 <div class="adventure-section-heading">
@@ -355,6 +370,14 @@
                 <div id="adventureRouteList" class="adventure-choice-grid adventure-route-grid"></div>
                 <p id="adventureStrategyHint" class="adventure-strategy-hint"></p>
               </section>
+
+              <aside id="adventureHookPreview" class="adventure-hook-preview" aria-live="polite">
+                <span id="adventureHookEyebrow">这次出发前听到的传闻</span>
+                <strong id="adventureHookTitle">山路上的新动静</strong>
+                <em id="adventureHookClueMeta">尚未发现</em>
+                <p id="adventureHookIntro">沿途也许会遇见一些没有预料到的事情。</p>
+                <p id="adventureHookDetail" class="adventure-hook-detail">尚未发现</p>
+              </aside>
 
               <section class="adventure-stamina-card" aria-label="冒险体力">
                 <div class="adventure-section-heading">
@@ -378,6 +401,10 @@
                   <div class="adventure-section-heading">
                     <strong>冒险背包</strong>
                     <span id="adventureBackpackCapacity">已携带 0 / 5</span>
+                  </div>
+                  <div class="adventure-recommendation-bar">
+                    <span id="adventureRecommendationText">推荐携带 0 / 5。根据当前路线和挂心之事整理，可自由调整。</span>
+                    <button id="adventureRecommendationResetButton" class="adventure-mini-control" type="button">按当前挂心之事重新整理</button>
                   </div>
                   <div id="adventureBackpackList" class="adventure-item-list"></div>
                 </section>
@@ -413,9 +440,10 @@
               </div>
 
               <article class="adventure-story-card">
-                <span id="adventureLogGoalStatus" class="adventure-goal-status">目标结算</span>
+                <span id="adventureLogHookStatus" class="adventure-hook-status">这次挂心的事</span>
                 <h3 id="adventureLogStoryTitle">本次深山记录</h3>
                 <p id="adventureLogStoryIntro"></p>
+                <div id="adventureLogProgressBlock" class="adventure-log-progress-block" aria-live="polite"></div>
                 <div id="adventureLogStoryBody" class="adventure-story-body"></div>
                 <p id="adventureLogStoryEnding" class="adventure-story-ending"></p>
               </article>
@@ -434,12 +462,37 @@
               </div>
 
               <div class="adventure-panel-actions">
-                <button id="adventureAgainButton" class="adventure-control adventure-control-primary" type="button">准备下一次冒险</button>
+                <button id="adventureAgainButton" class="adventure-control adventure-control-primary" type="button">再次前往此地图</button>
+                <button id="adventureLogMapButton" class="adventure-control" type="button">选择其他地图</button>
+                <button id="adventureLogRouteMapButton" class="adventure-control hidden" type="button">查看路线图</button>
                 <button id="adventureLogExitButton" class="adventure-control" type="button">返回营地</button>
                 <button id="adventureLogResetButton" class="adventure-control" type="button">重置测试</button>
               </div>
             </section>
 
+          </section>
+        </div>
+
+        <div id="adventureRouteMapLayer" class="adventure-route-map-layer hidden" aria-hidden="true">
+          <section class="adventure-route-map-modal" aria-label="受潮的调查路线图">
+            <div class="adventure-route-map-art">
+              <img src="assets/adventure/fog-rainforest/damp-route-map.png?v=4.8" alt="受潮的调查路线图">
+            </div>
+            <div class="adventure-route-map-copy">
+              <p class="eyebrow">重要发现</p>
+              <h2>新地图已发现：雾雨林</h2>
+              <div class="adventure-route-map-notes">
+                <p>旧林务网格：S-17 / E-04</p>
+                <p>南侧补给路线：溪谷末端 → 低地调查站</p>
+                <p>通联编号：R-03</p>
+                <p>雨季后道路停用。</p>
+                <p>若藤蔓覆盖路标，沿白色树标继续前进。</p>
+              </div>
+              <div class="adventure-route-map-actions">
+                <button id="adventureRouteMapCloseButton" class="adventure-control" type="button">收起路线图</button>
+                <button id="adventureRouteMapMapButton" class="adventure-control adventure-control-primary" type="button">查看新地图</button>
+              </div>
+            </div>
           </section>
         </div>
 
@@ -689,7 +742,11 @@
         "js/config/tutorialConfig.js",
         "js/config/camperConfig.js",
         "js/config/camperProgressionConfig.js",
-        "js/config/adventurePrototypeConfig.js",
+        "js/config/adventure/adventureItems.js",
+        "js/config/adventure/maps/deepMountain.js",
+        "js/config/adventure/maps/fogRainforest.js",
+        "js/config/adventure/adventureMaps.js",
+        "js/systems/adventure/adventureParty.js",
         "js/systems/gameActivities.js",
         "js/systems/gameSound.js",
         "js/core/gameRuntime.js",

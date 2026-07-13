@@ -3,8 +3,14 @@ const path = require("path");
 const vm = require("vm");
 
 const root = path.resolve(__dirname, "..");
-const configSource = fs.readFileSync(path.join(root, "js", "config", "adventurePrototypeConfig.js"), "utf8");
+const configSources = [
+  "js/config/adventure/adventureItems.js",
+  "js/config/adventure/maps/deepMountain.js",
+  "js/config/adventure/maps/fogRainforest.js",
+  "js/config/adventure/adventureMaps.js"
+].map((relativePath) => fs.readFileSync(path.join(root, relativePath), "utf8")).join("\n");
 const systemSource = fs.readFileSync(path.join(root, "js", "systems", "gameAdventurePrototype.js"), "utf8");
+const partySource = fs.readFileSync(path.join(root, "js", "systems", "adventure", "adventureParty.js"), "utf8");
 const checks = [];
 
 function check(name, condition, detail) {
@@ -12,7 +18,7 @@ function check(name, condition, detail) {
 }
 
 const configSandbox = {};
-vm.runInNewContext(configSource + `
+vm.runInNewContext(configSources + `
 globalThis.__data = {
   capacity: ADVENTURE_BACKPACK_CAPACITY,
   catalog: ADVENTURE_ITEM_CATALOG,
@@ -21,8 +27,14 @@ globalThis.__data = {
   requirements: ADVENTURE_REACTION_ITEM_REQUIREMENTS,
   solutions: ADVENTURE_ITEM_SOLUTION_EFFECTS,
   consequences: ADVENTURE_EVENT_CONSEQUENCES,
+  fogConsequences: FOG_RAINFOREST_ADVENTURE_MAP.eventConsequences,
   missing: ADVENTURE_MISSING_ITEM_FEEDBACK,
   events: DEEP_MOUNTAIN_ADVENTURE_EVENTS,
+  deepRoutes: DEEP_MOUNTAIN_ADVENTURE_ROUTES,
+  rainforestRoutes: FOG_RAINFOREST_ADVENTURE_MAP.routes,
+  keyClues: ADVENTURE_KEY_CLUE_CATALOG,
+  deepItemPool: DEEP_MOUNTAIN_ADVENTURE_MAP.itemPool,
+  rainforestItemPool: FOG_RAINFOREST_ADVENTURE_MAP.itemPool,
   saveVersion: ADVENTURE_SAVE_VERSION,
   starterMigrationVersion: ADVENTURE_STARTER_KIT_MIGRATION_VERSION
 };`, configSandbox);
@@ -39,14 +51,21 @@ function solutionEventsFor(requirement) {
 }
 
 check("背包容量严格为 5", data.capacity === 5, String(data.capacity));
-check("12 种冒险物品仍完整", Object.keys(data.catalog).length === 12, Object.keys(data.catalog).join(", "));
-check("冒险存档升级为 v4", data.saveVersion === 4, String(data.saveVersion));
+check("12 种深山旧物品与 6 种雨林物品均完整", Object.keys(data.catalog).length === 18 && data.deepItemPool.length === 12 && data.rainforestItemPool.length === 6, Object.keys(data.catalog).join(", "));
+check("冒险存档升级为 v9", data.saveVersion === 9, String(data.saveVersion));
 check("启动装备迁移有独立版本", data.starterMigrationVersion === 1, String(data.starterMigrationVersion));
+check("关键路线图线索声明完整", ["rangerLeafRouteMark", "southSupplyCode", "oldForestryCoordinate", "dampSurveyRouteMap"].every((clueId) => data.keyClues[clueId]), Object.keys(data.keyClues).join(", "));
+const routeResources = JSON.stringify(data.deepRoutes) + JSON.stringify(data.rainforestRoutes);
+const rewardEffects = JSON.stringify(data.consequences) + JSON.stringify(data.fogConsequences);
+check("地图路线声明原料和菜谱资源池", ["wildMushroom", "wildOnion", "pineNut", "rainGinger", "sourBerry", "aromaticLeaf", "rainforestMushroom"].every((id) => routeResources.includes(id)) && ["wildMushroomFishSoup", "pineNutGrilledFish", "rainforestSourFishSoup", "aromaticLeafGrilledFish", "wildGingerMushroomSoup"].every((id) => routeResources.includes(id)), routeResources);
+check("原料与菜谱来自事件效果配置", rewardEffects.includes('"type":"gainIngredient"') && rewardEffects.includes('"type":"unlockRecipe"') && ["wildMushroom", "pineNut", "rainGinger", "aromaticLeaf", "rainforestMushroom"].every((id) => rewardEffects.includes(id)), rewardEffects.slice(0, 300));
 
 const expectedLimits = {
   ropeKit: Infinity, fieldLantern: 1, firstAidPouch: Infinity, oldKey: 3,
   sealedLetter: 1, repairToolkit: 1, mountainHerb: Infinity, trailMap: 1,
-  silverCompass: 1, forestCharm: 1, rangerToken: 1, trailRation: Infinity
+  silverCompass: 1, forestCharm: 1, rangerToken: 1, trailRation: Infinity,
+  vineCutter: 1, insectRepellent: Infinity, luminousSpore: Infinity,
+  pressedFernSpecimen: 1, stationPass: 1, rainCape: 1
 };
 Object.keys(expectedLimits).forEach((itemId) => {
   check(itemId + " 持有上限", data.rules[itemId].maxOwned === expectedLimits[itemId], String(data.rules[itemId].maxOwned));
@@ -104,7 +123,7 @@ runtimeSandbox.window.clearInterval = function() {};
 runtimeSandbox.window.requestAnimationFrame = function() {};
 runtimeSandbox.window.addEventListener = function() {};
 
-vm.runInNewContext(configSource + "\n" + systemSource + `
+vm.runInNewContext(configSources + "\n" + partySource + "\n" + systemSource + `
 globalThis.__runtime = {
   createDefaultAdventureProgress, sanitizeAdventureProgress, getAdventureReactionCandidates,
   getAdventureMissingItemOpportunity, getCarriedButUnusedItemNotes, resolveAdventureOutcome, applyAdventureConsequences,
@@ -112,6 +131,7 @@ globalThis.__runtime = {
   eventById(id) { return DEEP_MOUNTAIN_ADVENTURE_EVENTS.find((eventDefinition) => eventDefinition.id === id); },
   setTrip(trip) { adventurePrototypeState.trip = trip; },
   getTrip() { return adventurePrototypeState.trip; },
+  getRecoveredTripSnapshot() { return adventurePrototypeState.recoveredTripSnapshot; },
   setProgress(progress) { gameState.adventure = progress; },
   getProgress() { return gameState.adventure; }
 };`, runtimeSandbox);
@@ -189,6 +209,13 @@ candidates = runtime.getAdventureReactionCandidates(rescue, neutralSnapshot, { "
 const combinedUnusedNotes = runtime.getCarriedButUnusedItemNotes({ candidates }, eventReaction("distantCry", "prepareAid"), scenario.outcome);
 check("9 绳组与急救包可连续发挥作用", scenario.outcome.itemSolution.isCombined && scenario.outcome.tier === "rareGood" && scenario.trip.backpack["item:ropeKit"] === 1 && scenario.trip.consumed["item:firstAidPouch"] === 1 && candidates.find((entry) => entry.reaction.id === "treatInjury").weight === 0 && !combinedUnusedNotes.some((note) => note.includes("急救包")), scenario.consequence.itemNotes.concat(combinedUnusedNotes).join(" | "));
 
+const rainCapeScenario = applyResolved("suddenDownpour", "buildCover", { "item:rainCape": 1, "item:ropeKit": 1 }, 50);
+check("雨林雨披带回深山后优先形成暴雨变体", rainCapeScenario.outcome.itemSolution.requirement === "rainCape" && rainCapeScenario.outcome.text.includes("雾雨林") && rainCapeScenario.trip.backpack["item:rainCape"] === 1 && rainCapeScenario.trip.backpack["item:ropeKit"] === 1, JSON.stringify({ solution: rainCapeScenario.outcome.itemSolution, text: rainCapeScenario.outcome.text }));
+
+const vineCutterScenario = applyResolved("snaredAnimal", "cutSnare", { "item:vineCutter": 1, "item:repairToolkit": 1 }, 50);
+check("雨林藤切刀带回深山后优先形成套索变体", vineCutterScenario.outcome.itemSolution.requirement === "vineCutter" && vineCutterScenario.outcome.text.includes("藤切刀") && vineCutterScenario.trip.backpack["item:vineCutter"] === 1 && vineCutterScenario.trip.backpack["item:repairToolkit"] === 1, JSON.stringify({ solution: vineCutterScenario.outcome.itemSolution, text: vineCutterScenario.outcome.text }));
+check("返场物品不混入深山当地掉落池", !data.deepItemPool.includes("rainCape") && !data.deepItemPool.includes("vineCutter"), data.deepItemPool.join(", "));
+
 let progress = resetProgress(50);
 trip = makeTrip({ "item:trailRation": 5 });
 runtime.setTrip(trip);
@@ -220,9 +247,14 @@ check("13 后续清空仓库不会再次免费补充", Object.keys(clearedAfterM
 progress = resetProgress(50);
 progress.pendingBackpack = { "item:ropeKit": 1, "fish:testFish": 1 };
 progress.pendingLoot = { "item:firstAidPouch": 1, "meal:testMeal": 1 };
+progress.pendingTripSnapshot = {
+  mapId: "deepMountain",
+  routeId: "denseForest",
+  adventureHook: { id: "investigateWhiteShadow", title: "树林中的白影", intro: "雾里还有痕迹。", relatedEventIds: ["whiteShadow"], source: "routeRumor" }
+};
 runtime.setTrip(null);
 const recovered = runtime.recoverInterruptedAdventureBackpack();
-check("14 刷新中断可恢复 backpack 与 loot 且不复制", recovered && progress.storage.ropeKit === 2 && progress.storage.firstAidPouch === 2 && runtimeSandbox.gameState.inventory.fish.testFish === 1 && runtimeSandbox.gameState.inventory.meals.testMeal === 1 && Object.keys(progress.pendingBackpack).length === 0 && Object.keys(progress.pendingLoot).length === 0 && !runtime.recoverInterruptedAdventureBackpack(), JSON.stringify({ storage: progress.storage, fish: runtimeSandbox.gameState.inventory.fish, meals: runtimeSandbox.gameState.inventory.meals }));
+check("14 刷新中断可恢复 backpack、loot 与 hook 且不复制", recovered && recovered.adventureHook.id === "investigateWhiteShadow" && runtime.getRecoveredTripSnapshot().adventureHook.title === "树林中的白影" && progress.storage.ropeKit === 2 && progress.storage.firstAidPouch === 2 && runtimeSandbox.gameState.inventory.fish.testFish === 1 && runtimeSandbox.gameState.inventory.meals.testMeal === 1 && Object.keys(progress.pendingBackpack).length === 0 && Object.keys(progress.pendingLoot).length === 0 && !progress.pendingTripSnapshot && !runtime.recoverInterruptedAdventureBackpack(), JSON.stringify({ recovered, storage: progress.storage, fish: runtimeSandbox.gameState.inventory.fish, meals: runtimeSandbox.gameState.inventory.meals }));
 
 const hiddenFork = runtime.eventById("hiddenFork");
 const noMapSelection = { candidates: runtime.getAdventureReactionCandidates(hiddenFork, neutralSnapshot, {}) };

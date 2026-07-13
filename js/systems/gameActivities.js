@@ -115,7 +115,8 @@ function cloneInventory(inventory) {
 
   return {
     fish: cloneCountMap(sourceInventory.fish),
-    meals: cloneCountMap(sourceInventory.meals)
+    meals: cloneCountMap(sourceInventory.meals),
+    ingredients: cloneCountMap(sourceInventory.ingredients)
   };
 }
 
@@ -174,7 +175,8 @@ function sanitizeInventory(inventory) {
 
   return {
     fish: capFishCountMapToCapacity(fish),
-    meals: sanitizeCountMap(sourceInventory.meals, mealCatalog)
+    meals: sanitizeCountMap(sourceInventory.meals, mealCatalog),
+    ingredients: sanitizeCountMap(sourceInventory.ingredients, ingredientCatalog)
   };
 }
 
@@ -193,11 +195,20 @@ function sanitizeFishingProgress(progress) {
 
 function sanitizeCookingProgress(progress) {
   const sourceProgress = progress && typeof progress === "object" && !Array.isArray(progress) ? progress : {};
+  const unlockedRecipes = Array.from(new Set((Array.isArray(sourceProgress.unlockedRecipes) ? sourceProgress.unlockedRecipes : [])
+    .filter(function(recipeId) { return Boolean(cookingRecipeCatalog[recipeId]); })));
+
+  Object.keys(cookingRecipeCatalog).forEach(function(recipeId) {
+    if (cookingRecipeCatalog[recipeId].defaultUnlocked && unlockedRecipes.indexOf(recipeId) === -1) {
+      unlockedRecipes.unshift(recipeId);
+    }
+  });
 
   return {
     cooked: Math.max(0, Math.floor(Number(sourceProgress.cooked) || 0)),
     autoCookDate: typeof sourceProgress.autoCookDate === "string" ? sourceProgress.autoCookDate : "",
-    autoCookedToday: Math.max(0, Math.floor(Number(sourceProgress.autoCookedToday) || 0))
+    autoCookedToday: Math.max(0, Math.floor(Number(sourceProgress.autoCookedToday) || 0)),
+    unlockedRecipes: unlockedRecipes
   };
 }
 
@@ -216,18 +227,24 @@ function getInventory(state) {
     campState.inventory.meals = {};
   }
 
+  if (!campState.inventory.ingredients || typeof campState.inventory.ingredients !== "object" || Array.isArray(campState.inventory.ingredients)) {
+    campState.inventory.ingredients = {};
+  }
+
   return campState.inventory;
 }
 
 function getInventoryBucket(type, state) {
   const inventory = getInventory(state);
-  const bucketName = type === "meals" ? "meals" : "fish";
+  const bucketName = type === "meals" ? "meals" : (type === "ingredients" ? "ingredients" : "fish");
 
   return inventory[bucketName];
 }
 
 function getInventoryCatalog(type) {
-  return type === "meals" ? mealCatalog : fishCatalog;
+  if (type === "meals") return mealCatalog;
+  if (type === "ingredients") return ingredientCatalog;
+  return fishCatalog;
 }
 
 function getInventoryItemCount(type, id, state) {
@@ -393,6 +410,54 @@ function hasCookableFish(state) {
   return Boolean(getFirstAvailableFishId(state));
 }
 
+function getRecipeDefinition(recipeId) {
+  return recipeId && cookingRecipeCatalog[recipeId] ? cookingRecipeCatalog[recipeId] : null;
+}
+
+function getDefaultCookingRecipeId() {
+  return Object.keys(cookingRecipeCatalog).find(function(recipeId) {
+    return cookingRecipeCatalog[recipeId].defaultUnlocked;
+  }) || "simpleGrilledFish";
+}
+
+function isCookingRecipeUnlocked(recipeId, state) {
+  return getCookingProgress(state).unlockedRecipes.indexOf(recipeId) !== -1;
+}
+
+function unlockCookingRecipe(recipeId, state) {
+  if (!cookingRecipeCatalog[recipeId]) return false;
+  const progress = getCookingProgress(state);
+  if (progress.unlockedRecipes.indexOf(recipeId) !== -1) return false;
+  progress.unlockedRecipes.push(recipeId);
+  return true;
+}
+
+function hasRecipeIngredientCosts(recipe, state) {
+  const costs = recipe && recipe.ingredientCosts ? recipe.ingredientCosts : {};
+  return Object.keys(costs).every(function(ingredientId) {
+    return getInventoryItemCount("ingredients", ingredientId, state) >= Math.max(0, Math.floor(Number(costs[ingredientId]) || 0));
+  });
+}
+
+function consumeRecipeIngredients(recipe, state) {
+  const costs = recipe && recipe.ingredientCosts ? recipe.ingredientCosts : {};
+  Object.keys(costs).forEach(function(ingredientId) {
+    removeInventoryItem("ingredients", ingredientId, costs[ingredientId], state);
+  });
+}
+
+function chooseCookableRecipeForFish(state) {
+  const progress = getCookingProgress(state);
+  return progress.unlockedRecipes
+    .map(getRecipeDefinition)
+    .filter(function(recipe) {
+      return recipe && mealCatalog[recipe.mealId] && hasRecipeIngredientCosts(recipe, state);
+    })
+    .sort(function(left, right) {
+      return (Number(right.priority) || 0) - (Number(left.priority) || 0);
+    })[0] || getRecipeDefinition(getDefaultCookingRecipeId());
+}
+
 function calculateCookingComfortBonus(state) {
   return Math.min(cookingComfortMealCap, getInventoryTotal("meals", state));
 }
@@ -534,16 +599,17 @@ function getNoFoodCookingMessage() {
   return "没有可用食材。先去湖边钓一条鱼吧。";
 }
 
-function getCookingSuccessStatus(fish, source) {
+function getCookingSuccessStatus(recipe, fish, source) {
   const autoProgressText = source === "auto" ?
     " 今日自动做菜 " + getAutoCookedToday() + "/" + dailyAutoCookingLimit + "。" :
     "";
+  const recipeName = recipe && recipe.displayName ? recipe.displayName : "烤湖鱼";
 
   if (cookingCozyReward > 0) {
-    return "做出烤湖鱼：+" + cookingCozyReward + " Cozy Points。消耗了" + fish.displayName + "。" + autoProgressText;
+    return "做出" + recipeName + "：+" + cookingCozyReward + " Cozy Points。消耗了" + fish.displayName + "。" + autoProgressText;
   }
 
-  return "做出烤湖鱼，消耗了" + fish.displayName + "。" + autoProgressText;
+  return "做出" + recipeName + "，消耗了" + fish.displayName + "。" + autoProgressText;
 }
 
 function cookFishFromInventory(fishId, options) {
@@ -565,7 +631,9 @@ function cookFishFromInventory(fishId, options) {
     return false;
   }
 
-  if (!fish || !removeInventoryItem("fish", fishId, 1)) {
+  const recipe = chooseCookableRecipeForFish();
+
+  if (!fish || !recipe || !removeInventoryItem("fish", fishId, 1)) {
     const message = getNoFoodCookingMessage();
     setStatus(message);
     showCamperThought("没有可用食材。");
@@ -573,7 +641,8 @@ function cookFishFromInventory(fishId, options) {
     return false;
   }
 
-  addInventoryItem("meals", "simpleGrilledFish", 1);
+  consumeRecipeIngredients(recipe);
+  addInventoryItem("meals", recipe.mealId, 1);
   getCookingProgress().cooked += 1;
 
   if (source === "auto") {
@@ -584,8 +653,8 @@ function cookFishFromInventory(fishId, options) {
     gameState.cozyPoints += cookingCozyReward;
   }
 
-  showCamperThought("把" + fish.displayName + "烤得香香的。");
-  setStatus(getCookingSuccessStatus(fish, source));
+  showCamperThought("把" + fish.displayName + "做成了" + recipe.displayName + "。");
+  setStatus(getCookingSuccessStatus(recipe, fish, source));
   updateScreen();
   saveGame();
   return true;
@@ -1064,6 +1133,7 @@ function renderInventoryPanel() {
 
   renderInventoryGroup(inventoryFishList, "fish", "还没有存放的鱼。");
   renderInventoryGroup(inventoryMealList, "meals", "还没有做好的料理。");
+  renderInventoryGroup(inventoryIngredientList, "ingredients", "还没有冒险带回的料理原料。");
 
   if (inventoryStatsLine) {
     const fishing = getFishingProgress();
@@ -1071,6 +1141,7 @@ function renderInventoryPanel() {
     inventoryStatsLine.textContent = "Fish " + getFishInventoryTotal() + "/" + fishInventoryCapacity +
       " · Fishing " + fishing.attempts + " / caught " + fishing.caught +
       " / released " + fishing.released + " · Cooked " + cooking.cooked +
+      " · Recipes " + cooking.unlockedRecipes.length + "/" + Object.keys(cookingRecipeCatalog).length +
       " · Auto today " + getAutoCookedToday() + "/" + dailyAutoCookingLimit;
   }
 }

@@ -79,6 +79,92 @@ const mealCatalog = {
     displayName: "烤湖鱼",
     detail: "营地料理",
     image: "assets/inventory/meals/grilled_fish.png"
+  },
+  wildMushroomFishSoup: {
+    id: "wildMushroomFishSoup",
+    displayName: "山野菌鱼汤",
+    detail: "深山菜谱",
+    image: "assets/inventory/meals/grilled_fish.png"
+  },
+  pineNutGrilledFish: {
+    id: "pineNutGrilledFish",
+    displayName: "松仁烤鱼",
+    detail: "深山菜谱",
+    image: "assets/inventory/meals/grilled_fish.png"
+  },
+  rainforestSourFishSoup: {
+    id: "rainforestSourFishSoup",
+    displayName: "雨林酸汤鱼",
+    detail: "雾雨林菜谱",
+    image: "assets/inventory/meals/grilled_fish.png"
+  },
+  aromaticLeafGrilledFish: {
+    id: "aromaticLeafGrilledFish",
+    displayName: "香叶烤鱼",
+    detail: "雾雨林菜谱",
+    image: "assets/inventory/meals/grilled_fish.png"
+  },
+  wildGingerMushroomSoup: {
+    id: "wildGingerMushroomSoup",
+    displayName: "野姜菌汤",
+    detail: "雾雨林菜谱",
+    image: "assets/inventory/meals/grilled_fish.png"
+  }
+};
+
+const ingredientCatalog = {
+  wildMushroom: { id: "wildMushroom", displayName: "山野菌", detail: "深山原料", image: "assets/inventory/meals/grilled_fish.png" },
+  wildOnion: { id: "wildOnion", displayName: "野葱", detail: "深山原料", image: "assets/inventory/meals/grilled_fish.png" },
+  pineNut: { id: "pineNut", displayName: "松子", detail: "深山原料", image: "assets/inventory/meals/grilled_fish.png" },
+  rainGinger: { id: "rainGinger", displayName: "雨姜", detail: "雾雨林原料", image: "assets/inventory/meals/grilled_fish.png" },
+  sourBerry: { id: "sourBerry", displayName: "酸浆果", detail: "雾雨林原料", image: "assets/inventory/meals/grilled_fish.png" },
+  aromaticLeaf: { id: "aromaticLeaf", displayName: "香叶", detail: "雾雨林原料", image: "assets/inventory/meals/grilled_fish.png" },
+  rainforestMushroom: { id: "rainforestMushroom", displayName: "雨林菌", detail: "雾雨林原料", image: "assets/inventory/meals/grilled_fish.png" }
+};
+
+const cookingRecipeCatalog = {
+  simpleGrilledFish: {
+    id: "simpleGrilledFish",
+    mealId: "simpleGrilledFish",
+    displayName: "烤湖鱼",
+    ingredientCosts: {},
+    priority: 1,
+    defaultUnlocked: true
+  },
+  wildMushroomFishSoup: {
+    id: "wildMushroomFishSoup",
+    mealId: "wildMushroomFishSoup",
+    displayName: "山野菌鱼汤",
+    ingredientCosts: { wildMushroom: 1, wildOnion: 1 },
+    priority: 35
+  },
+  pineNutGrilledFish: {
+    id: "pineNutGrilledFish",
+    mealId: "pineNutGrilledFish",
+    displayName: "松仁烤鱼",
+    ingredientCosts: { pineNut: 1 },
+    priority: 30
+  },
+  rainforestSourFishSoup: {
+    id: "rainforestSourFishSoup",
+    mealId: "rainforestSourFishSoup",
+    displayName: "雨林酸汤鱼",
+    ingredientCosts: { rainGinger: 1, sourBerry: 1 },
+    priority: 45
+  },
+  aromaticLeafGrilledFish: {
+    id: "aromaticLeafGrilledFish",
+    mealId: "aromaticLeafGrilledFish",
+    displayName: "香叶烤鱼",
+    ingredientCosts: { aromaticLeaf: 1 },
+    priority: 40
+  },
+  wildGingerMushroomSoup: {
+    id: "wildGingerMushroomSoup",
+    mealId: "wildGingerMushroomSoup",
+    displayName: "野姜菌汤",
+    ingredientCosts: { rainGinger: 1, rainforestMushroom: 1 },
+    priority: 42
   }
 };
 

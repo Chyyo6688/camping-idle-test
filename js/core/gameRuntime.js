@@ -179,6 +179,7 @@ const inventoryPanel = document.getElementById("inventoryPanel");
 const inventoryCloseButton = document.getElementById("inventoryCloseButton");
 const inventoryFishList = document.getElementById("inventoryFishList");
 const inventoryMealList = document.getElementById("inventoryMealList");
+const inventoryIngredientList = document.getElementById("inventoryIngredientList");
 const inventoryStatsLine = document.getElementById("inventoryStatsLine");
 const inventoryFishMenu = document.getElementById("inventoryFishMenu");
 const coolerFullHint = document.getElementById("coolerFullHint");

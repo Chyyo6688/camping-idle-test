@@ -4693,6 +4693,63 @@ body.divination-open .daily-camp-card {
   object-position: center;
   filter: saturate(0.96) contrast(1.03);
   transform: scale(1.012);
+  transition: object-position 0.8s ease, filter 0.8s ease, transform 0.8s ease;
+}
+
+.adventure-prototype.route-creek-valley .adventure-background {
+  filter: saturate(1.08) contrast(1.01) brightness(1.04);
+  transform: scale(1.035);
+}
+
+.adventure-prototype.route-dense-forest .adventure-background {
+  filter: saturate(0.86) contrast(1.12) brightness(0.82);
+  transform: scale(1.08);
+}
+
+.adventure-prototype.route-mountain-ridge .adventure-background {
+  filter: saturate(0.92) contrast(1.08) brightness(1.08);
+  transform: scale(1.06);
+}
+
+.adventure-prototype.route-ranger-road .adventure-background {
+  filter: saturate(0.78) sepia(0.09) contrast(1.08);
+  transform: scale(1.055);
+}
+
+.adventure-prototype.route-river-wetlands .adventure-background {
+  filter: saturate(1.02) contrast(1.04) brightness(0.94);
+  transform: scale(1.045);
+}
+
+.adventure-prototype.route-vine-thicket .adventure-background {
+  filter: saturate(1.08) contrast(1.1) brightness(0.82);
+  transform: scale(1.075);
+}
+
+.adventure-prototype.route-canopy-old-way .adventure-background {
+  filter: saturate(0.95) contrast(1.04) brightness(1.08);
+  transform: scale(1.06);
+}
+
+.adventure-prototype.route-survey-zone .adventure-background {
+  filter: saturate(0.82) contrast(1.08) brightness(0.88);
+  transform: scale(1.055);
+}
+
+.adventure-prototype.route-dense-forest .adventure-foreground {
+  opacity: 0.96;
+}
+
+.adventure-prototype.route-mountain-ridge .adventure-foreground {
+  opacity: 0.58;
+}
+
+.adventure-prototype.route-canopy-old-way .adventure-foreground {
+  opacity: 0.66;
+}
+
+.adventure-prototype.route-survey-zone .adventure-foreground {
+  opacity: 0.82;
 }
 
 .adventure-atmosphere,
@@ -4723,6 +4780,68 @@ body.divination-open .daily-camp-card {
   animation: adventureFogDrift 8s ease-in-out infinite alternate;
 }
 
+.adventure-atmosphere.is-creek-haze:not(.is-dim):not(.is-storm):not(.is-foggy):not(.is-dawn):not(.is-windy):not(.is-night) {
+  opacity: 0.2;
+  background: rgba(139, 184, 171, 0.18);
+}
+
+.adventure-atmosphere.is-forest-shade:not(.is-dim):not(.is-storm):not(.is-foggy):not(.is-dawn):not(.is-windy):not(.is-night) {
+  opacity: 0.34;
+  background: rgba(5, 18, 13, 0.48);
+}
+
+.adventure-atmosphere.is-ridge-wind:not(.is-dim):not(.is-storm):not(.is-foggy):not(.is-dawn):not(.is-windy):not(.is-night) {
+  opacity: 0.22;
+  background: rgba(188, 205, 199, 0.2);
+  box-shadow: inset 0 5rem 7rem rgba(220, 230, 224, 0.1);
+}
+
+.adventure-atmosphere.is-ranger-dust:not(.is-dim):not(.is-storm):not(.is-foggy):not(.is-dawn):not(.is-windy):not(.is-night) {
+  opacity: 0.24;
+  background: rgba(88, 76, 49, 0.2);
+}
+
+.adventure-atmosphere.is-rainforest-wetlands:not(.is-dim):not(.is-storm):not(.is-foggy):not(.is-dawn):not(.is-windy):not(.is-night) {
+  opacity: 0.3;
+  background: rgba(75, 132, 129, 0.24);
+  box-shadow: inset 0 -7rem 8rem rgba(39, 84, 76, 0.22);
+}
+
+.adventure-atmosphere.is-rainforest-glow:not(.is-dim):not(.is-storm):not(.is-foggy):not(.is-dawn):not(.is-windy):not(.is-night) {
+  opacity: 0.4;
+  background: rgba(12, 42, 34, 0.36);
+  box-shadow: inset 0 0 7rem rgba(66, 156, 130, 0.16);
+}
+
+.adventure-atmosphere.is-rainforest-canopy:not(.is-dim):not(.is-storm):not(.is-foggy):not(.is-dawn):not(.is-windy):not(.is-night) {
+  opacity: 0.22;
+  background: rgba(192, 218, 194, 0.17);
+  box-shadow: inset 0 5rem 7rem rgba(230, 238, 207, 0.12);
+}
+
+.adventure-atmosphere.is-rainforest-station:not(.is-dim):not(.is-storm):not(.is-foggy):not(.is-dawn):not(.is-windy):not(.is-night) {
+  opacity: 0.32;
+  background: rgba(31, 52, 45, 0.34);
+}
+
+.adventure-atmosphere.is-dawn {
+  opacity: 0.48;
+  background: linear-gradient(180deg, rgba(255, 221, 159, 0.28), rgba(177, 210, 203, 0.2) 46%, rgba(225, 237, 224, 0.08));
+  box-shadow: inset 0 4rem 6rem rgba(255, 229, 177, 0.18);
+}
+
+.adventure-atmosphere.is-windy {
+  opacity: 0.32;
+  background: repeating-linear-gradient(166deg, transparent 0 1.8rem, rgba(225, 236, 229, 0.16) 1.9rem 2rem, transparent 2.1rem 3.8rem);
+  animation: adventureWindSweep 1.8s linear infinite;
+}
+
+.adventure-atmosphere.is-night {
+  opacity: 0.72;
+  background: rgba(4, 12, 17, 0.62);
+  box-shadow: inset 0 0 7rem rgba(2, 7, 12, 0.74);
+}
+
 .adventure-rain-layer.is-active {
   opacity: 0.92;
   background-image: url("assets/weather/light_rain_overlay.png");
@@ -4746,7 +4865,7 @@ body.divination-open .daily-camp-card {
   width: 31%;
   aspect-ratio: 1;
   opacity: 0;
-  background-image: url("assets/adventure/deep-mountain/event-props.png");
+  background-image: var(--adventure-event-prop-image, url("assets/adventure/deep-mountain/event-props.png"));
   background-size: 400% 300%;
   background-position: var(--prop-position-x) var(--prop-position-y);
   background-repeat: no-repeat;
@@ -4788,6 +4907,35 @@ body.divination-open .daily-camp-card {
 
 .adventure-event-prop.is-item-solved {
   filter: brightness(1.12) drop-shadow(0 0 0.85rem rgba(244, 226, 142, 0.72));
+}
+
+.adventure-event-prop.story-friendly-animal {
+  filter: brightness(1.12) saturate(1.08) drop-shadow(0 0 0.8rem rgba(186, 218, 139, 0.68));
+  transform: translate(-50%, -72%) scale(1.05);
+}
+
+.adventure-event-prop.story-startled-animal,
+.adventure-event-prop.story-food-theft {
+  filter: contrast(1.14) drop-shadow(0.35rem 0.18rem 0.22rem rgba(7, 11, 8, 0.48));
+  transform: translate(-42%, -72%) rotate(3deg) scale(0.96);
+}
+
+.adventure-event-prop.story-guiding-shadow {
+  opacity: 0.72;
+  filter: brightness(1.18) drop-shadow(0 0 1.1rem rgba(217, 235, 225, 0.82));
+  transform: translate(-20%, -88%) scale(0.82);
+}
+
+.adventure-event-prop.story-distant-shadow {
+  opacity: 0.34;
+  filter: grayscale(0.5) blur(0.4px) drop-shadow(0 0 0.6rem rgba(211, 222, 218, 0.5));
+  transform: translate(18%, -96%) scale(0.64);
+}
+
+.adventure-event-prop.story-misleading-shadow {
+  opacity: 0.52;
+  filter: contrast(1.18) blur(0.7px) drop-shadow(-0.5rem 0 0.7rem rgba(208, 221, 216, 0.58));
+  transform: translate(-118%, -82%) scale(0.74);
 }
 
 .adventure-event-prop.solution-reinforced {
@@ -4949,7 +5097,7 @@ body.divination-open .daily-camp-card {
   bottom: -2%;
   width: 53%;
   aspect-ratio: 1;
-  background-image: url("assets/adventure/deep-mountain/foreground.png");
+  background-image: var(--adventure-foreground-image, url("assets/adventure/deep-mountain/foreground.png"));
   background-size: 200% 100%;
   background-repeat: no-repeat;
   filter: drop-shadow(0 -0.2rem 0.4rem rgba(7, 12, 9, 0.24));
@@ -5123,6 +5271,11 @@ body.divination-open .daily-camp-card {
   to { background-position: 54% center; }
 }
 
+@keyframes adventureWindSweep {
+  from { background-position: 0 0; }
+  to { background-position: 5rem 0; }
+}
+
 @media (max-height: 650px) {
   .adventure-result {
     bottom: calc(3.92rem + env(safe-area-inset-bottom, 0px));
@@ -5152,13 +5305,16 @@ body.divination-open .daily-camp-card {
   }
 }
 
-/* ---- Playable adventure preparation, trip and journal ---------------- */
+/* ---- Playable adventure map, preparation, trip and journal ----------- */
+.adventure-prototype.is-map-select .adventure-scene,
 .adventure-prototype.is-preparing .adventure-scene,
 .adventure-prototype.is-log .adventure-scene {
   filter: brightness(0.48) saturate(0.82) blur(1px);
   transform: scale(1.015);
 }
 
+.adventure-prototype.is-map-select .adventure-header,
+.adventure-prototype.is-map-select .adventure-running-ui,
 .adventure-prototype.is-preparing .adventure-header,
 .adventure-prototype.is-preparing .adventure-running-ui,
 .adventure-prototype.is-log .adventure-header,
@@ -5184,9 +5340,144 @@ body.divination-open .daily-camp-card {
   display: none;
 }
 
+.adventure-prototype.is-map-select .adventure-map-panel,
 .adventure-prototype.is-preparing .adventure-prep-panel,
 .adventure-prototype.is-log .adventure-log-panel {
   display: block;
+}
+
+.adventure-map-panel {
+  background: rgba(9, 20, 14, 0.88);
+}
+
+.adventure-map-message {
+  margin: 0 0 0.5rem;
+  padding: 0.5rem 0.6rem;
+  color: #d7dec3;
+  border-left: 0.16rem solid rgba(213, 198, 128, 0.72);
+  background: rgba(22, 43, 28, 0.72);
+  font-size: clamp(0.62rem, 1.9vw, 0.74rem);
+  line-height: 1.45;
+}
+
+.adventure-map-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: 0.5rem;
+}
+
+.adventure-map-card {
+  display: grid;
+  grid-template-columns: minmax(7.6rem, 42%) minmax(0, 1fr);
+  min-height: 8.8rem;
+  overflow: hidden;
+  padding: 0;
+  color: #f2e6c3;
+  border: 1px solid rgba(220, 211, 168, 0.34);
+  border-radius: 0.48rem;
+  background: rgba(20, 39, 25, 0.94);
+  text-align: left;
+  box-shadow: inset 0 1px 0 rgba(255, 247, 214, 0.08);
+}
+
+.adventure-map-card:not(:disabled):hover,
+.adventure-map-card:not(:disabled):focus-visible {
+  border-color: rgba(243, 221, 147, 0.78);
+  filter: brightness(1.08);
+}
+
+.adventure-map-card:disabled {
+  cursor: default;
+}
+
+.adventure-map-card-visual {
+  min-width: 0;
+  background-color: #15261a;
+  background-position: center;
+  background-size: cover;
+}
+
+.adventure-map-card.is-preview .adventure-map-card-visual {
+  opacity: 0.52;
+  background-color: #17241d;
+  background-size: 180% 180%;
+  filter: blur(1.5px) saturate(0.62);
+  transform: scale(1.03);
+}
+
+.adventure-map-card-copy {
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  gap: 0.24rem;
+  padding: 0.68rem;
+}
+
+.adventure-map-card-copy small,
+.adventure-map-card-copy strong,
+.adventure-map-card-copy span,
+.adventure-map-card-copy em {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  letter-spacing: 0;
+}
+
+.adventure-map-card-copy small {
+  color: #a8b99c;
+  font-size: 0.54rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.adventure-map-card-copy strong {
+  color: #fff0c7;
+  font-family: "ZCOOL XiaoWei", var(--font-family-mixed);
+  font-size: clamp(1rem, 3.4vw, 1.28rem);
+}
+
+.adventure-map-card-copy span,
+.adventure-map-card-copy em {
+  color: #c3cdb4;
+  font-size: clamp(0.58rem, 1.75vw, 0.68rem);
+  font-style: normal;
+  line-height: 1.45;
+}
+
+.adventure-map-card-copy em {
+  margin-top: 0.14rem;
+  color: #d9cb95;
+  font-weight: 750;
+}
+
+.adventure-map-card-copy .adventure-map-route-map-link {
+  width: fit-content;
+  padding: 0.2rem 0.38rem;
+  border: 1px solid rgba(238, 210, 129, 0.36);
+  border-radius: 999px;
+  color: #f4e7b8;
+  background: rgba(75, 76, 43, 0.42);
+}
+
+.adventure-map-card.is-locked .adventure-map-card-copy strong,
+.adventure-map-card.is-locked .adventure-map-card-copy span {
+  color: #aab3a3;
+}
+
+.adventure-map-shared-status {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.55rem;
+  padding: 0.52rem 0.6rem;
+  color: #aebca6;
+  border-top: 1px solid rgba(220, 211, 168, 0.22);
+  border-bottom: 1px solid rgba(220, 211, 168, 0.22);
+  font-size: clamp(0.56rem, 1.7vw, 0.66rem);
+}
+
+.adventure-map-shared-status strong {
+  color: #f1e2b6;
 }
 
 .adventure-panel-header {
@@ -5340,6 +5631,52 @@ body.divination-open .daily-camp-card {
   line-height: 1.4;
 }
 
+.adventure-hook-preview {
+  display: grid;
+  gap: 0.2rem;
+  margin-bottom: 0.52rem;
+  padding: 0.58rem 0.62rem;
+  border: 1px solid rgba(221, 211, 171, 0.3);
+  border-left: 3px solid rgba(210, 196, 127, 0.72);
+  border-radius: 0.76rem;
+  color: #e9e1c5;
+  background: rgba(24, 42, 28, 0.9);
+}
+
+.adventure-hook-preview span {
+  color: #b9c7a9;
+  font-size: clamp(0.52rem, 1.6vw, 0.62rem);
+}
+
+.adventure-hook-preview strong {
+  color: #f5e8bd;
+  font-size: clamp(0.68rem, 2vw, 0.82rem);
+}
+
+.adventure-hook-preview em {
+  width: fit-content;
+  padding: 0.18rem 0.4rem;
+  border: 1px solid rgba(218, 206, 134, 0.38);
+  border-radius: 999px;
+  color: #f4e7af;
+  background: rgba(87, 96, 51, 0.42);
+  font-size: clamp(0.52rem, 1.6vw, 0.62rem);
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.adventure-hook-preview p {
+  margin: 0;
+  color: #ced8b3;
+  font-size: clamp(0.55rem, 1.7vw, 0.66rem);
+  line-height: 1.45;
+}
+
+.adventure-hook-preview .adventure-hook-detail {
+  color: #e1d6a7;
+}
+
 .adventure-section-heading {
   display: flex;
   align-items: center;
@@ -5396,6 +5733,45 @@ body.divination-open .daily-camp-card {
 .adventure-backpack-column {
   border-color: rgba(217, 179, 101, 0.48);
   background: rgba(37, 42, 24, 0.9);
+}
+
+.adventure-recommendation-bar {
+  display: grid;
+  gap: 0.34rem;
+  margin-top: 0.42rem;
+  padding: 0.4rem;
+  border: 1px solid rgba(222, 198, 123, 0.28);
+  border-radius: 0.54rem;
+  background: rgba(78, 76, 42, 0.34);
+}
+
+.adventure-recommendation-bar span {
+  min-width: 0;
+  color: #e3d9aa;
+  font-size: clamp(0.52rem, 1.62vw, 0.62rem);
+  font-weight: 820;
+  line-height: 1.38;
+  overflow-wrap: anywhere;
+}
+
+.adventure-mini-control {
+  min-height: 2rem;
+  padding: 0.32rem 0.48rem;
+  border: 1px solid rgba(230, 214, 146, 0.36);
+  border-radius: 0.44rem;
+  color: #f4e8bd;
+  background: rgba(79, 91, 51, 0.68);
+  font-size: clamp(0.52rem, 1.58vw, 0.62rem);
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.adventure-mini-control:hover,
+.adventure-mini-control:focus-visible {
+  border-color: rgba(246, 226, 155, 0.68);
+  background: rgba(101, 112, 61, 0.82);
+  outline: none;
 }
 
 .adventure-item-list {
@@ -5469,7 +5845,7 @@ body.divination-open .daily-camp-card {
   aspect-ratio: 1;
   border-radius: 0.46rem;
   background-color: rgba(10, 23, 15, 0.6);
-  background-image: url("assets/adventure/deep-mountain/adventure-items.png");
+  background-image: var(--adventure-item-sheet-image, url("assets/adventure/deep-mountain/adventure-items.png"));
   background-position: var(--item-position-x) var(--item-position-y);
   background-repeat: no-repeat;
   background-size: 400% 300%;
@@ -5612,7 +5988,7 @@ body.divination-open .daily-camp-card {
   bottom: 8%;
   width: 32%;
   aspect-ratio: 1;
-  background-image: url("assets/adventure/deep-mountain/event-props.png");
+  background-image: var(--adventure-event-prop-image, url("assets/adventure/deep-mountain/event-props.png"));
   background-position: var(--prop-position-x) var(--prop-position-y);
   background-repeat: no-repeat;
   background-size: 400% 300%;
@@ -5669,7 +6045,7 @@ body.divination-open .daily-camp-card {
   background: rgba(14, 31, 21, 0.91);
 }
 
-.adventure-goal-status {
+.adventure-hook-status {
   display: inline-flex;
   padding: 0.2rem 0.42rem;
   border-radius: 999px;
@@ -5679,9 +6055,9 @@ body.divination-open .daily-camp-card {
   font-weight: 900;
 }
 
-.adventure-goal-status.is-complete { color: #f6efb5; background: rgba(104, 124, 54, 0.68); }
-.adventure-goal-status.is-partial { color: #f2d49c; background: rgba(116, 84, 43, 0.68); }
-.adventure-goal-status.is-unexpected { color: #d9d0ff; background: rgba(75, 62, 112, 0.68); }
+.adventure-hook-status.is-found { color: #f6efb5; background: rgba(104, 124, 54, 0.68); }
+.adventure-hook-status.is-continuing { color: #f2d49c; background: rgba(116, 84, 43, 0.68); }
+.adventure-hook-status.is-diverted { color: #d9d0ff; background: rgba(75, 62, 112, 0.68); }
 
 .adventure-story-card h3 {
   margin: 0.42rem 0 0.28rem;
@@ -5696,6 +6072,58 @@ body.divination-open .daily-camp-card {
   color: #cbd5b9;
   font-size: clamp(0.58rem, 1.8vw, 0.7rem);
   line-height: 1.58;
+}
+
+.adventure-log-progress-block {
+  display: grid;
+  gap: 0.38rem;
+  margin-top: 0.48rem;
+  padding: 0.48rem;
+  border: 1px solid rgba(222, 203, 125, 0.34);
+  border-radius: 0.58rem;
+  background: rgba(57, 66, 35, 0.42);
+}
+
+.adventure-log-progress-block.has-important-discovery {
+  border-color: rgba(239, 203, 111, 0.62);
+  background: rgba(81, 70, 35, 0.5);
+}
+
+.adventure-log-progress-block section {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.adventure-log-progress-block strong {
+  color: #fff0bd;
+  font-size: clamp(0.62rem, 1.95vw, 0.76rem);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.adventure-log-progress-block p {
+  margin: 0;
+  color: #d8d7b1;
+  font-size: clamp(0.54rem, 1.7vw, 0.66rem);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.adventure-new-clue-list {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.adventure-new-clue-list span {
+  padding: 0.26rem 0.36rem;
+  border-left: 2px solid rgba(239, 225, 143, 0.68);
+  border-radius: 0.24rem;
+  color: #f4e9bd;
+  background: rgba(20, 33, 22, 0.45);
+  font-size: clamp(0.56rem, 1.74vw, 0.68rem);
+  font-weight: 800;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .adventure-story-body {
@@ -5877,6 +6305,143 @@ body.divination-open .daily-camp-card {
 
   .adventure-item-icon {
     width: 1.9rem;
+  }
+}
+
+.adventure-route-map-layer {
+  position: absolute;
+  z-index: 178;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: calc(0.86rem + env(safe-area-inset-top, 0px)) calc(0.72rem + env(safe-area-inset-right, 0px)) calc(0.72rem + env(safe-area-inset-bottom, 0px)) calc(0.72rem + env(safe-area-inset-left, 0px));
+  background: rgba(3, 7, 6, 0.72);
+  backdrop-filter: blur(4px);
+  pointer-events: auto;
+}
+
+.adventure-route-map-layer.hidden {
+  display: none;
+}
+
+.adventure-route-map-modal {
+  width: min(100%, 720px);
+  max-height: min(92%, 720px);
+  display: grid;
+  grid-template-columns: minmax(0, 1.16fr) minmax(15rem, 0.84fr);
+  gap: 0.7rem;
+  overflow: hidden;
+  padding: 0.72rem;
+  border: 2px solid rgba(238, 209, 137, 0.72);
+  border-radius: 0.82rem;
+  color: #fff2ca;
+  background:
+    linear-gradient(180deg, rgba(34, 38, 24, 0.98), rgba(17, 27, 20, 0.99));
+  box-shadow:
+    0 1.2rem 2.4rem rgba(0, 0, 0, 0.56),
+    inset 0 1px 0 rgba(255, 242, 190, 0.14);
+  animation: adventureRouteMapOpen 420ms cubic-bezier(0.2, 0.85, 0.23, 1) both;
+}
+
+.adventure-route-map-art {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 0.64rem;
+  background: radial-gradient(circle at 50% 44%, rgba(199, 166, 84, 0.22), rgba(7, 13, 9, 0.82) 70%);
+  overflow: hidden;
+}
+
+.adventure-route-map-art img {
+  width: min(100%, 26rem);
+  max-height: min(50vh, 28rem);
+  object-fit: contain;
+  filter: drop-shadow(0 0.55rem 0.85rem rgba(0, 0, 0, 0.52));
+  transform-origin: 50% 54%;
+  animation: adventureRouteMapUnfold 700ms 120ms cubic-bezier(0.17, 0.82, 0.24, 1) both;
+}
+
+.adventure-route-map-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.52rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.adventure-route-map-copy h2 {
+  margin: 0;
+  color: #fff0bd;
+  font-family: "ZCOOL XiaoWei", var(--font-family-mixed);
+  font-size: clamp(1.05rem, 3.3vw, 1.45rem);
+  line-height: 1.12;
+}
+
+.adventure-route-map-notes {
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.48rem;
+  border: 1px solid rgba(230, 204, 126, 0.32);
+  border-radius: 0.54rem;
+  background: rgba(16, 29, 20, 0.56);
+}
+
+.adventure-route-map-notes p {
+  margin: 0;
+  color: #e6ddb6;
+  font-size: clamp(0.58rem, 1.8vw, 0.72rem);
+  font-weight: 780;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.adventure-route-map-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.38rem;
+  margin-top: auto;
+}
+
+@keyframes adventureRouteMapOpen {
+  from {
+    opacity: 0;
+    transform: translateY(0.45rem) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes adventureRouteMapUnfold {
+  from {
+    opacity: 0;
+    transform: scale(0.86) rotateX(16deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) rotateX(0deg);
+  }
+}
+
+@media (max-width: 560px) {
+  .adventure-route-map-modal {
+    grid-template-columns: 1fr;
+    gap: 0.52rem;
+    max-height: min(94%, 760px);
+    padding: 0.58rem;
+  }
+
+  .adventure-route-map-art img {
+    max-height: 34vh;
+  }
+
+  .adventure-route-map-actions {
+    grid-template-columns: 1fr;
   }
 }
 

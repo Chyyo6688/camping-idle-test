@@ -358,7 +358,10 @@ function applyOneTimeFishingCookingResetMigration() {
 
   gameState.inventory = cloneInventory(defaultGameState.inventory);
   gameState.fishing = { ...defaultGameState.fishing };
-  gameState.cooking = { ...defaultGameState.cooking };
+  gameState.cooking = {
+    ...defaultGameState.cooking,
+    unlockedRecipes: defaultGameState.cooking.unlockedRecipes.slice()
+  };
 
   const activityStats = getActivityStatsMap(gameState);
   delete activityStats.fish;
