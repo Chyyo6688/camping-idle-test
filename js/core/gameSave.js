@@ -195,6 +195,16 @@ function sanitizeSave(savedGame) {
     }
   });
 
+  const storyGearRewards = typeof STORY_ARCHIVE_GEAR_REWARDS === "object" && STORY_ARCHIVE_GEAR_REWARDS
+    ? STORY_ARCHIVE_GEAR_REWARDS
+    : {};
+  const storyStates = cleanState.adventure && cleanState.adventure.storyStates || {};
+  Object.keys(storyGearRewards).forEach(function(storyId) {
+    if (storyStates[storyId] && storyStates[storyId].status === "archived") {
+      addUniqueGear(ownedGear, storyGearRewards[storyId]);
+    }
+  });
+
   const savedPlacedGear = savedGame && Array.isArray(savedGame.placedGear) ? savedGame.placedGear.map(normalizeGearId) : [];
 
   cleanState.ownedGear = ownedGear;
@@ -360,7 +370,9 @@ function applyOneTimeFishingCookingResetMigration() {
   gameState.fishing = { ...defaultGameState.fishing };
   gameState.cooking = {
     ...defaultGameState.cooking,
-    unlockedRecipes: defaultGameState.cooking.unlockedRecipes.slice()
+    unlockedRecipes: defaultGameState.cooking.unlockedRecipes.slice(),
+    manuallyCookedRecipes: defaultGameState.cooking.manuallyCookedRecipes.slice(),
+    recentAutoCookedRecipes: defaultGameState.cooking.recentAutoCookedRecipes.slice()
   };
 
   const activityStats = getActivityStatsMap(gameState);

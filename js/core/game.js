@@ -309,9 +309,9 @@ if (typeof window !== "undefined") {
 }
 
 syncSceneScale();
-renderShopFromCatalog();
 resetSaveIfRequestedByUrl();
 loadGame();
+renderShopFromCatalog();
 spawnWood();
 spawnWood();
 setShopFilter("all");

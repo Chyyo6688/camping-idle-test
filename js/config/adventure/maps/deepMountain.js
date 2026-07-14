@@ -427,24 +427,30 @@ const DEEP_MOUNTAIN_ADVENTURE_HOOKS = {
     relatedEventIds: ["whiteShadow", "forestFootsteps", "mushroomRing", "nightCampEcho", "lostBeforeDark", "hiddenFork"],
     relatedItems: ["fieldLantern", "forestCharm", "trailMap"],
     routeProgressRequirements: { mountainRidge: { minClues: 1 } },
+    sortingRule: "时间顺序",
+    instruction: "按追踪发生的先后顺序整理线索。阅读每张记录中的时段和承接关系，从最初发现排到最后确认。",
+    positionLabels: ["① 最初发现", "② 随后追踪", "③ 清晨复查", "④ 当夜确认", "⑤ 最后停留"],
     clues: [
-      { id: "oddPaleFootprints", label: "异常脚步旁的浅色泥印", eventIds: ["forestFootsteps"], flagIds: ["heardStrangeFootsteps"] },
-      { id: "whiteFiberOnBranches", label: "树枝上的白色纤维", eventIds: ["whiteShadow", "hiddenFork"], flagIds: ["sawWhiteShadow"] },
-      { id: "mushroomRingGap", label: "菌环中央的空缺方向", eventIds: ["mushroomRing"], flagIds: ["foundMushroomRing"] },
-      { id: "missingEchoStep", label: "夜间回声少掉的一步", eventIds: ["nightCampEcho"], flagIds: ["heardNightEcho"] },
-      { id: "shadowedTrailMarker", label: "白影停留处露出的旧路标", eventIds: ["lostBeforeDark", "hiddenFork"], flagIds: ["whiteShadowGuided", "supernaturalTrail"] }
+      { id: "oddPaleFootprints", label: "异常脚步旁的浅色泥印", title: "异常脚步旁的浅色泥印", text: "最初进入密林时，陌生脚步旁留下一串朝北的浅色泥印。", order: 1, relationHint: "最初的现场记录。", eventIds: ["forestFootsteps"], flagIds: ["heardStrangeFootsteps"] },
+      { id: "whiteFiberOnBranches", label: "树枝上的白色纤维", title: "树枝上的白色纤维", text: "随后沿泥印追踪，北侧低枝挂着白色纤维，断口仍很新。", order: 2, relationHint: "纤维沿着最初泥印的方向出现。", eventIds: ["whiteShadow", "hiddenFork"], flagIds: ["sawWhiteShadow"] },
+      { id: "mushroomRingGap", label: "菌环中央的空缺方向", title: "菌环中央的空缺方向", text: "次日清晨复查时，菌环朝白色纤维所在方向缺了一角。", order: 3, relationHint: "清晨复查承接了纤维方向。", eventIds: ["mushroomRing"], flagIds: ["foundMushroomRing"] },
+      { id: "missingEchoStep", label: "夜间回声少掉的一步", title: "夜间回声少掉的一步", text: "当天夜里，脚步回声在菌环缺口附近少了一步，像是停下来辨认路口。", order: 4, relationHint: "发生在清晨复查后的夜里。", eventIds: ["nightCampEcho"], flagIds: ["heardNightEcho"] },
+      { id: "shadowedTrailMarker", label: "白影停留处露出的旧路标", title: "白影停留处露出的旧路标", text: "最后一次跟踪确认，回声中断处正压着一块露出的旧路标，白影曾停在那里。", order: 5, relationHint: "最后确认了前面痕迹的共同落点。", eventIds: ["lostBeforeDark", "hiddenFork"], flagIds: ["whiteShadowGuided", "supernaturalTrail"] }
     ],
+    failureHints: ["先找写着“最初进入密林时”的记录。", "白色纤维是在浅色泥印之后被发现的。", "“最后一次跟踪”确认的是所有痕迹的落点。"],
+    completionExplanation: "浅色泥印最先出现，随后白色纤维把追踪引向菌环缺口；当天夜里的回声在同一处中断，最后露出的旧路标确认了白影反复停留的位置。",
     progressFlags: { heardStrangeFootsteps: 1, sawWhiteShadow: 1, foundMushroomRing: 1, heardNightEcho: 1, whiteShadowResolved: 2, whiteShadowGuided: 2, supernaturalTrail: 2 },
     successScore: 3,
     partialScore: 1,
     logTitle: "雾中白影调查记录",
+    archiveStory: "浅色泥印、树枝纤维、菌环空缺与少掉一步的夜间回声，都指向同一段雾中山路。白影确实反复停留在旧路标附近，但现有记录仍不足以确认它究竟是谁或是什么。",
     endings: {
       complete: "白影最终回应了你的行动，并把一段隐藏山路留在雾后。",
       partial: "你找到了白影活动的痕迹，但它的真正身份仍藏在树林深处。",
       incomplete: "白影没有再次出现，只留下几处无法确认的动静。",
       unexpected: "没有找到白影，却在追踪途中记录了另一项罕见发现。"
     },
-    reward: { type: "clue", clueId: "whiteShadowTrace", label: "白影留下的雾痕记录" }
+    archiveUnlocks: [{ type: "gear", gearId: "mistTraceObservationBoard" }]
   },
   findWatchtowerClue: {
     id: "findWatchtowerClue",
@@ -454,24 +460,30 @@ const DEEP_MOUNTAIN_ADVENTURE_HOOKS = {
     routeIds: ["abandonedRangerRoad", "mountainRidge"],
     relatedEventIds: ["abandonedCabin", "rangerNotebook", "fallenTrailMarker", "watchtowerSignal", "lockedChest", "streamSparkle", "hiddenFork"],
     relatedItems: ["fieldLantern", "repairToolkit", "oldKey"],
+    sortingRule: "路线连接顺序",
+    instruction: "按旧设施路线从起点到终点连接线索。留意相同编号、转向记号和后续记录对前一处地点的引用。",
+    positionLabels: ["① 木屋起点", "② 巡查承接", "③ 转向路标", "④ 高处坐标", "⑤ 补给记录"],
     clues: [
-      { id: "cabinDeskNumbers", label: "木屋旧桌下重复出现的编号", eventIds: ["abandonedCabin"], flagIds: ["discoveredCabinClue"] },
-      { id: "rangerNotebookDates", label: "巡查笔记里的缺失日期", eventIds: ["rangerNotebook"], flagIds: ["foundRangerNotebook"] },
-      { id: "fallenMarkerTriangle", label: "倒伏路标背面的三角记号", eventIds: ["fallenTrailMarker"], flagIds: ["restoredTrailMarker"] },
-      { id: "oldForestryCoordinate", label: "瞭望塔记录中的旧林务坐标", eventIds: ["watchtowerSignal"], flagIds: ["answeredWatchtowerSignal"] },
-      { id: "southSupplyCode", label: "密封信上的南行补给编号", eventIds: ["lockedChest"], flagIds: ["archivedSealedLetter", "openedChest"] }
+      { id: "cabinDeskNumbers", label: "木屋旧桌下重复出现的编号", title: "木屋旧桌下重复出现的编号", text: "路线起点的木屋桌下刻着设施号 A-12，旁边箭头指向巡查道。", order: 1, relationHint: "A-12 是整条旧路线的起点。", eventIds: ["abandonedCabin"], flagIds: ["discoveredCabinClue"] },
+      { id: "rangerNotebookDates", label: "巡查笔记里的缺失日期", title: "巡查笔记里的缺失日期", text: "巡查笔记先引用 A-12，再记下“第七码后转向三角路标”。", order: 2, relationHint: "笔记承接木屋编号并指向下一站。", eventIds: ["rangerNotebook"], flagIds: ["foundRangerNotebook"] },
+      { id: "fallenMarkerTriangle", label: "倒伏路标背面的三角记号", title: "倒伏路标背面的三角记号", text: "倒伏路标背面的三角记号与笔记一致，箭头由巡查道转向山脊。", order: 3, relationHint: "三角路标连接巡查道与山脊。", eventIds: ["fallenTrailMarker"], flagIds: ["restoredTrailMarker"] },
+      { id: "oldForestryCoordinate", label: "瞭望塔记录中的旧林务坐标", title: "瞭望塔记录中的旧林务坐标", text: "山脊高处的瞭望塔记录接着三角箭头，标出旧林务坐标 S-17 / E-04。", order: 4, relationHint: "高处坐标位于三角转向之后。", eventIds: ["watchtowerSignal"], flagIds: ["answeredWatchtowerSignal"] },
+      { id: "southSupplyCode", label: "密封信上的南行补给编号", title: "密封信上的南行补给编号", text: "最后归档的密封信同时引用 A-12 与 S-17 / E-04，并把整段路线登记为南行补给线 R-03。", order: 5, relationHint: "归档信汇总了起点和终点。", eventIds: ["lockedChest"], flagIds: ["archivedSealedLetter", "openedChest"] }
     ],
+    failureHints: ["从刻有 A-12 的木屋起点开始。", "巡查笔记先引用 A-12，之后才提到三角路标。", "密封信同时汇总起点和坐标，应放在整条路线最后。"],
+    completionExplanation: "木屋 A-12 接上巡查笔记，三角路标把路线转向山脊，瞭望塔坐标确认高处终点；最后归档的密封信把整段旧路登记为 R-03。",
     progressFlags: { discoveredCabinClue: 1, foundRangerNotebook: 1, restoredTrailMarker: 2, answeredWatchtowerSignal: 3, foundLockedChest: 1, openedChest: 2, archivedSealedLetter: 3, foundOldKey: 1, foundStreamClue: 1 },
     successScore: 4,
     partialScore: 1,
     logTitle: "旧瞭望塔线索簿",
+    archiveStory: "木屋桌下编号、巡查笔记缺失日期、倒伏路标记号与高处信号彼此对应。密封信上的南行补给编号补全了旧瞭望塔使用过的林务路线。",
     endings: {
       complete: "木屋、旧锁与封蜡文件终于连成了一条清楚的瞭望塔路线。",
       partial: "你确认旧设施之间存在联系，但最关键的路线记录仍未完整出现。",
       incomplete: "这次没有找到足以确认瞭望塔方向的旧设施。",
       unexpected: "瞭望塔线索没有进展，另一处山路发现却值得单独记录。"
     },
-    reward: { type: "clue", clueId: "watchtowerSurvey", label: "旧瞭望塔路线拓印" }
+    archiveUnlocks: [{ type: "gear", gearId: "oldForestryRouteBoard" }]
   },
   findMissingRanger: {
     id: "findMissingRanger",
@@ -481,17 +493,24 @@ const DEEP_MOUNTAIN_ADVENTURE_HOOKS = {
     routeIds: ["abandonedRangerRoad", "mountainRidge"],
     relatedEventIds: ["distantCry", "rangerNotebook", "watchtowerSignal", "snaredAnimal", "abandonedCabin", "lockedChest", "unstableBridge"],
     relatedItems: ["ropeKit", "firstAidPouch", "rangerToken"],
+    sortingRule: "行动步骤",
+    instruction: "按搜救行动实际执行的步骤整理线索。先定位回应，再确认身份、接近目标，最后补齐路线记录。",
+    positionLabels: ["① 定位回应", "② 确认身份", "③ 安全接近", "④ 取得记录", "⑤ 完成补记"],
     clues: [
-      { id: "valleyResponseDirection", label: "山谷回应传来的逆风方向", eventIds: ["distantCry"], flagIds: ["heardRescueCall"] },
-      { id: "rangerTokenIdentity", label: "木章确认的护林员身份", eventIds: ["distantCry"], flagIds: ["rangerTrusted"] },
-      { id: "rescueLineMarks", label: "救援绳线上磨出的旧站标记", eventIds: ["distantCry", "unstableBridge"], flagIds: ["reachedRanger"] },
-      { id: "rangerLeafRouteMark", label: "护林员记录中的叶片标记", eventIds: ["rangerNotebook", "abandonedCabin"], flagIds: ["foundRangerNotebook", "foundRangerEvidence"] },
-      { id: "rescueCoordinateNote", label: "救援补记里的旧林务坐标", eventIds: ["distantCry", "watchtowerSignal"], flagIds: ["completedRescue", "sawWatchtowerSignal"] }
+      { id: "valleyResponseDirection", label: "山谷回应传来的逆风方向", title: "山谷回应传来的逆风方向", text: "第一声回应从逆风山坳传来，搜救先据此缩小范围。", order: 1, relationHint: "搜救从定位声音开始。", eventIds: ["distantCry"], flagIds: ["heardRescueCall"] },
+      { id: "rangerTokenIdentity", label: "木章确认的护林员身份", title: "木章确认的护林员身份", text: "接着在回应处看见旧木章，编号确认呼救者是登记在册的护林员。", order: 2, relationHint: "先定位，随后确认身份。", eventIds: ["distantCry"], flagIds: ["rangerTrusted"] },
+      { id: "rescueLineMarks", label: "救援绳线上磨出的旧站标记", title: "救援绳线上磨出的旧站标记", text: "确认身份后才架设救援绳，绳上的旧站磨痕指出安全接近方向。", order: 3, relationHint: "架绳发生在身份确认之后。", eventIds: ["distantCry", "unstableBridge"], flagIds: ["reachedRanger"] },
+      { id: "rangerLeafRouteMark", label: "护林员记录中的叶片标记", title: "护林员记录中的叶片标记", text: "抵达护林员身边后，从随身记录里找到指向南方低地的叶片标记。", order: 4, relationHint: "只有接近目标后才能取得记录。", eventIds: ["rangerNotebook", "abandonedCabin"], flagIds: ["foundRangerNotebook", "foundRangerEvidence"] },
+      { id: "rescueCoordinateNote", label: "救援补记里的旧林务坐标", title: "救援补记里的旧林务坐标", text: "搜救完成时的最后补记，把叶片标记对应到旧林务坐标并记入归档。", order: 5, relationHint: "最后补记收束整次搜救。", eventIds: ["distantCry", "watchtowerSignal"], flagIds: ["completedRescue", "sawWatchtowerSignal"] }
     ],
+    failureHints: ["第一步应是确定山谷回应来自哪里。", "只有木章确认身份后，救援绳才会被架起。", "写着“最后补记”的坐标记录应放在行动末尾。"],
+    completionExplanation: "搜救先循逆风回应定位，再以木章确认护林员身份；救援绳给出安全接近方向，抵达后取得叶片标记，最后把坐标写入救援补记。",
     progressFlags: { foundRangerEvidence: 1, foundRangerNotebook: 1, sawWatchtowerSignal: 1, heardRescueCall: 1, rangerTrusted: 2, reachedRanger: 2, completedRescue: 3 },
     successScore: 4,
     partialScore: 1,
     logTitle: "失踪护林员搜救记录",
+    archiveStory: "山谷回应来自逆风方向，木章确认了护林员身份，救援绳上的旧站磨痕则标出了安全接近路线。记录中的叶片标记与救援补记最终补齐了这次搜救经过。",
+    archiveUnlocks: [{ type: "recipe", recipeId: "wildMushroomFishSoup" }],
     endings: {
       complete: "你找到了呼救者，并把护林员安全带回了能够辨认的山路。",
       partial: "你确认了护林员活动的方向，但仍需要一次准备更充分的搜救。",
@@ -509,17 +528,23 @@ const DEEP_MOUNTAIN_ADVENTURE_HOOKS = {
     relatedEventIds: ["animalTracks", "snaredAnimal", "missingFood", "forestFootsteps", "streamSparkle"],
     relatedItems: ["category:fish", "trailRation", "trailMap"],
     routeProgressRequirements: { denseForest: { minClues: 1 } },
+    sortingRule: "因果顺序",
+    instruction: "按发现如何引出下一步观察的因果关系整理线索。留意脚印、投食点、兽径和食物碎屑之间的承接。",
+    positionLabels: ["① 发现痕迹", "② 安全观察", "③ 追到兽径", "④ 找到去向", "⑤ 反复确认"],
     clues: [
-      { id: "freshCreekFootprints", label: "溪边新鲜脚印的步距", eventIds: ["animalTracks"], flagIds: ["foundAnimalTracks"] },
-      { id: "quietFeedingStone", label: "溪石旁安全留下食物的位置", eventIds: ["animalTracks"], flagIds: ["befriendedAnimal"] },
-      { id: "snareTrailBend", label: "废弃套索旁弯折的兽径", eventIds: ["snaredAnimal"], flagIds: ["foundSnaredAnimal", "rescuedAnimal"] },
-      { id: "foodThiefPath", label: "食物袋碎屑连成的动物路线", eventIds: ["missingFood"], flagIds: ["identifiedFoodThief"] },
-      { id: "reusedAnimalTrail", label: "反复使用的安全兽径", eventIds: ["forestFootsteps", "animalTracks"], flagIds: ["observedAnimal"] }
+      { id: "freshCreekFootprints", label: "溪边新鲜脚印的步距", title: "溪边新鲜脚印的步距", text: "最先发现的溪边脚印很新，步距显示动物正避开开阔水岸。", order: 1, relationHint: "脚印开启了后续观察。", eventIds: ["animalTracks"], flagIds: ["foundAnimalTracks"] },
+      { id: "quietFeedingStone", label: "溪石旁安全留下食物的位置", title: "溪石旁安全留下食物的位置", text: "根据脚印方向，随后在背风溪石旁留下食物，动物才愿意靠近。", order: 2, relationHint: "投食位置由脚印方向决定。", eventIds: ["animalTracks"], flagIds: ["befriendedAnimal"] },
+      { id: "snareTrailBend", label: "废弃套索旁弯折的兽径", title: "废弃套索旁弯折的兽径", text: "动物离开投食点后转入弯折兽径，那里正好绕过一只废弃套索。", order: 3, relationHint: "兽径承接投食点后的去向。", eventIds: ["snaredAnimal"], flagIds: ["foundSnaredAnimal", "rescuedAnimal"] },
+      { id: "foodThiefPath", label: "食物袋碎屑连成的动物路线", title: "食物袋碎屑连成的动物路线", text: "套索被处理后，兽径更深处出现食物袋碎屑，终于解释了营地丢失的食物。", order: 4, relationHint: "碎屑说明这条兽径通向食物去处。", eventIds: ["missingFood"], flagIds: ["identifiedFoodThief"] },
+      { id: "reusedAnimalTrail", label: "反复使用的安全兽径", title: "反复使用的安全兽径", text: "最后数次复查都看见相同步距经过投食点和弯折处，确认这是一条反复使用的安全兽径。", order: 5, relationHint: "多次复查才形成最终结论。", eventIds: ["forestFootsteps", "animalTracks"], flagIds: ["observedAnimal"] }
     ],
+    failureHints: ["先从“最先发现”的溪边脚印开始。", "投食点的位置是根据脚印方向选出的。", "反复使用的兽径是数次复查后的最终结论。"],
+    completionExplanation: "新鲜脚印先给出方向，背风投食点让动物安全靠近；它随后转入避开套索的兽径，食物碎屑解释了营地失窃，数次复查最终确认了固定活动路线。",
     progressFlags: { foundAnimalTracks: 1, followedAnimal: 1, foundSnaredAnimal: 1, rescuedAnimal: 2, observedAnimal: 2, befriendedAnimal: 2, identifiedFoodThief: 2 },
     successScore: 3,
     partialScore: 1,
     logTitle: "溪谷动物观察手记",
+    archiveStory: "溪边脚印、安静投食点、套索旁兽径与食物碎屑组成了同一片活动范围。避开惊扰后，反复使用的安全兽径终于能够被完整记录。",
     endings: {
       complete: "脚印、兽径和被翻动的食物互相印证，你完成了一次不惊扰动物的观察。",
       partial: "你记录了新鲜痕迹，但动物始终保持着安全距离。",
@@ -536,17 +561,23 @@ const DEEP_MOUNTAIN_ADVENTURE_HOOKS = {
     routeIds: ["mountainRidge", "denseForest"],
     relatedEventIds: ["hiddenFork", "unstableBridge", "fallenTrailMarker", "morningFogPockets", "ridgeWindGust", "oldWaterGauge", "lostBeforeDark", "suddenDownpour"],
     relatedItems: ["trailMap", "silverCompass", "ropeKit", "repairToolkit"],
+    sortingRule: "路线连接顺序",
+    instruction: "按从密林岔口到山脊出口的路线连接顺序整理。每张记录都会说明上一段从哪里来、下一段通向哪里。",
+    positionLabels: ["① 密林岔口", "② 吊桥连接", "③ 水位尺节点", "④ 无水缓坡", "⑤ 山脊出口"],
     clues: [
-      { id: "hiddenForkSketch", label: "隐藏岔路的手绘草图", eventIds: ["hiddenFork"], flagIds: ["foundHiddenFork", "mappedFork"] },
-      { id: "bridgeAnchorPoint", label: "吊桥备用固定点", eventIds: ["unstableBridge"], flagIds: ["repairedBridge"] },
-      { id: "waterGaugeFacilityNumber", label: "旧水位尺背面的设施编号", eventIds: ["oldWaterGauge"], flagIds: ["readWaterGauge"] },
-      { id: "morningFogSlope", label: "晨雾里没有积水的缓坡方向", eventIds: ["morningFogPockets"], flagIds: ["crossedMorningFog"] },
-      { id: "ridgeWindMarker", label: "山脊横风后校正的路标朝向", eventIds: ["ridgeWindGust", "fallenTrailMarker"], flagIds: ["restoredTrailMarker", "securedWindGear"] }
+      { id: "hiddenForkSketch", label: "隐藏岔路的手绘草图", title: "隐藏岔路的手绘草图", text: "路线从密林北侧隐藏岔口起步，草图注明“先到旧吊桥”。", order: 1, relationHint: "这是路线起点。", eventIds: ["hiddenFork"], flagIds: ["foundHiddenFork", "mappedFork"] },
+      { id: "bridgeAnchorPoint", label: "吊桥备用固定点", title: "吊桥备用固定点", text: "吊桥备用固定点接在岔口草图之后，桥对岸的箭头指向旧水位尺。", order: 2, relationHint: "吊桥连接岔口与水位尺。", eventIds: ["unstableBridge"], flagIds: ["repairedBridge"] },
+      { id: "waterGaugeFacilityNumber", label: "旧水位尺背面的设施编号", title: "旧水位尺背面的设施编号", text: "水位尺背面编号与桥边箭头一致，下一行写着“晨雾时走无水缓坡”。", order: 3, relationHint: "水位尺承上启下。", eventIds: ["oldWaterGauge"], flagIds: ["readWaterGauge"] },
+      { id: "morningFogSlope", label: "晨雾里没有积水的缓坡方向", title: "晨雾里没有积水的缓坡方向", text: "无水缓坡从水位尺旁向上延伸，尽头能看见山脊路标背面。", order: 4, relationHint: "缓坡从水位尺通向山脊。", eventIds: ["morningFogPockets"], flagIds: ["crossedMorningFog"] },
+      { id: "ridgeWindMarker", label: "山脊横风后校正的路标朝向", title: "山脊横风后校正的路标朝向", text: "最后校正的山脊路标朝向缓坡出口，并标明返程仍沿同一路线。", order: 5, relationHint: "山脊路标是终点与返程确认。", eventIds: ["ridgeWindGust", "fallenTrailMarker"], flagIds: ["restoredTrailMarker", "securedWindGear"] }
     ],
+    failureHints: ["手绘草图写着“先到旧吊桥”，它应在最前。", "桥对岸箭头先指向水位尺，之后才是无水缓坡。", "山脊路标同时确认出口与返程，应放在最后。"],
+    completionExplanation: "路线从隐藏岔口出发，经固定后的吊桥抵达旧水位尺，再沿晨雾中的无水缓坡上行；最后校正的山脊路标确认出口和返程方向。",
     progressFlags: { enduredDownpour: 1, enduredRidgeWind: 1, crossedMorningFog: 1, foundHiddenFork: 1, restoredTrailMarker: 2, mappedFork: 2, repairedBridge: 2, routeRecovered: 2, securedRoute: 3 },
     successScore: 4,
     partialScore: 1,
     logTitle: "深山安全路线勘察",
+    archiveStory: "隐藏岔路、吊桥固定点、水位尺编号、无积水缓坡和校正后的山脊路标连成了一条稳定往返路线，雨后也能重新辨认。",
     endings: {
       complete: "你把桥面、岔路和返程方向连成了一条能够再次通行的安全路线。",
       partial: "你确认了几处关键路标，但整条路线还需要继续勘察。",

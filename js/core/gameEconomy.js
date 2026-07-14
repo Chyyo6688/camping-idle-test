@@ -166,7 +166,7 @@ function isCurrentRooftopTentEquipped(state) {
 function isGearVisibleInShop(item) {
   const group = item && shopGroupData[item.shopGroup];
 
-  return Boolean(item && group && group.visible !== false);
+  return Boolean(item && group && group.visible !== false && (item.shopVisible !== false || ownsGear(item.id)));
 }
 
 function calculateComfort(state) {

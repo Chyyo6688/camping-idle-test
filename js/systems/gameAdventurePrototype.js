@@ -23,9 +23,9 @@ const adventureEffectText = document.getElementById("adventureEffectText");
 const adventureEventCount = document.getElementById("adventureEventCount");
 const adventureRunStamina = document.getElementById("adventureRunStamina");
 const adventureRunBackpack = document.getElementById("adventureRunBackpack");
+const adventureRunInjuries = document.getElementById("adventureRunInjuries");
 const adventureEndEarlyButton = document.getElementById("adventureEndEarlyButton");
-const settingsAdventurePrototypeItem = document.getElementById("settingsAdventurePrototypeItem");
-const adventureStorageButton = document.getElementById("adventureStorageButton");
+const adventureCenterButton = document.getElementById("adventureCenterButton");
 const adventureStorageBadge = document.getElementById("adventureStorageBadge");
 const adventureStorageLayer = document.getElementById("adventureStorageLayer");
 const adventureStorageCloseButton = document.getElementById("adventureStorageCloseButton");
@@ -33,6 +33,20 @@ const adventureStorageLatestMeta = document.getElementById("adventureStorageLate
 const adventureStorageLatestList = document.getElementById("adventureStorageLatestList");
 const adventureStorageCountLabel = document.getElementById("adventureStorageCountLabel");
 const adventureStorageItemList = document.getElementById("adventureStorageItemList");
+const adventureCenterPanel = document.getElementById("adventureCenterPanel");
+const adventureCenterCloseButton = document.getElementById("adventureCenterCloseButton");
+const adventureCenterStamina = document.getElementById("adventureCenterStamina");
+const adventureCenterStorageCount = document.getElementById("adventureCenterStorageCount");
+const adventureCenterJourneyCount = document.getElementById("adventureCenterJourneyCount");
+const adventureCenterDepartButton = document.getElementById("adventureCenterDepartButton");
+const adventureCenterStorageButton = document.getElementById("adventureCenterStorageButton");
+const adventureCenterJournalButton = document.getElementById("adventureCenterJournalButton");
+const adventureCenterPendingStories = document.getElementById("adventureCenterPendingStories");
+const adventureJournalPanel = document.getElementById("adventureJournalPanel");
+const adventureJournalCloseButton = document.getElementById("adventureJournalCloseButton");
+const adventureJourneyTab = document.getElementById("adventureJourneyTab");
+const adventureStoryArchiveTab = document.getElementById("adventureStoryArchiveTab");
+const adventureJournalContent = document.getElementById("adventureJournalContent");
 
 const adventureMapList = document.getElementById("adventureMapList");
 const adventureMapMessage = document.getElementById("adventureMapMessage");
@@ -94,6 +108,19 @@ const adventureLogRouteMapButton = document.getElementById("adventureLogRouteMap
 const adventureRouteMapLayer = document.getElementById("adventureRouteMapLayer");
 const adventureRouteMapCloseButton = document.getElementById("adventureRouteMapCloseButton");
 const adventureRouteMapMapButton = document.getElementById("adventureRouteMapMapButton");
+const adventureClueSortLayer = document.getElementById("adventureClueSortLayer");
+const adventureClueSortTitle = document.getElementById("adventureClueSortTitle");
+const adventureClueSortRule = document.getElementById("adventureClueSortRule");
+const adventureClueSortInstruction = document.getElementById("adventureClueSortInstruction");
+const adventureClueSortSlots = document.getElementById("adventureClueSortSlots");
+const adventureClueSortList = document.getElementById("adventureClueSortList");
+const adventureClueSortMessage = document.getElementById("adventureClueSortMessage");
+const adventureClueSortHint = document.getElementById("adventureClueSortHint");
+const adventureClueSortCompletion = document.getElementById("adventureClueSortCompletion");
+const adventureClueSortCloseButton = document.getElementById("adventureClueSortCloseButton");
+const adventureClueSortHintButton = document.getElementById("adventureClueSortHintButton");
+const adventureClueSortResetButton = document.getElementById("adventureClueSortResetButton");
+const adventureClueSortConfirmButton = document.getElementById("adventureClueSortConfirmButton");
 
 const ADVENTURE_WALK_FRAMES = [
   "camper_walk_01.png",
@@ -126,7 +153,20 @@ const adventurePrototypeState = {
   draftMapId: "deepMountain",
   draftRouteId: "creekValley",
   draftAdventureHook: null,
-  pendingRouteMapReveal: false,
+  journalTab: "journeys",
+  activeStorySortId: "",
+  storySortOrder: [],
+  storySortSelected: [],
+  storySortAttempts: 0,
+  storySortHintLevel: 0,
+  storySortPinnedClueId: "",
+  storySortSolved: false,
+  storySortPointerStartX: 0,
+  storySortPointerStartY: 0,
+  storySortPointerMoved: false,
+  storySortPointerClueId: "",
+  storySortSuppressClick: false,
+  draggedStoryClueId: "",
   recoveredTripSnapshot: null,
   trip: null,
   currentEvent: null,
@@ -249,9 +289,14 @@ function getAdventureHookClueDefinitions(mapId, hookId) {
     seen[clue.id] = true;
     return true;
   }).map(function(clue) {
+    const parsedOrder = Math.floor(Number(clue.order));
     return {
       id: clue.id,
       label: typeof clue.label === "string" ? clue.label : clue.id,
+      title: typeof clue.title === "string" && clue.title ? clue.title : (typeof clue.label === "string" ? clue.label : clue.id),
+      text: typeof clue.text === "string" ? clue.text : "",
+      order: Number.isFinite(parsedOrder) && parsedOrder > 0 ? parsedOrder : 0,
+      relationHint: typeof clue.relationHint === "string" ? clue.relationHint : "",
       eventIds: sanitizeAdventureStringArray(clue.eventIds, 12),
       flagIds: sanitizeAdventureStringArray(clue.flagIds, 12),
       routeIds: sanitizeAdventureStringArray(clue.routeIds, 8)
@@ -364,6 +409,229 @@ function getAdventureRouteMapSummaryLines() {
   ];
 }
 
+const ADVENTURE_ROUTE_MAP_STORY_ID = "keyItem:dampRouteMap";
+
+const ADVENTURE_STORY_SORT_RULES = ["时间顺序", "因果顺序", "行动步骤", "路线连接顺序"];
+const ADVENTURE_STORY_ORDER_SYMBOLS = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"];
+
+function getAdventureStoryRuleInstruction(sortingRule) {
+  const instructions = {
+    "时间顺序": "按事情发生的先后顺序整理线索。阅读日期、时段和前后承接，从最早发生排到最后确认。",
+    "因果顺序": "按发现与结论之间的因果关系整理线索。先找起因，再排出它如何引出后续发现。",
+    "行动步骤": "按行动实际执行的步骤整理线索。从第一步开始，依次排到最终确认。",
+    "路线连接顺序": "按路线从起点到终点的连接顺序整理线索。留意每一段从哪里来、通向哪里。"
+  };
+  return instructions[sortingRule] || "阅读每张线索中的时间、地点和因果关系，将它们整理成能够互相印证的顺序。";
+}
+
+function getAdventureStoryPositionLabel(sortingRule, index, total) {
+  const symbol = ADVENTURE_STORY_ORDER_SYMBOLS[index] || String(index + 1) + ".";
+  if (sortingRule === "时间顺序") return symbol + " " + (index === 0 ? "最早发生" : (index === total - 1 ? "最后确认" : "随后发生"));
+  if (sortingRule === "因果顺序") return symbol + " " + (index === 0 ? "起因" : (index === total - 1 ? "最终结论" : "后续发现"));
+  if (sortingRule === "行动步骤") return symbol + " " + (index === total - 1 ? "最后一步" : "第 " + String(index + 1) + " 步");
+  if (sortingRule === "路线连接顺序") return symbol + " " + (index === 0 ? "路线起点" : (index === total - 1 ? "路线终点" : "下一段"));
+  return symbol + " 位置 " + String(index + 1);
+}
+
+function normalizeAdventureStoryClue(clue, index) {
+  const source = clue && typeof clue === "object" ? clue : {};
+  const label = typeof source.label === "string" && source.label ? source.label : (typeof source.title === "string" && source.title ? source.title : source.id);
+  const parsedOrder = Math.floor(Number(source.order));
+  return {
+    id: source.id,
+    label: label,
+    title: typeof source.title === "string" && source.title ? source.title : label,
+    text: typeof source.text === "string" && source.text ? source.text : "这份记录写着：“" + label + "”。请结合其他线索判断它的位置。",
+    order: Number.isFinite(parsedOrder) && parsedOrder > 0 ? parsedOrder : index + 1,
+    relationHint: typeof source.relationHint === "string" && source.relationHint ? source.relationHint : "留意这张记录与前后线索重复出现的地点或关键词。",
+    eventIds: sanitizeAdventureStringArray(source.eventIds, 12),
+    flagIds: sanitizeAdventureStringArray(source.flagIds, 12),
+    routeIds: sanitizeAdventureStringArray(source.routeIds, 8)
+  };
+}
+
+function createAdventureStoryDefinition(settings) {
+  const source = settings && typeof settings === "object" ? settings : {};
+  const sortingRule = ADVENTURE_STORY_SORT_RULES.indexOf(source.sortingRule) !== -1 ? source.sortingRule : "线索顺序";
+  const clues = (Array.isArray(source.clues) ? source.clues : []).map(normalizeAdventureStoryClue).sort(function(a, b) {
+    return a.order - b.order;
+  });
+  const configuredLabels = sanitizeAdventureStringArray(source.positionLabels, clues.length);
+  const positionLabels = clues.map(function(clue, index) {
+    return configuredLabels[index] || getAdventureStoryPositionLabel(sortingRule, index, clues.length);
+  });
+  return {
+    id: source.id,
+    mapId: source.mapId || "deepMountain",
+    hookId: source.hookId || "",
+    title: source.title || "未命名故事",
+    sortingRule: sortingRule,
+    instruction: typeof source.instruction === "string" && source.instruction ? source.instruction : getAdventureStoryRuleInstruction(sortingRule),
+    positionLabels: positionLabels,
+    clues: clues,
+    failureHints: sanitizeAdventureStringArray(source.failureHints, 8),
+    completionExplanation: typeof source.completionExplanation === "string" && source.completionExplanation ? source.completionExplanation : (source.archiveStory || "线索之间的前后关系已经能够互相印证。"),
+    archiveStory: source.archiveStory || ("你把“" + (source.title || "这条故事") + "”的线索按经过整理在一起，沿途细节终于形成了一份能够反复查阅的完整记录。"),
+    unlocks: Array.isArray(source.unlocks) ? source.unlocks.slice() : [],
+    reward: source.reward || null,
+    keyItemId: source.keyItemId || ""
+  };
+}
+
+function getAdventureStoryCorrectOrder(story) {
+  return story && Array.isArray(story.clues) ? story.clues.slice().sort(function(a, b) { return a.order - b.order; }).map(function(clue) { return clue.id; }) : [];
+}
+
+function isAdventureStoryOrderCorrect(story, clueOrder) {
+  const correctOrder = getAdventureStoryCorrectOrder(story);
+  return Array.isArray(clueOrder) && clueOrder.join("|") === correctOrder.join("|");
+}
+
+function getAdventureStoryProgressiveHint(story, level) {
+  const safeLevel = Math.max(1, Math.floor(Number(level) || 1));
+  const hints = story && Array.isArray(story.failureHints) ? story.failureHints : [];
+  if (hints.length) return hints[Math.min(safeLevel - 1, hints.length - 1)];
+  const clues = story && Array.isArray(story.clues) ? story.clues : [];
+  const clue = clues[Math.min(safeLevel - 1, Math.max(0, clues.length - 1))];
+  return clue ? clue.relationHint : "比较线索中重复出现的日期、地点和关键词。";
+}
+
+function shouldPinAdventureStoryFirstClue(attempts, hintLevel) {
+  return Math.max(Math.floor(Number(attempts) || 0), Math.floor(Number(hintLevel) || 0)) >= 3;
+}
+
+function getAdventureStoryDefinitions() {
+  const stories = [];
+  getAdventureMapIds().forEach(function(mapId) {
+    const hooks = getAdventureMapHooks(mapId);
+    Object.keys(hooks).forEach(function(hookId) {
+      const hook = hooks[hookId];
+      const clues = getAdventureHookClueDefinitions(mapId, hookId);
+      if (!clues.length) return;
+      stories.push(createAdventureStoryDefinition({
+        id: mapId + ":" + hookId,
+        mapId: mapId,
+        hookId: hookId,
+        title: hook.title,
+        sortingRule: hook.sortingRule,
+        instruction: hook.instruction,
+        positionLabels: hook.positionLabels,
+        clues: clues,
+        failureHints: hook.failureHints,
+        completionExplanation: hook.completionExplanation,
+        archiveStory: hook.archiveStory || ("你把“" + hook.title + "”的线索按经过整理在一起，沿途细节终于形成了一份能够反复查阅的完整记录。"),
+        unlocks: Array.isArray(hook.archiveUnlocks) ? hook.archiveUnlocks.slice() : [],
+        reward: hook.reward || null,
+        keyItemId: ""
+      }));
+    });
+  });
+  const fragmentIds = Array.isArray(typeof ADVENTURE_ROUTE_MAP_FRAGMENT_IDS !== "undefined" ? ADVENTURE_ROUTE_MAP_FRAGMENT_IDS : null)
+    ? ADVENTURE_ROUTE_MAP_FRAGMENT_IDS
+    : ["rangerLeafRouteMark", "southSupplyCode", "oldForestryCoordinate"];
+  const routeMapConfig = typeof ADVENTURE_ROUTE_MAP_STORY_CONFIG === "object" && ADVENTURE_ROUTE_MAP_STORY_CONFIG ? ADVENTURE_ROUTE_MAP_STORY_CONFIG : {};
+  const routeMapClueConfig = Array.isArray(routeMapConfig.clues) ? routeMapConfig.clues : [];
+  stories.push(createAdventureStoryDefinition({
+    id: ADVENTURE_ROUTE_MAP_STORY_ID,
+    mapId: "deepMountain",
+    hookId: "",
+    title: "受潮的调查路线图",
+    sortingRule: routeMapConfig.sortingRule,
+    instruction: routeMapConfig.instruction,
+    positionLabels: routeMapConfig.positionLabels,
+    clues: fragmentIds.map(function(clueId) {
+      const configured = routeMapClueConfig.find(function(clue) { return clue && clue.id === clueId; }) || {};
+      return Object.assign({ id: clueId, label: getAdventureKeyClueName(clueId), eventIds: [], flagIds: [], routeIds: [] }, configured);
+    }),
+    failureHints: routeMapConfig.failureHints,
+    completionExplanation: routeMapConfig.completionExplanation,
+    archiveStory: "叶片标记对应溪谷末端，南行补给编号指向低地调查站，旧林务坐标则补全了 S-17 / E-04 网格。三条受潮记录拼成了一条通往雾雨林的停用路线。",
+    unlocks: [{ type: "keyItem", keyItemId: "dampRouteMap" }, { type: "map", mapId: "fogRainforest" }],
+    reward: null,
+    keyItemId: "dampRouteMap"
+  }));
+  return stories;
+}
+
+function getAdventureStoryDefinition(storyId) {
+  return getAdventureStoryDefinitions().find(function(story) { return story.id === storyId; }) || null;
+}
+
+function getAdventureStoryFoundClueIds(progress, story) {
+  if (!story) return [];
+  const validIds = story.clues.map(function(clue) { return clue.id; });
+  const source = story.id === ADVENTURE_ROUTE_MAP_STORY_ID
+    ? (progress && progress.keyClues)
+    : (progress && progress.hookClues && progress.hookClues[story.mapId] && progress.hookClues[story.mapId][story.hookId]);
+  return Array.from(new Set((Array.isArray(source) ? source : []).filter(function(clueId) {
+    return validIds.indexOf(clueId) !== -1;
+  })));
+}
+
+function sanitizeAdventureStoryStates(source, progressParts) {
+  const sourceStates = source && typeof source === "object" && !Array.isArray(source) ? source : {};
+  const progress = progressParts || {};
+  const clean = {};
+  getAdventureStoryDefinitions().forEach(function(story) {
+    const saved = sourceStates[story.id] && typeof sourceStates[story.id] === "object" ? sourceStates[story.id] : {};
+    const foundIds = getAdventureStoryFoundClueIds(progress, story);
+    const complete = story.clues.length > 0 && foundIds.length >= story.clues.length;
+    const legacyRouteMapArchive = story.id === ADVENTURE_ROUTE_MAP_STORY_ID && Array.isArray(progress.unlockedMaps) && progress.unlockedMaps.indexOf("fogRainforest") !== -1;
+    const archived = saved.status === "archived" || legacyRouteMapArchive;
+    const savedUnlockLabels = sanitizeAdventureStringArray(saved.unlockLabels, 12).filter(function(label) {
+      return label.indexOf("记录：") !== 0 &&
+        label !== "白影留下的雾痕记录" &&
+        label !== "路线拓印" &&
+        label !== "旧瞭望塔路线拓印";
+    });
+    const configuredUnlockLabels = archived ? getAdventureStoryUnlockLabels(story) : [];
+    clean[story.id] = {
+      status: archived ? "archived" : (complete ? "ready" : "collecting"),
+      completedAt: archived ? Math.max(0, Number(saved.completedAt) || 0) : 0,
+      clueOrder: archived
+        ? getAdventureStoryCorrectOrder(story)
+        : [],
+      storyText: archived ? (typeof saved.storyText === "string" && saved.storyText ? saved.storyText.slice(0, 1600) : story.archiveStory) : "",
+      unlockLabels: archived ? Array.from(new Set(savedUnlockLabels.concat(configuredUnlockLabels))) : []
+    };
+  });
+  return clean;
+}
+
+function getAdventureStoryState(progress, storyId) {
+  const story = getAdventureStoryDefinition(storyId);
+  const saved = progress && progress.storyStates && progress.storyStates[storyId];
+  if (saved) return saved;
+  const found = getAdventureStoryFoundClueIds(progress, story).length;
+  return { status: story && found >= story.clues.length ? "ready" : "collecting", completedAt: 0, clueOrder: [], storyText: "", unlockLabels: [] };
+}
+
+function refreshAdventureStoryStates(progress) {
+  const target = progress || ensureAdventureProgress();
+  target.storyStates = sanitizeAdventureStoryStates(target.storyStates, target);
+  return target.storyStates;
+}
+
+function isAdventureStoryArchived(progress, mapId, hookId) {
+  return getAdventureStoryState(progress || ensureAdventureProgress(), mapId + ":" + hookId).status === "archived";
+}
+
+function sanitizeAdventureKeyItemIds(source) {
+  return Array.from(new Set((Array.isArray(source) ? source : []).filter(function(id) {
+    return id === "dampRouteMap";
+  })));
+}
+
+function sanitizeAdventureRecipeDiscoveryPity(source) {
+  const clean = {};
+  const values = source && typeof source === "object" && !Array.isArray(source) ? source : {};
+  Object.keys(typeof cookingRecipeCatalog === "object" && cookingRecipeCatalog ? cookingRecipeCatalog : {}).forEach(function(recipeId) {
+    const recipe = cookingRecipeCatalog[recipeId];
+    if (recipe.sourceType === "exploration") clean[recipeId] = clampAdventureValue(Math.floor(Number(values[recipeId]) || 0), 0, 3);
+  });
+  return clean;
+}
+
 function isAdventureRecipeUnlockedForDisplay(recipeId) {
   if (typeof isCookingRecipeUnlocked === "function") {
     return isCookingRecipeUnlocked(recipeId);
@@ -380,10 +648,19 @@ function getAdventureRouteResourceSummary(mapId, routeId) {
   const ingredients = sanitizeAdventureStringArray(route.resourceIds, 12).map(getAdventureIngredientName);
   const lockedRecipes = sanitizeAdventureStringArray(route.recipeIds, 12).filter(function(recipeId) {
     return !isAdventureRecipeUnlockedForDisplay(recipeId);
-  }).map(getAdventureRecipeName);
+  });
   const lines = [];
   lines.push("当前路线可能获得：" + (ingredients.length ? ingredients.join("、") : "暂无专属原料"));
-  lines.push("未解锁菜谱：" + (lockedRecipes.length ? lockedRecipes.join("、") : "本路线菜谱已全部掌握"));
+  lines.push("尚未发现菜谱：" + lockedRecipes.length);
+  if (lockedRecipes.length) {
+    const sourceHints = Array.from(new Set(lockedRecipes.map(function(recipeId) {
+      const recipe = cookingRecipeCatalog[recipeId];
+      return recipe && recipe.sourceHint ? recipe.sourceHint : "继续探索";
+    })));
+    lines.push("可能来源：" + sourceHints.join(" / "));
+  } else {
+    lines.push("本路线菜谱已全部掌握");
+  }
   return lines.join(" ");
 }
 
@@ -766,6 +1043,8 @@ function getAdventureItemRule(itemId) {
 
 function createDefaultAdventureProgress(now) {
   const defaultMapId = getDefaultAdventureMapId();
+  const hookClues = sanitizeAdventureHookClues();
+  const keyClues = [];
   return {
     version: ADVENTURE_SAVE_VERSION,
     storage: Object.assign({}, ADVENTURE_DEFAULT_STORAGE),
@@ -781,8 +1060,13 @@ function createDefaultAdventureProgress(now) {
     unlockedLocations: ["deepMountain"],
     discoveredKeyItems: [],
     discoveredClues: [],
-    keyClues: [],
-    hookClues: sanitizeAdventureHookClues(),
+    keyClues: keyClues,
+    hookClues: hookClues,
+    storyStates: sanitizeAdventureStoryStates({}, { unlockedMaps: [defaultMapId], keyClues: keyClues, hookClues: hookClues }),
+    journeyLogs: [],
+    pendingKeyItemReveal: "",
+    revealedKeyItems: [],
+    recipeDiscoveryPity: sanitizeAdventureRecipeDiscoveryPity(),
     clueStages: {},
     crossMapMysteryFlags: {},
     collectedClues: [],
@@ -861,6 +1145,31 @@ function sanitizeAdventureHookClueProgressSnapshot(source, mapId, hookId) {
   };
 }
 
+function sanitizeAdventureInjuryRecords(source) {
+  return (Array.isArray(source) ? source : []).filter(function(record) {
+    return record && ADVENTURE_INJURY_CATALOG[record.id];
+  }).slice(0, 12).map(function(record) {
+    const injury = ADVENTURE_INJURY_CATALOG[record.id];
+    return {
+      id: record.id,
+      label: injury.label,
+      description: typeof record.description === "string" ? record.description.slice(0, 180) : injury.description,
+      treated: Boolean(record.treated)
+    };
+  });
+}
+
+function sanitizeAdventureTreatmentRecords(source) {
+  return (Array.isArray(source) ? source : []).filter(function(record) {
+    return record && Array.isArray(record.injuryIds);
+  }).slice(0, 12).map(function(record) {
+    return {
+      injuryIds: record.injuryIds.filter(function(injuryId) { return Boolean(ADVENTURE_INJURY_CATALOG[injuryId]); }),
+      text: typeof record.text === "string" ? record.text.slice(0, 360) : "使用急救包处理了伤势。"
+    };
+  });
+}
+
 function sanitizeAdventureLog(log) {
   if (!log || typeof log !== "object" || Array.isArray(log)) {
     return null;
@@ -925,7 +1234,9 @@ function sanitizeAdventureLog(log) {
         contributorIds: sanitizeAdventureStringArray(entry.contributorIds, 4),
         decisionSource: ADVENTURE_PARTY_DECISION_SOURCES.indexOf(entry.decisionSource) !== -1 ? entry.decisionSource : "auto",
         participantObservations: sanitizeAdventureParticipantObservations(entry.participantObservations),
-        participationText: typeof entry.participationText === "string" ? entry.participationText.slice(0, 360) : ""
+        participationText: typeof entry.participationText === "string" ? entry.participationText.slice(0, 360) : "",
+        injuriesAdded: sanitizeAdventureInjuryRecords(entry.injuriesAdded),
+        injuriesTreated: sanitizeAdventureTreatmentRecords(entry.injuriesTreated)
       };
     }) : [],
     gained: sanitizeAdventureBackpackMap(log.gained),
@@ -939,6 +1250,8 @@ function sanitizeAdventureLog(log) {
     }))) : [],
     unlocked: Array.isArray(log.unlocked) ? log.unlocked.filter(function(id) { return Boolean(locations[id]); }) : [],
     unlockedMaps: Array.isArray(log.unlockedMaps) ? log.unlockedMaps.filter(function(id) { return Boolean(getAdventureMapRegistry()[id]) && isAdventureMapPlayable(id); }) : [],
+    injuries: sanitizeAdventureInjuryRecords(log.injuries),
+    treatments: sanitizeAdventureTreatmentRecords(log.treatments),
     staminaStart: clampAdventureValue(log.staminaStart, 0, ADVENTURE_STAMINA_MAX),
     staminaEnd: clampAdventureValue(log.staminaEnd, 0, ADVENTURE_STAMINA_MAX),
     endReason: typeof log.endReason === "string" ? log.endReason : "routeComplete",
@@ -998,6 +1311,19 @@ function sanitizeAdventureProgress(progress) {
   const keyClueSource = Array.isArray(progress.keyClues) ? progress.keyClues : [];
   const keyClues = sanitizeAdventureKeyClues(keyClueSource, unlockedMaps);
   const hookClues = sanitizeAdventureHookClues(progress.hookClues);
+  const storyStates = sanitizeAdventureStoryStates(progress.storyStates, {
+    unlockedMaps: unlockedMaps,
+    keyClues: keyClues,
+    hookClues: hookClues
+  });
+  const journeyLogs = (Array.isArray(progress.journeyLogs) ? progress.journeyLogs : []).map(sanitizeAdventureLog).filter(Boolean);
+  if (log && !journeyLogs.some(function(entry) { return entry.id && entry.id === log.id; })) journeyLogs.push(log);
+  const oldRainforestUnlock = unlockedMaps.indexOf("fogRainforest") !== -1 && !progress.storyStates;
+  const revealedKeyItems = sanitizeAdventureKeyItemIds(progress.revealedKeyItems);
+  if (oldRainforestUnlock && revealedKeyItems.indexOf("dampRouteMap") === -1) revealedKeyItems.push("dampRouteMap");
+  const pendingKeyItemReveal = progress.pendingKeyItemReveal === "dampRouteMap" && revealedKeyItems.indexOf("dampRouteMap") === -1
+    ? "dampRouteMap"
+    : "";
   let starterKitMigrationVersion = Math.max(0, Math.floor(Number(progress.adventureStarterKitMigrationVersion) || 0));
   if (starterKitMigrationVersion < ADVENTURE_STARTER_KIT_MIGRATION_VERSION) {
     const gatewayItemIds = ["fieldLantern", "ropeKit", "repairToolkit", "oldKey", "forestCharm", "trailMap", "silverCompass", "rangerToken"];
@@ -1071,6 +1397,11 @@ function sanitizeAdventureProgress(progress) {
     discoveredClues: discoveredClues,
     keyClues: keyClues,
     hookClues: hookClues,
+    storyStates: storyStates,
+    journeyLogs: journeyLogs,
+    pendingKeyItemReveal: pendingKeyItemReveal,
+    revealedKeyItems: revealedKeyItems,
+    recipeDiscoveryPity: sanitizeAdventureRecipeDiscoveryPity(progress.recipeDiscoveryPity),
     clueStages: clueStages,
     crossMapMysteryFlags: crossMapMysteryFlags,
     collectedClues: discoveredKeyItems.slice(),
@@ -1101,6 +1432,10 @@ function ensureAdventureProgress(state, now) {
     !Array.isArray(campState.adventure.discoveredClues) ||
     !Array.isArray(campState.adventure.keyClues) ||
     !campState.adventure.hookClues ||
+    !campState.adventure.storyStates ||
+    !Array.isArray(campState.adventure.journeyLogs) ||
+    !Array.isArray(campState.adventure.revealedKeyItems) ||
+    !campState.adventure.recipeDiscoveryPity ||
     !campState.adventure.clueStages ||
     !campState.adventure.crossMapMysteryFlags ||
     !Array.isArray(campState.adventure.recentAdventureHistory) ||
@@ -1557,19 +1892,36 @@ function renderAdventureHookPreview() {
   const routeId = adventurePrototypeState.draftRouteId || getAdventureMapDefaultRouteId(mapId);
   const hook = ensureDraftAdventureHook(false);
   const clueProgress = getAdventureHookClueProgress(progress, mapId, hook.id);
+  const storyState = getAdventureStoryState(progress, mapId + ":" + hook.id);
+  const archived = storyState.status === "archived";
+  const ready = storyState.status === "ready";
   if (adventureHookPreview) adventureHookPreview.dataset.hookSource = hook.source;
   if (adventureHookEyebrow) {
     adventureHookEyebrow.textContent = hasVisitedAdventureMap(progress, mapId) || ["unfinishedClue", "mapState", "recentHistory"].indexOf(hook.source) !== -1
       ? "最近挂心的事"
       : "这次出发前听到的传闻";
   }
-  if (adventureHookTitle) adventureHookTitle.textContent = hook.title + (clueProgress.complete ? " · 已查清" : "");
+  if (adventureHookTitle) adventureHookTitle.textContent = hook.title + (archived ? " · 已查清" : (ready ? " · 待整理" : ""));
   if (adventureHookClueMeta) adventureHookClueMeta.textContent = formatAdventureHookClueProgress(clueProgress);
-  if (adventureHookIntro) adventureHookIntro.textContent = clueProgress.complete ? "这件事已经查清，接下来可以按路线资源整理背包。" : hook.intro;
+  if (adventureHookIntro) adventureHookIntro.textContent = archived
+    ? "这件事已经整理归档，接下来可以按路线资源整理背包。"
+    : (ready ? "线索已经收齐，需要由你整理出完整经过。" : hook.intro);
   if (adventureHookDetail) {
-    adventureHookDetail.textContent = clueProgress.complete
+    adventureHookDetail.textContent = archived
       ? getAdventureRouteResourceSummary(mapId, routeId)
-      : (clueProgress.discovered ? "还剩 " + clueProgress.remaining + " 条线索。" : "尚未发现");
+      : (ready ? "线索已收齐，等待整理。" : (clueProgress.discovered ? "还剩 " + clueProgress.remaining + " 条线索。" : "尚未发现"));
+  }
+  if (adventureHookPreview) {
+    const existingButton = adventureHookPreview.querySelector(".adventure-hook-sort-button");
+    if (existingButton) existingButton.remove();
+    if (ready) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "adventure-mini-control adventure-hook-sort-button";
+      button.textContent = "整理线索";
+      button.addEventListener("click", function() { openAdventureClueSorter(mapId + ":" + hook.id); });
+      adventureHookPreview.appendChild(button);
+    }
   }
 }
 
@@ -1798,6 +2150,8 @@ function setAdventureMode(mode) {
   if (!adventurePrototype) {
     return;
   }
+  adventurePrototype.classList.toggle("is-center", mode === "center");
+  adventurePrototype.classList.toggle("is-journal", mode === "journal");
   adventurePrototype.classList.toggle("is-map-select", mode === "map-select");
   adventurePrototype.classList.toggle("is-preparing", mode === "preparing");
   adventurePrototype.classList.toggle("is-running", mode === "running");
@@ -2107,10 +2461,11 @@ function collectAdventureHookClues(trip, progress) {
   });
   const clueProgress = getAdventureHookClueProgress(progress, mapId, hookId);
   if (!progress.clueStages || typeof progress.clueStages !== "object" || Array.isArray(progress.clueStages)) progress.clueStages = {};
-  if (clueProgress.complete) progress.clueStages[hookId] = "complete";
+  if (clueProgress.complete) progress.clueStages[hookId] = "ready";
   else if (clueProgress.found > 0) progress.clueStages[hookId] = "seenAgain";
   trip.newHookClues = newClues;
   trip.hookClueProgress = clueProgress;
+  refreshAdventureStoryStates(progress);
   return newClues;
 }
 
@@ -2153,6 +2508,37 @@ function getAdventureHistoryWeight(eventId, trip, progress) {
   return Math.max(0.12, multiplier);
 }
 
+function getEligibleAdventureExplorationRecipes(mapId, routeId) {
+  const recipes = typeof cookingRecipeCatalog === "object" && cookingRecipeCatalog ? cookingRecipeCatalog : {};
+  return Object.keys(recipes).filter(function(recipeId) {
+    const recipe = recipes[recipeId];
+    return recipe.sourceType === "exploration" && recipe.sourceMapId === mapId &&
+      Array.isArray(recipe.sourceRouteIds) && recipe.sourceRouteIds.indexOf(routeId) !== -1;
+  });
+}
+
+function getAdventureRecipeEventWeight(eventId, trip, progress) {
+  let multiplier = 1;
+  getEligibleAdventureExplorationRecipes(trip.mapId, trip.routeId).forEach(function(recipeId) {
+    const recipe = cookingRecipeCatalog[recipeId];
+    const pity = Math.max(0, Number(progress.recipeDiscoveryPity && progress.recipeDiscoveryPity[recipeId]) || 0);
+    if (!isAdventureRecipeUnlockedForDisplay(recipeId) && pity >= 2 && recipe.sourceEventIds.indexOf(eventId) !== -1) multiplier *= 4;
+  });
+  return multiplier;
+}
+
+function getGuaranteedAdventureRecipeEvent(remaining, trip) {
+  const guaranteeIds = Array.isArray(trip.recipeGuarantees) ? trip.recipeGuarantees : [];
+  const pendingRecipeId = guaranteeIds.find(function(recipeId) {
+    if (isAdventureRecipeUnlockedForDisplay(recipeId) || (trip.unlockedRecipes || []).indexOf(recipeId) !== -1) return false;
+    const recipe = cookingRecipeCatalog[recipeId];
+    return recipe && remaining.some(function(eventDefinition) { return recipe.sourceEventIds.indexOf(eventDefinition.id) !== -1; });
+  });
+  if (!pendingRecipeId) return null;
+  const recipe = cookingRecipeCatalog[pendingRecipeId];
+  return remaining.find(function(eventDefinition) { return recipe.sourceEventIds.indexOf(eventDefinition.id) !== -1; }) || null;
+}
+
 function chooseNextAdventureEvent(snapshot) {
   const trip = adventurePrototypeState.trip;
   const progress = ensureAdventureProgress();
@@ -2160,6 +2546,8 @@ function chooseNextAdventureEvent(snapshot) {
   const remaining = getAdventureMapEvents(mapId).filter(function(eventDefinition) {
     return adventurePrototypeState.seenEventIds.indexOf(eventDefinition.id) === -1;
   });
+  const guaranteedEvent = getGuaranteedAdventureRecipeEvent(remaining, trip);
+  if (guaranteedEvent) return guaranteedEvent;
   const dangerSense = Number(snapshot.dailyAdventureModifiers.dangerSense) || 0;
   const route = getAdventureMapRoutes(mapId)[trip.routeId];
   const hookEventIds = trip.adventureHook && Array.isArray(trip.adventureHook.relatedEventIds) ? trip.adventureHook.relatedEventIds : [];
@@ -2169,7 +2557,8 @@ function chooseNextAdventureEvent(snapshot) {
     const dangerWeight = clampAdventureValue(1 - dangerSense * eventDefinition.risk * 0.025, 0.3, 1.7);
     const chainWeight = getAdventureChainWeight(eventDefinition.id, trip.eventFlags || {}, mapId);
     const historyWeight = getAdventureHistoryWeight(eventDefinition.id, trip, progress);
-    return { eventDefinition: eventDefinition, weight: Math.max(0.05, routeWeight * hookWeight * dangerWeight * chainWeight * historyWeight) };
+    const recipeWeight = getAdventureRecipeEventWeight(eventDefinition.id, trip, progress);
+    return { eventDefinition: eventDefinition, weight: Math.max(0.05, routeWeight * hookWeight * dangerWeight * chainWeight * historyWeight * recipeWeight) };
   });
   return pickWeightedAdventureEntry(entries).eventDefinition;
 }
@@ -2326,13 +2715,17 @@ function showAdventureUsedItemVisual(itemKey, eventDefinition, visualClass) {
   if (!adventureUsedItemVisual) return;
   const descriptor = getAdventureItemDescriptor(itemKey);
   if (!descriptor) return;
+  const prop = eventDefinition && eventDefinition.prop ? eventDefinition.prop : {
+    x: adventurePrototypeState.camperX + 6,
+    y: adventurePrototypeState.camperY
+  };
   const icon = document.createElement("span");
   adventureUsedItemVisual.innerHTML = "";
   applyAdventureItemIcon(icon, descriptor);
   adventureUsedItemVisual.appendChild(icon);
   adventureUsedItemVisual.className = "adventure-used-item-visual is-visible " + (visualClass || "solution-tool");
-  adventureUsedItemVisual.style.left = clampAdventureValue(eventDefinition.prop.x - 8, 12, 82) + "%";
-  adventureUsedItemVisual.style.top = clampAdventureValue(eventDefinition.prop.y - 13, 20, 70) + "%";
+  adventureUsedItemVisual.style.left = clampAdventureValue(prop.x - 8, 12, 82) + "%";
+  adventureUsedItemVisual.style.top = clampAdventureValue(prop.y - 13, 20, 70) + "%";
 }
 
 function showAdventureMissingItemVisual(eventDefinition) {
@@ -2441,6 +2834,18 @@ function updateAdventureRunHud(pendingEventNumber) {
   if (adventureRunBackpack) {
     adventureRunBackpack.textContent = "背包 " + (trip ? getAdventureCountTotal(trip.backpack) : 0) + " / " + ADVENTURE_BACKPACK_CAPACITY +
       " · 发现 " + (trip ? getAdventureCountTotal(trip.loot) : 0);
+  }
+  if (adventureRunInjuries) {
+    const injuryIds = getActiveAdventureInjuryIds(trip);
+    adventureRunInjuries.innerHTML = "";
+    adventureRunInjuries.classList.toggle("hidden", !injuryIds.length);
+    injuryIds.forEach(function(injuryId) {
+      const injury = ADVENTURE_INJURY_CATALOG[injuryId];
+      const tag = document.createElement("span");
+      tag.className = "adventure-injury-tag";
+      tag.textContent = injury.label + " · " + injury.impact;
+      adventureRunInjuries.appendChild(tag);
+    });
   }
 }
 
@@ -2583,13 +2988,29 @@ function changeAdventureIngredientCount(ingredientId, quantity) {
 function unlockAdventureCookingRecipe(recipeId) {
   const recipes = typeof cookingRecipeCatalog === "object" && cookingRecipeCatalog ? cookingRecipeCatalog : {};
   if (!recipes[recipeId] || !gameState) return false;
-  if (typeof unlockCookingRecipe === "function") return unlockCookingRecipe(recipeId);
+  if (typeof unlockCookingRecipe === "function") {
+    const unlocked = unlockCookingRecipe(recipeId);
+    if (unlocked) {
+      const progress = ensureAdventureProgress();
+      if (progress.recipeDiscoveryPity && Object.prototype.hasOwnProperty.call(progress.recipeDiscoveryPity, recipeId)) progress.recipeDiscoveryPity[recipeId] = 0;
+    }
+    return unlocked;
+  }
   if (!gameState.cooking || typeof gameState.cooking !== "object" || Array.isArray(gameState.cooking)) {
-    gameState.cooking = { cooked: 0, autoCookDate: "", autoCookedToday: 0, unlockedRecipes: [] };
+    gameState.cooking = {
+      cooked: 0,
+      autoCookDate: "",
+      autoCookedToday: 0,
+      unlockedRecipes: [],
+      manuallyCookedRecipes: [],
+      recentAutoCookedRecipes: [],
+    };
   }
   if (!Array.isArray(gameState.cooking.unlockedRecipes)) gameState.cooking.unlockedRecipes = [];
   if (gameState.cooking.unlockedRecipes.indexOf(recipeId) !== -1) return false;
   gameState.cooking.unlockedRecipes.push(recipeId);
+  const progress = ensureAdventureProgress();
+  if (progress.recipeDiscoveryPity && Object.prototype.hasOwnProperty.call(progress.recipeDiscoveryPity, recipeId)) progress.recipeDiscoveryPity[recipeId] = 0;
   return true;
 }
 
@@ -2608,23 +3029,7 @@ function grantAdventureKeyClue(trip, clueId, messages, itemNotes) {
   ensureAdventureTripArray(trip, "keyCluesFound").push(clueId);
   messages.push("获得关键线索：" + getAdventureKeyClueName(clueId));
   if (itemNotes) itemNotes.push("关键线索：" + getAdventureKeyClueName(clueId));
-
-  const fragments = Array.isArray(typeof ADVENTURE_ROUTE_MAP_FRAGMENT_IDS !== "undefined" ? ADVENTURE_ROUTE_MAP_FRAGMENT_IDS : null)
-    ? ADVENTURE_ROUTE_MAP_FRAGMENT_IDS
-    : ["rangerLeafRouteMark", "southSupplyCode", "oldForestryCoordinate"];
-  const routeMapId = typeof ADVENTURE_ROUTE_MAP_KEY_CLUE_ID === "string" ? ADVENTURE_ROUTE_MAP_KEY_CLUE_ID : "dampSurveyRouteMap";
-  const hasAllFragments = fragments.every(function(fragmentId) {
-    return progress.keyClues.indexOf(fragmentId) !== -1;
-  });
-  if (hasAllFragments && catalog[routeMapId] && progress.keyClues.indexOf(routeMapId) === -1) {
-    progress.keyClues.push(routeMapId);
-    ensureAdventureTripArray(trip, "keyCluesFound").push(routeMapId);
-    const discoveries = ensureAdventureTripArray(trip, "importantDiscoveries");
-    discoveries.push({ id: routeMapId, title: getAdventureKeyClueName(routeMapId), lines: getAdventureRouteMapSummaryLines() });
-    messages.push("拼出 " + getAdventureKeyClueName(routeMapId));
-    if (itemNotes) itemNotes.push("重要发现：" + getAdventureKeyClueName(routeMapId));
-    unlockAdventureMap(progress, trip, "fogRainforest", messages, itemNotes);
-  }
+  refreshAdventureStoryStates(progress);
   return true;
 }
 
@@ -2694,14 +3099,58 @@ function changeAdventureStamina(amount, trip) {
   return applied;
 }
 
-function getAdventureInjuryLabel(eventDefinition) {
+const ADVENTURE_INJURY_CATALOG = {
+  sprain: { id: "sprain", label: "扭伤", treatmentTarget: "扭伤的脚踝", description: "脚踝发不上力", impact: "经过危险地形会额外消耗体力，持续恶化可能提前返回。" },
+  cut: { id: "cut", label: "割伤", treatmentTarget: "割伤的手指", description: "手指被锐边割伤", impact: "处理工具和攀爬时会更吃力。" },
+  scratch: { id: "scratch", label: "抓伤", treatmentTarget: "抓伤的手臂", description: "手臂留下抓痕", impact: "靠近动物或穿过灌木时会额外谨慎。" },
+  insectBite: { id: "insectBite", label: "虫咬红肿", treatmentTarget: "虫咬红肿处", description: "虫咬处开始红肿", impact: "潮湿与虫群事件会让不适加重。" },
+  abrasion: { id: "abrasion", label: "擦伤", treatmentTarget: "擦伤处", description: "跌倒时擦伤了皮肤", impact: "继续赶路会额外消耗少量体力。" }
+};
+
+function getAdventureInjuryType(eventDefinition) {
   const eventId = eventDefinition && eventDefinition.id;
-  if (["unstableBridge", "ridgeWindGust", "canopyWalkway", "muddyCrossing"].indexOf(eventId) !== -1) return "扭伤的脚踝";
-  if (["streamSparkle", "floodedSupplyCrate", "lockedChest", "oldWaterGauge"].indexOf(eventId) !== -1) return "割伤的手指";
-  if (["snaredAnimal"].indexOf(eventId) !== -1) return "抓伤";
-  if (["insectSwarm"].indexOf(eventId) !== -1) return "虫咬";
-  if (["flashFloodDebris", "suddenDownpour"].indexOf(eventId) !== -1) return "擦伤";
-  return "擦伤";
+  if (["unstableBridge", "ridgeWindGust", "canopyWalkway", "muddyCrossing"].indexOf(eventId) !== -1) return "sprain";
+  if (["streamSparkle", "floodedSupplyCrate", "lockedChest", "oldWaterGauge", "vineBarricade"].indexOf(eventId) !== -1) return "cut";
+  if (["snaredAnimal"].indexOf(eventId) !== -1) return "scratch";
+  if (["insectSwarm"].indexOf(eventId) !== -1) return "insectBite";
+  return "abrasion";
+}
+
+function getAdventureInjuryLabel(eventDefinition) {
+  return ADVENTURE_INJURY_CATALOG[getAdventureInjuryType(eventDefinition)].treatmentTarget;
+}
+
+function getActiveAdventureInjuryIds(trip) {
+  return Object.keys(trip && trip.injuries && typeof trip.injuries === "object" ? trip.injuries : {}).filter(function(injuryId) {
+    return Boolean(ADVENTURE_INJURY_CATALOG[injuryId] && trip.injuries[injuryId]);
+  });
+}
+
+function addAdventureInjury(trip, injuryId, sourceEventId) {
+  if (!trip || !ADVENTURE_INJURY_CATALOG[injuryId]) return null;
+  if (!trip.injuries || typeof trip.injuries !== "object" || Array.isArray(trip.injuries)) trip.injuries = {};
+  if (trip.injuries[injuryId]) return null;
+  trip.injuries[injuryId] = { id: injuryId, sourceEventId: sourceEventId || "test", createdAt: Date.now() };
+  return ADVENTURE_INJURY_CATALOG[injuryId];
+}
+
+function consumeAdventureFirstAidForInjuries(trip, messages, itemFeedback, itemNotes, treatmentRecords) {
+  const injuryIds = getActiveAdventureInjuryIds(trip);
+  if (!injuryIds.length || !backpackHasAdventureItem(trip.backpack, "firstAidPouch")) return false;
+  removeAdventureCount(trip.backpack, "item:firstAidPouch", 1);
+  addAdventureCount(trip.consumed, "item:firstAidPouch", 1);
+  const labels = injuryIds.map(function(injuryId) { return ADVENTURE_INJURY_CATALOG[injuryId].treatmentTarget; });
+  injuryIds.forEach(function(injuryId) { delete trip.injuries[injuryId]; });
+  const recovered = changeAdventureStamina(4, trip);
+  const treatmentText = "使用急救包处理了" + labels.join("和") + "，避免伤势继续恶化。" + (recovered > 0 ? " 体力稍微恢复。" : "");
+  messages.push(treatmentText);
+  itemFeedback.push({ kind: "consumed", key: "item:firstAidPouch", quantity: 1 });
+  itemNotes.push("治疗记录：" + treatmentText + " 消耗：急救包 ×1");
+  treatmentRecords.push({ injuryIds: injuryIds, text: treatmentText });
+  showAdventureUsedItemVisual("item:firstAidPouch", adventurePrototypeState.currentEvent, "solution-first-aid");
+  playAdventureAction("open");
+  trip.injuryStrain = 0;
+  return true;
 }
 
 function applyAdventureConsequences(eventDefinition, reaction, outcome) {
@@ -2715,6 +3164,8 @@ function applyAdventureConsequences(eventDefinition, reaction, outcome) {
   let usedRecoveryConsumable = false;
   let consumedSolutionItem = false;
   let consumedFollowUpItem = false;
+  const injuryRecords = [];
+  const treatmentRecords = [];
 
   if (outcome.missedItemOpportunity) {
     const applied = changeAdventureStamina(-1, trip);
@@ -2766,7 +3217,8 @@ function applyAdventureConsequences(eventDefinition, reaction, outcome) {
         itemNotes.push("料理原料：" + getAdventureIngredientName(effect.ingredientId) + (gained > 1 ? " ×" + gained : ""));
       }
     } else if (effect.type === "unlockRecipe") {
-      if (unlockAdventureCookingRecipe(effect.recipeId)) {
+      const recipe = typeof cookingRecipeCatalog === "object" ? cookingRecipeCatalog[effect.recipeId] : null;
+      if (recipe && recipe.sourceType !== "story" && unlockAdventureCookingRecipe(effect.recipeId)) {
         ensureAdventureTripArray(trip, "unlockedRecipes").push(effect.recipeId);
         messages.push("解锁菜谱：" + getAdventureRecipeName(effect.recipeId));
         itemNotes.push("永久菜谱：" + getAdventureRecipeName(effect.recipeId));
@@ -2810,6 +3262,16 @@ function applyAdventureConsequences(eventDefinition, reaction, outcome) {
     }
   });
 
+  (trip.recipeGuarantees || []).forEach(function(recipeId) {
+    const recipe = cookingRecipeCatalog[recipeId];
+    if (!recipe || recipe.sourceEventIds.indexOf(eventDefinition.id) === -1 || isAdventureRecipeUnlockedForDisplay(recipeId)) return;
+    if (unlockAdventureCookingRecipe(recipeId)) {
+      ensureAdventureTripArray(trip, "unlockedRecipes").push(recipeId);
+      messages.push("在" + eventDefinition.title + "发现菜谱：" + getAdventureRecipeName(recipeId));
+      itemNotes.push("探索保底发现菜谱：" + getAdventureRecipeName(recipeId));
+    }
+  });
+
   if (outcome.itemSolution) {
     const solution = outcome.itemSolution;
     const definition = solution.definition;
@@ -2838,22 +3300,33 @@ function applyAdventureConsequences(eventDefinition, reaction, outcome) {
   const eventTags = Array.isArray(eventDefinition.tags) ? eventDefinition.tags : [];
   const injuryEvent = eventTags.indexOf("injury") !== -1 || ["unstableBridge", "streamSparkle", "ridgeWindGust", "snaredAnimal", "oldWaterGauge", "flashFloodDebris", "floodedSupplyCrate", "insectSwarm", "canopyWalkway"].indexOf(eventDefinition.id) !== -1;
   const fatigueEvent = eventTags.indexOf("fatigue") !== -1 || ["suddenDownpour", "unstableBridge", "streamSparkle", "lostBeforeDark", "morningFogPockets", "ridgeWindGust", "fallenTrailMarker", "mushroomRing", "washedOutCache", "watchtowerSignal", "nightCampEcho"].indexOf(eventDefinition.id) !== -1;
+  const existingInjuries = getActiveAdventureInjuryIds(trip);
+  if (!usedRecoveryConsumable && existingInjuries.length && backpackHasAdventureItem(trip.backpack, "firstAidPouch")) {
+    usedRecoveryConsumable = consumeAdventureFirstAidForInjuries(trip, messages, itemFeedback, itemNotes, treatmentRecords);
+  } else if (existingInjuries.length && (injuryEvent || fatigueEvent)) {
+    const activeLabels = existingInjuries.map(function(injuryId) { return ADVENTURE_INJURY_CATALOG[injuryId].label; });
+    const penalty = changeAdventureStamina(-2, trip);
+    eventStaminaDelta += penalty;
+    trip.injuryStrain = Math.max(0, Number(trip.injuryStrain) || 0) + 1;
+    const feedback = activeLabels.join("和") + "让这段路更难处理，体力额外消耗 2 点。";
+    messages.push(feedback);
+    itemNotes.push("伤势影响：" + feedback);
+    if (trip.injuryStrain >= 2) trip.forceEarlyReturnReason = "伤势恶化";
+  }
   if (!usedRecoveryConsumable && injuryEvent && eventStaminaDelta <= -4 && backpackHasAdventureItem(trip.backpack, "firstAidPouch")) {
-    removeAdventureCount(trip.backpack, "item:firstAidPouch", 1);
-    addAdventureCount(trip.consumed, "item:firstAidPouch", 1);
-    const injuryLabel = getAdventureInjuryLabel(eventDefinition);
-    const recovered = changeAdventureStamina(4, trip);
-    messages.push("使用急救包固定了" + injuryLabel + "，避免伤势继续恶化。" + (recovered > 0 ? " 体力稍微恢复。" : ""));
-    itemFeedback.push({ kind: "consumed", key: "item:firstAidPouch", quantity: 1 });
-    itemNotes.push("处理伤势：" + injuryLabel + "。消耗：急救包 ×1");
-    showAdventureUsedItemVisual("item:firstAidPouch", eventDefinition, "solution-first-aid");
-    playAdventureAction("open");
-    usedRecoveryConsumable = true;
+    const injuryId = getAdventureInjuryType(eventDefinition);
+    const injury = addAdventureInjury(trip, injuryId, eventDefinition.id);
+    if (injury) injuryRecords.push({ id: injuryId, label: injury.label, description: injury.description, treated: true });
+    usedRecoveryConsumable = consumeAdventureFirstAidForInjuries(trip, messages, itemFeedback, itemNotes, treatmentRecords);
   } else if (injuryEvent && eventStaminaDelta <= -4) {
-    const injuryLabel = getAdventureInjuryLabel(eventDefinition);
-    if (!trip.injuries || typeof trip.injuries !== "object" || Array.isArray(trip.injuries)) trip.injuries = {};
-    trip.injuries[injuryLabel] = true;
-    itemNotes.push("本趟伤势：" + injuryLabel + "。");
+    const injuryId = getAdventureInjuryType(eventDefinition);
+    const injury = addAdventureInjury(trip, injuryId, eventDefinition.id);
+    if (injury) {
+      const injuryText = "受伤：" + injury.description + "。当前影响：" + injury.impact;
+      injuryRecords.push({ id: injuryId, label: injury.label, description: injury.description, treated: false });
+      messages.push(injuryText);
+      itemNotes.push("受伤记录：" + injuryText);
+    }
   } else if (!usedRecoveryConsumable && fatigueEvent && eventStaminaDelta <= -2 && backpackHasAdventureItem(trip.backpack, "mountainHerb")) {
     removeAdventureCount(trip.backpack, "item:mountainHerb", 1);
     addAdventureCount(trip.consumed, "item:mountainHerb", 1);
@@ -2881,7 +3354,7 @@ function applyAdventureConsequences(eventDefinition, reaction, outcome) {
   saveGame();
   if (typeof renderInventoryPanel === "function") renderInventoryPanel();
   playAdventureItemFeedback(itemFeedback);
-  return { messages: messages, itemNotes: itemNotes };
+  return { messages: messages, itemNotes: itemNotes, injuryRecords: injuryRecords, treatmentRecords: treatmentRecords };
 }
 
 function updateAdventureEventFlags(eventDefinition, reaction, outcome, storyContext, trip) {
@@ -3008,7 +3481,9 @@ function finishAdventureEventCycle() {
   adventurePrototypeState.busy = false;
   const progress = ensureAdventureProgress();
   updateAdventureRunHud();
-  if (progress.stamina.value <= 0) {
+  if (trip.forceEarlyReturnReason) {
+    scheduleAdventureStep(function() { finishAdventureTrip("injuryReturn", "伤势恶化，提前返回"); }, 1300);
+  } else if (progress.stamina.value <= 0) {
     scheduleAdventureStep(function() { finishAdventureTrip("staminaEmpty", "体力耗尽"); }, 1300);
   } else if (trip.events.length >= ADVENTURE_MAX_EVENTS_PER_TRIP) {
     scheduleAdventureStep(function() { finishAdventureTrip("routeComplete", "完成五个事件"); }, 1300);
@@ -3078,6 +3553,9 @@ function triggerNextAdventureEvent() {
     const staminaBefore = ensureAdventureProgress().stamina.value;
     const consequenceResult = applyAdventureConsequences(eventDefinition, reaction, outcome);
     const effectMessages = consequenceResult.messages;
+    if (consequenceResult.injuryRecords.length) {
+      outcome.text += " " + consequenceResult.injuryRecords.map(function(record) { return record.description + "。"; }).join(" ");
+    }
     const itemNotes = consequenceResult.itemNotes.concat(
       missingItemOpportunity ? [missingItemOpportunity.note] : [],
       carriedButUnusedNotes
@@ -3106,6 +3584,8 @@ function triggerNextAdventureEvent() {
       decisionSource: participation.decisionSource,
       participantObservations: participation.participantObservations,
       participationText: participation.participationText,
+      injuriesAdded: cloneAdventureData(consequenceResult.injuryRecords),
+      injuriesTreated: cloneAdventureData(consequenceResult.treatmentRecords),
       staminaBefore: staminaBefore,
       staminaAfter: ensureAdventureProgress().stamina.value
     };
@@ -3260,6 +3740,17 @@ function applyAdventureTripMemories(trip, progress) {
   progress.adventureMemories = sanitizeAdventureMemories(updatedMemories || memories);
 }
 
+function updateAdventureRecipeDiscoveryPity(trip, progress) {
+  if (!progress.recipeDiscoveryPity) progress.recipeDiscoveryPity = sanitizeAdventureRecipeDiscoveryPity();
+  (trip.eligibleRecipeIds || []).forEach(function(recipeId) {
+    if (isAdventureRecipeUnlockedForDisplay(recipeId) || (trip.unlockedRecipes || []).indexOf(recipeId) !== -1) {
+      progress.recipeDiscoveryPity[recipeId] = 0;
+    } else {
+      progress.recipeDiscoveryPity[recipeId] = clampAdventureValue((Number(progress.recipeDiscoveryPity[recipeId]) || 0) + 1, 0, 3);
+    }
+  });
+}
+
 function finishAdventureTrip(endReason, endLabel) {
   const trip = adventurePrototypeState.trip;
   if (!trip) return;
@@ -3282,6 +3773,7 @@ function finishAdventureTrip(endReason, endLabel) {
   progress.mapVisitCounts = sanitizeAdventureMapVisitCounts(progress.mapVisitCounts);
   const completedMapId = trip.mapId || getDefaultAdventureMapId();
   progress.mapVisitCounts[completedMapId] = Math.max(0, Math.floor(Number(progress.mapVisitCounts[completedMapId]) || 0)) + 1;
+  updateAdventureRecipeDiscoveryPity(trip, progress);
   refreshAdventureMapUnlocks(progress, trip);
   const highlight = chooseAdventureLogHighlight(trip.events);
   const log = {
@@ -3310,6 +3802,8 @@ function finishAdventureTrip(endReason, endLabel) {
     unlockedRecipes: (trip.unlockedRecipes || []).slice(),
     keyCluesFound: (trip.keyCluesFound || []).slice(),
     importantDiscoveries: cloneAdventureData(trip.importantDiscoveries || []),
+    injuries: trip.events.reduce(function(records, event) { return records.concat(event.injuriesAdded || []); }, []),
+    treatments: trip.events.reduce(function(records, event) { return records.concat(event.injuriesTreated || []); }, []),
     newHookClues: cloneAdventureData(trip.newHookClues || []),
     hookClueProgress: cloneAdventureData(trip.hookClueProgress || null),
     staminaStart: trip.staminaStart,
@@ -3319,6 +3813,7 @@ function finishAdventureTrip(endReason, endLabel) {
     highlightEventId: highlight ? highlight.eventId : ""
   };
   progress.lastLog = log;
+  progress.journeyLogs.push(cloneAdventureData(log));
   progress.recentAdventureHistory.push({
     mapId: trip.mapId || getDefaultAdventureMapId(),
     hookId: trip.adventureHook.id,
@@ -3368,15 +3863,27 @@ function logHasRouteMapDiscovery(log) {
 function progressHasRouteMapDiscovery() {
   const progress = ensureAdventureProgress();
   const routeMapId = typeof ADVENTURE_ROUTE_MAP_KEY_CLUE_ID === "string" ? ADVENTURE_ROUTE_MAP_KEY_CLUE_ID : "dampSurveyRouteMap";
-  return Array.isArray(progress.keyClues) && progress.keyClues.indexOf(routeMapId) !== -1;
+  return (Array.isArray(progress.keyClues) && progress.keyClues.indexOf(routeMapId) !== -1) ||
+    getAdventureStoryState(progress, ADVENTURE_ROUTE_MAP_STORY_ID).status === "archived";
 }
 
-function openAdventureRouteMapReveal(showMapAction) {
-  if (!adventureRouteMapLayer) return;
+function openAdventureKeyItem(keyItemId, options) {
+  const normalizedId = keyItemId === "dampSurveyRouteMap" ? "dampRouteMap" : keyItemId;
+  const progress = ensureAdventureProgress();
+  if (normalizedId !== "dampRouteMap" || !progressHasRouteMapDiscovery() || !adventureRouteMapLayer) return false;
+  const showMapAction = !options || options.showMapAction !== false;
   adventureRouteMapLayer.classList.remove("hidden");
   adventureRouteMapLayer.setAttribute("aria-hidden", "false");
   adventureRouteMapLayer.classList.toggle("can-open-map", Boolean(showMapAction));
   document.body.classList.add("adventure-route-map-open");
+  if (progress.revealedKeyItems.indexOf(normalizedId) === -1) progress.revealedKeyItems.push(normalizedId);
+  if (progress.pendingKeyItemReveal === normalizedId) progress.pendingKeyItemReveal = "";
+  saveGame();
+  return true;
+}
+
+function openAdventureRouteMapReveal(showMapAction) {
+  return openAdventureKeyItem("dampRouteMap", { showMapAction: showMapAction !== false });
 }
 
 function closeAdventureRouteMapReveal() {
@@ -3387,8 +3894,322 @@ function closeAdventureRouteMapReveal() {
   document.body.classList.remove("adventure-route-map-open");
 }
 
+function getAdventureStoryUnlockLabels(story) {
+  const labels = [];
+  (story.unlocks || []).forEach(function(unlock) {
+    if (unlock.type === "recipe") labels.push("菜谱：" + getAdventureRecipeName(unlock.recipeId));
+    if (unlock.type === "map") labels.push("地图：" + (getAdventureMapRegistry()[unlock.mapId] ? getAdventureMapRegistry()[unlock.mapId].name : unlock.mapId));
+    if (unlock.type === "keyItem") labels.push("关键物品：受潮的调查路线图");
+    if (unlock.type === "gear" && getGearItem(unlock.gearId)) labels.push("Gear：" + getGearItem(unlock.gearId).displayName);
+  });
+  if (story.reward && story.reward.type === "unlock") {
+    const location = getAdventureMapLocations(story.mapId)[story.reward.locationId];
+    if (location) labels.push("路线：" + location.name);
+  }
+  if (story.reward && story.reward.type === "item" && ADVENTURE_ITEM_CATALOG[story.reward.itemId]) {
+    labels.push("物品：" + ADVENTURE_ITEM_CATALOG[story.reward.itemId].name);
+  }
+  return labels;
+}
+
+function grantAdventureStoryGear(gearId) {
+  const item = getGearItem(gearId);
+  if (!item || !gameState || !Array.isArray(gameState.ownedGear)) return false;
+  const alreadyOwned = ownsGear(gearId);
+  addUniqueGear(gameState.ownedGear, gearId);
+  return !alreadyOwned && ownsGear(gearId);
+}
+
+function applyAdventureStoryArchiveUnlocks(progress, story) {
+  const labels = [];
+  const mockTrip = { mapId: story.mapId, unlocked: [], unlockedMaps: [] };
+  (story.unlocks || []).forEach(function(unlock) {
+    if (unlock.type === "recipe" && unlockAdventureCookingRecipe(unlock.recipeId)) {
+      labels.push("菜谱：" + getAdventureRecipeName(unlock.recipeId));
+    } else if (unlock.type === "map" && unlockAdventureMap(progress, mockTrip, unlock.mapId, [], [])) {
+      labels.push("地图：" + getAdventureMap(unlock.mapId).name);
+    } else if (unlock.type === "keyItem" && unlock.keyItemId === "dampRouteMap") {
+      const routeMapId = typeof ADVENTURE_ROUTE_MAP_KEY_CLUE_ID === "string" ? ADVENTURE_ROUTE_MAP_KEY_CLUE_ID : "dampSurveyRouteMap";
+      if (progress.keyClues.indexOf(routeMapId) === -1) progress.keyClues.push(routeMapId);
+      labels.push("关键物品：受潮的调查路线图");
+    } else if (unlock.type === "gear" && grantAdventureStoryGear(unlock.gearId)) {
+      labels.push("Gear：" + getGearItem(unlock.gearId).displayName);
+    }
+  });
+  const reward = story.reward;
+  if (reward && reward.type === "unlock") {
+    const notes = [];
+    if (unlockAdventureLocation(progress, mockTrip, reward.locationId, [], notes, story.mapId)) {
+      const location = getAdventureMapLocations(story.mapId)[reward.locationId];
+      labels.push("路线：" + (location ? location.name : reward.locationId));
+    }
+  } else if (reward && reward.type === "item" && ADVENTURE_ITEM_CATALOG[reward.itemId]) {
+    const rule = getAdventureItemRule(reward.itemId);
+    const before = Math.max(0, Number(progress.storage[reward.itemId]) || 0);
+    progress.storage[reward.itemId] = Math.min(rule.maxOwned, before + Math.max(1, Number(reward.quantity) || 1));
+    if (progress.storage[reward.itemId] > before) labels.push("物品：" + ADVENTURE_ITEM_CATALOG[reward.itemId].name);
+  } else if (reward && reward.type === "clue" && reward.clueId) {
+    if (progress.discoveredClues.indexOf(reward.clueId) === -1) progress.discoveredClues.push(reward.clueId);
+    labels.push("记录：" + (reward.label || reward.clueId));
+  }
+  return Array.from(new Set(labels));
+}
+
+function addRouteMapDiscoveryToLatestLog(progress) {
+  const discovery = { id: "dampSurveyRouteMap", title: "受潮的调查路线图", lines: getAdventureRouteMapSummaryLines() };
+  const append = function(log) {
+    if (!log) return;
+    if (!Array.isArray(log.importantDiscoveries)) log.importantDiscoveries = [];
+    if (!log.importantDiscoveries.some(function(entry) { return entry.id === discovery.id; })) log.importantDiscoveries.push(cloneAdventureData(discovery));
+    if (!Array.isArray(log.keyCluesFound)) log.keyCluesFound = [];
+    if (log.keyCluesFound.indexOf("dampSurveyRouteMap") === -1) log.keyCluesFound.push("dampSurveyRouteMap");
+    if (!Array.isArray(log.unlockedMaps)) log.unlockedMaps = [];
+    if (log.unlockedMaps.indexOf("fogRainforest") === -1) log.unlockedMaps.push("fogRainforest");
+  };
+  append(progress.lastLog);
+  if (progress.lastLog) {
+    const archivedLog = progress.journeyLogs.find(function(log) { return log.id === progress.lastLog.id; });
+    append(archivedLog);
+  }
+}
+
+function archiveAdventureStory(storyId, clueOrder) {
+  const progress = ensureAdventureProgress();
+  const story = getAdventureStoryDefinition(storyId);
+  const state = getAdventureStoryState(progress, storyId);
+  if (!story || state.status !== "ready") return false;
+  const correctOrder = getAdventureStoryCorrectOrder(story);
+  if (!isAdventureStoryOrderCorrect(story, clueOrder)) return false;
+  const unlockLabels = applyAdventureStoryArchiveUnlocks(progress, story);
+  progress.storyStates[storyId] = {
+    status: "archived",
+    completedAt: Date.now(),
+    clueOrder: correctOrder,
+    storyText: story.archiveStory,
+    unlockLabels: unlockLabels
+  };
+  const gearRewards = unlockLabels.filter(function(label) { return label.indexOf("Gear：") === 0; });
+  if (gearRewards.length) {
+    setStatus("获得 " + gearRewards.join("、") + "，已放入营地 Gear，可在 Build Mode 中摆放。");
+    showCamperThought(gearRewards.map(function(label) { return label.replace("Gear：", ""); }).join("、") + "已经带回营地了。");
+    if (typeof renderShopFromCatalog === "function") {
+      renderShopFromCatalog();
+      if (typeof setShopFilter === "function") setShopFilter(typeof activeShopFilter === "string" ? activeShopFilter : "all");
+    }
+  }
+  if (storyId === ADVENTURE_ROUTE_MAP_STORY_ID) {
+    addRouteMapDiscoveryToLatestLog(progress);
+    progress.pendingKeyItemReveal = "dampRouteMap";
+  }
+  saveGame();
+  renderMainAdventureStorage();
+  if (adventurePrototypeState.mode === "log" && progress.lastLog) renderAdventureLog(progress.lastLog);
+  if (adventurePrototypeState.mode === "journal") renderAdventureJournal();
+  if (adventurePrototypeState.mode === "center") renderAdventureCenter();
+  if (storyId === ADVENTURE_ROUTE_MAP_STORY_ID) {
+    window.setTimeout(function() { openAdventureKeyItem("dampRouteMap"); }, 0);
+  }
+  return true;
+}
+
+function getInitialAdventureStorySortOrder(story) {
+  const ids = getAdventureStoryCorrectOrder(story);
+  return ids.length > 1 ? ids.slice(1).concat(ids[0]) : ids;
+}
+
+function getAdventureStorySorterOrder(story) {
+  if (!story) return [];
+  return adventurePrototypeState.storySortSelected.length === story.clues.length
+    ? adventurePrototypeState.storySortSelected.slice()
+    : adventurePrototypeState.storySortOrder.slice();
+}
+
+function ensureAdventureStoryFirstCluePinned(story) {
+  const firstClueId = getAdventureStoryCorrectOrder(story)[0];
+  if (!firstClueId) return;
+  adventurePrototypeState.storySortPinnedClueId = firstClueId;
+  adventurePrototypeState.storySortOrder = [firstClueId].concat(adventurePrototypeState.storySortOrder.filter(function(clueId) {
+    return clueId !== firstClueId;
+  }));
+  if (adventurePrototypeState.storySortSelected[0] !== firstClueId) {
+    adventurePrototypeState.storySortSelected = [firstClueId];
+  }
+}
+
+function moveAdventureStoryClue(story, draggedId, targetId) {
+  if (!story || adventurePrototypeState.storySortSolved || !draggedId || !targetId || draggedId === targetId) return false;
+  if (draggedId === adventurePrototypeState.storySortPinnedClueId || targetId === adventurePrototypeState.storySortPinnedClueId) return false;
+  const from = adventurePrototypeState.storySortOrder.indexOf(draggedId);
+  const to = adventurePrototypeState.storySortOrder.indexOf(targetId);
+  if (from === -1 || to === -1) return false;
+  adventurePrototypeState.storySortOrder.splice(from, 1);
+  adventurePrototypeState.storySortOrder.splice(to, 0, draggedId);
+  adventurePrototypeState.storySortSelected = adventurePrototypeState.storySortPinnedClueId ? [adventurePrototypeState.storySortPinnedClueId] : [];
+  return true;
+}
+
+function renderAdventureClueSortSlots(story) {
+  if (!adventureClueSortSlots) return;
+  const selected = adventurePrototypeState.storySortSelected;
+  const displayOrder = selected.length ? selected : adventurePrototypeState.storySortOrder;
+  adventureClueSortSlots.innerHTML = "";
+  story.clues.forEach(function(clue, index) {
+    const slot = document.createElement("div");
+    const label = document.createElement("strong");
+    const assigned = document.createElement("span");
+    const assignedClue = story.clues.find(function(entry) { return entry.id === displayOrder[index]; });
+    slot.className = "adventure-clue-sort-slot";
+    slot.classList.toggle("is-empty", !assignedClue);
+    slot.classList.toggle("is-pinned", Boolean(assignedClue && assignedClue.id === adventurePrototypeState.storySortPinnedClueId));
+    label.textContent = story.positionLabels[index] || getAdventureStoryPositionLabel(story.sortingRule, index, story.clues.length);
+    assigned.textContent = assignedClue ? assignedClue.title : "待选择";
+    slot.appendChild(label);
+    slot.appendChild(assigned);
+    adventureClueSortSlots.appendChild(slot);
+  });
+}
+
+function renderAdventureClueSortFeedback(story) {
+  const hintLevel = Math.max(adventurePrototypeState.storySortAttempts, adventurePrototypeState.storySortHintLevel);
+  if (adventureClueSortHint) {
+    adventureClueSortHint.classList.toggle("hidden", hintLevel < 1 || adventurePrototypeState.storySortSolved);
+    adventureClueSortHint.textContent = hintLevel > 0 && !adventurePrototypeState.storySortSolved
+      ? "提示：" + getAdventureStoryProgressiveHint(story, hintLevel)
+      : "";
+  }
+  if (adventureClueSortCompletion) {
+    adventureClueSortCompletion.innerHTML = "";
+    adventureClueSortCompletion.classList.toggle("hidden", !adventurePrototypeState.storySortSolved);
+    if (adventurePrototypeState.storySortSolved) {
+      const title = document.createElement("strong");
+      const explanation = document.createElement("p");
+      title.textContent = "顺序为什么成立";
+      explanation.textContent = story.completionExplanation;
+      adventureClueSortCompletion.appendChild(title);
+      adventureClueSortCompletion.appendChild(explanation);
+    }
+  }
+  if (adventureClueSortHintButton) {
+    const maxHints = Math.max(3, story.failureHints.length);
+    adventureClueSortHintButton.disabled = adventurePrototypeState.storySortSolved || adventurePrototypeState.storySortHintLevel >= maxHints;
+    adventureClueSortHintButton.textContent = adventurePrototypeState.storySortHintLevel >= maxHints ? "提示已给出" : "获得一点提示";
+  }
+  if (adventureClueSortResetButton) adventureClueSortResetButton.disabled = adventurePrototypeState.storySortSolved;
+  if (adventureClueSortConfirmButton) adventureClueSortConfirmButton.textContent = adventurePrototypeState.storySortSolved ? "归档并领取" : "确认整理";
+}
+
+function renderAdventureClueSorter() {
+  const story = getAdventureStoryDefinition(adventurePrototypeState.activeStorySortId);
+  if (!story || !adventureClueSortList) return;
+  renderAdventureClueSortSlots(story);
+  adventureClueSortList.innerHTML = "";
+  adventurePrototypeState.storySortOrder.forEach(function(clueId) {
+    const clue = story.clues.find(function(entry) { return entry.id === clueId; });
+    if (!clue) return;
+    const card = document.createElement("button");
+    const number = document.createElement("span");
+    const copy = document.createElement("span");
+    const clueTitle = document.createElement("strong");
+    const clueText = document.createElement("span");
+    const relation = document.createElement("small");
+    const selectedIndex = adventurePrototypeState.storySortSelected.indexOf(clueId);
+    const isPinned = clueId === adventurePrototypeState.storySortPinnedClueId;
+    card.type = "button";
+    card.className = "adventure-clue-sort-card";
+    card.draggable = !adventurePrototypeState.storySortSolved && !isPinned;
+    card.disabled = adventurePrototypeState.storySortSolved;
+    card.dataset.clueId = clueId;
+    card.classList.toggle("is-numbered", selectedIndex !== -1);
+    card.classList.toggle("is-pinned", isPinned);
+    number.className = "adventure-clue-order-number";
+    number.textContent = selectedIndex === -1 ? "↕" : (ADVENTURE_STORY_ORDER_SYMBOLS[selectedIndex] || String(selectedIndex + 1));
+    number.title = isPinned ? "提示已固定此位置" : "按住拖动";
+    copy.className = "adventure-clue-sort-copy";
+    clueTitle.textContent = clue.title;
+    clueText.textContent = clue.text;
+    relation.textContent = "关系提示：" + clue.relationHint;
+    copy.appendChild(clueTitle);
+    copy.appendChild(clueText);
+    copy.appendChild(relation);
+    card.appendChild(number);
+    card.appendChild(copy);
+    card.addEventListener("click", function() {
+      if (adventurePrototypeState.storySortSolved || isPinned || adventurePrototypeState.storySortSuppressClick) {
+        adventurePrototypeState.storySortSuppressClick = false;
+        return;
+      }
+      const index = adventurePrototypeState.storySortSelected.indexOf(clueId);
+      if (index === -1) adventurePrototypeState.storySortSelected.push(clueId);
+      else adventurePrototypeState.storySortSelected.splice(index, 1);
+      renderAdventureClueSorter();
+    });
+    card.addEventListener("dragstart", function(event) {
+      adventurePrototypeState.draggedStoryClueId = clueId;
+      if (event.dataTransfer) event.dataTransfer.setData("text/plain", clueId);
+    });
+    card.addEventListener("dragend", function() { adventurePrototypeState.draggedStoryClueId = ""; });
+    card.addEventListener("dragover", function(event) { event.preventDefault(); });
+    card.addEventListener("drop", function(event) {
+      event.preventDefault();
+      const draggedId = adventurePrototypeState.draggedStoryClueId || (event.dataTransfer && event.dataTransfer.getData("text/plain"));
+      if (moveAdventureStoryClue(story, draggedId, clueId)) renderAdventureClueSorter();
+    });
+    number.addEventListener("pointerdown", function(event) {
+      if (adventurePrototypeState.storySortSolved || isPinned) return;
+      adventurePrototypeState.storySortPointerClueId = clueId;
+      adventurePrototypeState.storySortPointerStartX = event.clientX;
+      adventurePrototypeState.storySortPointerStartY = event.clientY;
+      adventurePrototypeState.storySortPointerMoved = false;
+    });
+    adventureClueSortList.appendChild(card);
+  });
+  renderAdventureClueSortFeedback(story);
+}
+
+function openAdventureClueSorter(storyId) {
+  const progress = ensureAdventureProgress();
+  const story = getAdventureStoryDefinition(storyId);
+  if (!story || getAdventureStoryState(progress, storyId).status !== "ready" || !adventureClueSortLayer) return false;
+  adventurePrototypeState.activeStorySortId = storyId;
+  adventurePrototypeState.storySortOrder = getInitialAdventureStorySortOrder(story);
+  adventurePrototypeState.storySortSelected = [];
+  adventurePrototypeState.storySortAttempts = 0;
+  adventurePrototypeState.storySortHintLevel = 0;
+  adventurePrototypeState.storySortPinnedClueId = "";
+  adventurePrototypeState.storySortSolved = false;
+  if (adventureClueSortTitle) adventureClueSortTitle.textContent = "整理线索 · " + story.title;
+  if (adventureClueSortRule) adventureClueSortRule.textContent = "排序规则：" + story.sortingRule;
+  if (adventureClueSortInstruction) adventureClueSortInstruction.textContent = story.instruction;
+  if (adventureClueSortMessage) adventureClueSortMessage.textContent = "";
+  renderAdventureClueSorter();
+  adventureClueSortLayer.classList.remove("hidden");
+  adventureClueSortLayer.setAttribute("aria-hidden", "false");
+  document.body.classList.add("adventure-clue-sort-open");
+  return true;
+}
+
+function closeAdventureClueSorter() {
+  if (!adventureClueSortLayer) return;
+  adventureClueSortLayer.classList.add("hidden");
+  adventureClueSortLayer.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("adventure-clue-sort-open");
+  adventurePrototypeState.activeStorySortId = "";
+  adventurePrototypeState.storySortOrder = [];
+  adventurePrototypeState.storySortSelected = [];
+  adventurePrototypeState.storySortAttempts = 0;
+  adventurePrototypeState.storySortHintLevel = 0;
+  adventurePrototypeState.storySortPinnedClueId = "";
+  adventurePrototypeState.storySortSolved = false;
+  adventurePrototypeState.storySortPointerClueId = "";
+  adventurePrototypeState.storySortSuppressClick = false;
+  adventurePrototypeState.draggedStoryClueId = "";
+}
+
 function renderAdventureLogProgressBlock(log, hook) {
   if (!adventureLogProgressBlock) return;
+  const progress = ensureAdventureProgress();
+  const hookStoryId = (log.mapId || getDefaultAdventureMapId()) + ":" + hook.id;
+  const hookStoryState = getAdventureStoryState(progress, hookStoryId);
   const clueProgress = log.hookClueProgress || { found: 0, total: 0, remaining: 0, complete: false, discovered: false };
   const hasNewClues = Array.isArray(log.newHookClues) && log.newHookClues.length > 0;
   adventureLogProgressBlock.innerHTML = "";
@@ -3425,15 +4246,43 @@ function renderAdventureLogProgressBlock(log, hook) {
   const remain = document.createElement("p");
   progressLine.className = "adventure-hook-progress-summary";
   if (clueProgress.total && clueProgress.discovered) {
-    title.textContent = hook.title + (clueProgress.complete ? " · 已查清" : "") + "：" + clueProgress.found + " / " + clueProgress.total;
-    remain.textContent = clueProgress.complete ? "线索已经收齐。" : "还剩 " + clueProgress.remaining + " 条";
+    title.textContent = hook.title + (hookStoryState.status === "archived" ? " · 已查清" : "") + "：" + clueProgress.found + " / " + clueProgress.total;
+    remain.textContent = hookStoryState.status === "archived"
+      ? "故事已整理归档。"
+      : (clueProgress.complete ? "线索已收齐，等待整理。" : "还剩 " + clueProgress.remaining + " 条");
   } else {
     title.textContent = hook.title + "：尚未发现";
     remain.textContent = "当前还没有确认的新线索。";
   }
   progressLine.appendChild(title);
   progressLine.appendChild(remain);
+  if (hookStoryState.status === "ready") {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "adventure-mini-control";
+    button.textContent = "整理线索";
+    button.addEventListener("click", function() { openAdventureClueSorter(hookStoryId); });
+    progressLine.appendChild(button);
+  }
   adventureLogProgressBlock.appendChild(progressLine);
+  const routeMapStoryState = getAdventureStoryState(progress, ADVENTURE_ROUTE_MAP_STORY_ID);
+  if (routeMapStoryState.status === "ready") {
+    const routeMapSection = document.createElement("section");
+    const routeMapTitle = document.createElement("strong");
+    const routeMapBody = document.createElement("p");
+    const routeMapButton = document.createElement("button");
+    routeMapSection.className = "adventure-important-discovery";
+    routeMapTitle.textContent = "受潮的调查路线图：3 / 3";
+    routeMapBody.textContent = "三条关键记录已经收齐，等待整理。";
+    routeMapButton.type = "button";
+    routeMapButton.className = "adventure-mini-control";
+    routeMapButton.textContent = "整理线索";
+    routeMapButton.addEventListener("click", function() { openAdventureClueSorter(ADVENTURE_ROUTE_MAP_STORY_ID); });
+    routeMapSection.appendChild(routeMapTitle);
+    routeMapSection.appendChild(routeMapBody);
+    routeMapSection.appendChild(routeMapButton);
+    adventureLogProgressBlock.appendChild(routeMapSection);
+  }
 }
 
 function renderAdventureLog(logSource) {
@@ -3613,6 +4462,9 @@ function startAdventureTrip() {
   progress.pendingLoot = {};
   const adventureHook = cloneAdventureData(ensureDraftAdventureHook(false));
   const snapshot = getAdventureProfileSnapshot();
+  const eligibleRecipeIds = getEligibleAdventureExplorationRecipes(map.id, route.id).filter(function(recipeId) {
+    return !isAdventureRecipeUnlockedForDisplay(recipeId);
+  });
   adventurePrototypeState.trip = {
     startedAt: Date.now(),
     mapId: map.id,
@@ -3638,11 +4490,17 @@ function startAdventureTrip() {
     unlocked: [],
     unlockedMaps: [],
     unlockedRecipes: [],
+    eligibleRecipeIds: eligibleRecipeIds,
+    recipeGuarantees: eligibleRecipeIds.filter(function(recipeId) {
+      return Math.max(0, Number(progress.recipeDiscoveryPity[recipeId]) || 0) >= 3;
+    }),
     keyCluesFound: [],
     importantDiscoveries: [],
     newHookClues: [],
     hookClueProgress: null,
     injuries: {},
+    injuryStrain: 0,
+    forceEarlyReturnReason: "",
     statuses: [],
     events: []
   };
@@ -3674,6 +4532,212 @@ function startAdventureTrip() {
     playAdventureAction("idle");
     triggerNextAdventureEvent();
   }, 2200);
+}
+
+function formatAdventureArchiveTime(timestamp) {
+  if (!Number(timestamp)) return "旧存档记录";
+  try {
+    return new Date(timestamp).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  } catch (error) {
+    return "已归档";
+  }
+}
+
+function renderAdventureCenter() {
+  const progress = ensureAdventureProgress();
+  const storageCount = getMainAdventureStorageEntries().reduce(function(total, entry) { return total + entry.count; }, 0);
+  if (adventureCenterStamina) adventureCenterStamina.textContent = progress.stamina.value + " / " + ADVENTURE_STAMINA_MAX;
+  if (adventureCenterStorageCount) adventureCenterStorageCount.textContent = storageCount + " 件";
+  if (adventureCenterJourneyCount) adventureCenterJourneyCount.textContent = progress.journeyLogs.length + " 篇";
+  if (!adventureCenterPendingStories) return;
+  adventureCenterPendingStories.innerHTML = "";
+  const readyStories = getAdventureStoryDefinitions().filter(function(story) {
+    return getAdventureStoryState(progress, story.id).status === "ready";
+  });
+  if (!readyStories.length) return;
+  const heading = document.createElement("strong");
+  heading.textContent = "线索已收齐，等待整理";
+  adventureCenterPendingStories.appendChild(heading);
+  readyStories.forEach(function(story) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "adventure-center-story-button";
+    button.textContent = story.title + " · 整理线索";
+    button.addEventListener("click", function() { openAdventureClueSorter(story.id); });
+    adventureCenterPendingStories.appendChild(button);
+  });
+}
+
+function createAdventureJourneyCard(log) {
+  const map = getAdventureMap(log.mapId);
+  const route = getAdventureMapRoutes(map.id)[log.routeId];
+  const hook = log.adventureHook || createFallbackAdventureHook(map.id, log.routeId);
+  const card = document.createElement("article");
+  const header = document.createElement("header");
+  const title = document.createElement("div");
+  const heading = document.createElement("strong");
+  const meta = document.createElement("span");
+  const date = document.createElement("time");
+  const story = document.createElement("p");
+  const ledger = document.createElement("div");
+  card.className = "adventure-journey-card";
+  heading.textContent = map.name + " · " + (route ? route.name : "沿途路线");
+  meta.textContent = hook.title + " · " + (log.events || []).length + " 个事件";
+  date.textContent = formatAdventureArchiveTime(log.createdAt);
+  title.appendChild(heading);
+  title.appendChild(meta);
+  header.appendChild(title);
+  header.appendChild(date);
+  story.textContent = [log.storyIntro].concat(log.storyBeats || [], [log.storyEnding]).filter(Boolean).join(" ");
+  ledger.className = "adventure-journey-ledger";
+  ledger.textContent = [
+    "获得：" + formatAdventureLedger(log.gained, "无"),
+    "原料：" + formatAdventureIngredientLedger(log.gainedIngredients, "无"),
+    "消耗：" + formatAdventureLedger(log.consumed, "无"),
+    "丢失：" + formatAdventureLedger(log.lost, "无"),
+    "菜谱：" + formatAdventureRecipeLedger(log.unlockedRecipes, "无")
+  ].join(" · ");
+  card.appendChild(header);
+  card.appendChild(story);
+  if (log.newHookClues && log.newHookClues.length) {
+    const clues = document.createElement("p");
+    clues.className = "adventure-journey-clues";
+    clues.textContent = "新线索：" + log.newHookClues.map(function(clue) { return clue.label; }).join("、");
+    card.appendChild(clues);
+  }
+  if ((log.injuries && log.injuries.length) || (log.treatments && log.treatments.length)) {
+    const injuryLine = document.createElement("p");
+    injuryLine.className = "adventure-journey-injuries";
+    injuryLine.textContent = [
+      log.injuries && log.injuries.length ? "受伤：" + log.injuries.map(function(record) { return record.label; }).join("、") : "",
+      log.treatments && log.treatments.length ? "治疗：" + log.treatments.map(function(record) { return record.text; }).join("、") : ""
+    ].filter(Boolean).join(" · ");
+    card.appendChild(injuryLine);
+  }
+  card.appendChild(ledger);
+  if (logHasRouteMapDiscovery(log)) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "adventure-mini-control";
+    button.textContent = "查看路线图";
+    button.addEventListener("click", function() { openAdventureKeyItem("dampRouteMap"); });
+    card.appendChild(button);
+  }
+  return card;
+}
+
+function createAdventureStoryArchiveCard(story, progress) {
+  const state = getAdventureStoryState(progress, story.id);
+  const foundIds = getAdventureStoryFoundClueIds(progress, story);
+  const card = document.createElement("article");
+  const header = document.createElement("header");
+  const title = document.createElement("strong");
+  const status = document.createElement("span");
+  const clueMeta = document.createElement("p");
+  const clueList = document.createElement("div");
+  const labels = { collecting: "线索收集中", ready: "线索已收齐，等待整理", archived: "故事已整理归档" };
+  card.className = "adventure-story-archive-card is-" + state.status;
+  title.textContent = story.title;
+  status.textContent = labels[state.status];
+  header.appendChild(title);
+  header.appendChild(status);
+  clueMeta.textContent = "线索 " + foundIds.length + " / " + story.clues.length;
+  clueList.className = "adventure-story-clue-list";
+  if (!foundIds.length) {
+    const empty = document.createElement("span");
+    empty.textContent = "尚未发现";
+    clueList.appendChild(empty);
+  } else {
+    story.clues.filter(function(clue) { return foundIds.indexOf(clue.id) !== -1; }).forEach(function(clue) {
+      const item = document.createElement("span");
+      item.textContent = clue.label;
+      clueList.appendChild(item);
+    });
+  }
+  card.appendChild(header);
+  card.appendChild(clueMeta);
+  card.appendChild(clueList);
+  if (state.status === "ready") {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "adventure-control adventure-control-primary";
+    button.textContent = "整理线索";
+    button.addEventListener("click", function() { openAdventureClueSorter(story.id); });
+    card.appendChild(button);
+  } else if (state.status === "archived") {
+    const fullStory = document.createElement("p");
+    const completed = document.createElement("small");
+    fullStory.className = "adventure-archived-story-text";
+    fullStory.textContent = state.storyText || story.archiveStory;
+    completed.textContent = "完成时间：" + formatAdventureArchiveTime(state.completedAt);
+    card.appendChild(fullStory);
+    card.appendChild(completed);
+    if (state.unlockLabels && state.unlockLabels.length) {
+      const unlocks = document.createElement("p");
+      unlocks.className = "adventure-story-unlocks";
+      unlocks.textContent = "归档奖励：" + state.unlockLabels.join("、");
+      card.appendChild(unlocks);
+    }
+    if (story.keyItemId === "dampRouteMap") {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "adventure-mini-control";
+      button.textContent = "查看路线图";
+      button.addEventListener("click", function() { openAdventureKeyItem("dampRouteMap"); });
+      card.appendChild(button);
+    }
+  }
+  return card;
+}
+
+function renderAdventureJournal() {
+  const progress = ensureAdventureProgress();
+  if (adventureJourneyTab) {
+    const active = adventurePrototypeState.journalTab === "journeys";
+    adventureJourneyTab.classList.toggle("is-active", active);
+    adventureJourneyTab.setAttribute("aria-selected", active ? "true" : "false");
+  }
+  if (adventureStoryArchiveTab) {
+    const active = adventurePrototypeState.journalTab === "stories";
+    adventureStoryArchiveTab.classList.toggle("is-active", active);
+    adventureStoryArchiveTab.setAttribute("aria-selected", active ? "true" : "false");
+  }
+  if (!adventureJournalContent) return;
+  adventureJournalContent.innerHTML = "";
+  if (adventurePrototypeState.journalTab === "stories") {
+    getAdventureStoryDefinitions().forEach(function(story) {
+      adventureJournalContent.appendChild(createAdventureStoryArchiveCard(story, progress));
+    });
+    return;
+  }
+  const logs = progress.journeyLogs.slice().reverse();
+  if (!logs.length) {
+    const empty = document.createElement("p");
+    empty.className = "adventure-journal-empty";
+    empty.textContent = "完成一次冒险后，旅程会保存在这里。";
+    adventureJournalContent.appendChild(empty);
+    return;
+  }
+  logs.forEach(function(log) { adventureJournalContent.appendChild(createAdventureJourneyCard(log)); });
+}
+
+function showAdventureCenter() {
+  clearAdventureTimers();
+  clearAdventureItemFeedback();
+  stopAdventureFrameAnimation();
+  adventurePrototypeState.busy = false;
+  setAdventureMode("center");
+  renderAdventureCenter();
+  const progress = ensureAdventureProgress();
+  if (progress.pendingKeyItemReveal) {
+    window.setTimeout(function() { openAdventureKeyItem(progress.pendingKeyItemReveal); }, 0);
+  }
+}
+
+function showAdventureJournal(tab) {
+  adventurePrototypeState.journalTab = tab === "stories" ? "stories" : "journeys";
+  setAdventureMode("journal");
+  renderAdventureJournal();
 }
 
 function showAdventurePreparation(message) {
@@ -3741,10 +4805,9 @@ function openAdventurePrototype() {
     adventurePrototypeState.draftAdventureHook = recovered.adventureHook;
   }
   adventurePrototypeState.recoveredTripSnapshot = null;
-  if (recovered && isAdventureMapUnlocked(recovered.mapId, ensureAdventureProgress())) {
-    showAdventurePreparation("上次中断的携带物与途中发现已安全放回对应仓库，出发契机也已保留。");
-  } else {
-    showAdventureMapSelection(recovered ? "上次中断的物品已安全归还，请重新选择地图。" : "今天想去哪里走走？");
+  showAdventureCenter();
+  if (recovered && adventureCenterPendingStories) {
+    adventureCenterPendingStories.insertAdjacentHTML("afterbegin", '<p class="adventure-center-recovery">上次中断的携带物与途中发现已安全放回对应仓库。</p>');
   }
 }
 
@@ -3824,15 +4887,50 @@ window.simulateLocalAdventurePartyTest = function(options) {
     source.partyOptions
   );
 };
+window.openAdventureKeyItem = openAdventureKeyItem;
+window.testAdventureInjury = function(injuryId) {
+  const trip = adventurePrototypeState.trip;
+  if (!trip || adventurePrototypeState.mode !== "running") {
+    return { ok: false, message: "请先开始一趟冒险，再运行伤势测试命令。" };
+  }
+  const injury = addAdventureInjury(trip, injuryId, "consoleTest");
+  if (!injury) return { ok: false, message: "未知或已存在的伤势类型。", validTypes: Object.keys(ADVENTURE_INJURY_CATALOG) };
+  updateAdventureStatus("伤势测试：" + injury.label, injury.description + "。", "当前影响：" + injury.impact, true);
+  updateAdventureRunHud();
+  saveGame();
+  return { ok: true, injury: cloneAdventureData(injury), activeInjuries: getActiveAdventureInjuryIds(trip) };
+};
+window.testAdventureFirstAid = function() {
+  const trip = adventurePrototypeState.trip;
+  if (!trip || adventurePrototypeState.mode !== "running") return { ok: false, message: "请先开始一趟冒险。" };
+  const messages = [];
+  const itemFeedback = [];
+  const itemNotes = [];
+  const treatments = [];
+  const treated = consumeAdventureFirstAidForInjuries(trip, messages, itemFeedback, itemNotes, treatments);
+  if (treated) {
+    playAdventureItemFeedback(itemFeedback);
+    updateAdventureStatus("急救处理", messages.join(" "), itemNotes.join(" "), true);
+    updateAdventureRunHud();
+    saveGame();
+  }
+  return { ok: treated, messages: messages, activeInjuries: getActiveAdventureInjuryIds(trip) };
+};
 
-if (adventureStorageButton) adventureStorageButton.addEventListener("click", openMainAdventureStorage);
+if (adventureCenterButton) adventureCenterButton.addEventListener("click", openAdventurePrototype);
 if (adventureStorageCloseButton) adventureStorageCloseButton.addEventListener("click", closeMainAdventureStorage);
 if (adventureStorageLayer) adventureStorageLayer.addEventListener("click", function(event) {
   if (event.target === adventureStorageLayer) closeMainAdventureStorage();
 });
-if (settingsAdventurePrototypeItem) settingsAdventurePrototypeItem.addEventListener("click", openAdventurePrototype);
+if (adventureCenterCloseButton) adventureCenterCloseButton.addEventListener("click", closeAdventurePrototypeLayer);
+if (adventureCenterDepartButton) adventureCenterDepartButton.addEventListener("click", function() { showAdventureMapSelection("今天想去哪里走走？"); });
+if (adventureCenterStorageButton) adventureCenterStorageButton.addEventListener("click", openMainAdventureStorage);
+if (adventureCenterJournalButton) adventureCenterJournalButton.addEventListener("click", function() { showAdventureJournal("journeys"); });
+if (adventureJournalCloseButton) adventureJournalCloseButton.addEventListener("click", showAdventureCenter);
+if (adventureJourneyTab) adventureJourneyTab.addEventListener("click", function() { showAdventureJournal("journeys"); });
+if (adventureStoryArchiveTab) adventureStoryArchiveTab.addEventListener("click", function() { showAdventureJournal("stories"); });
 if (adventureStartButton) adventureStartButton.addEventListener("click", startAdventureTrip);
-if (adventureMapCloseButton) adventureMapCloseButton.addEventListener("click", closeAdventurePrototypeLayer);
+if (adventureMapCloseButton) adventureMapCloseButton.addEventListener("click", showAdventureCenter);
 if (adventurePrepCloseButton) adventurePrepCloseButton.addEventListener("click", function() { showAdventureMapSelection("换个方向看看。 "); });
 if (adventureRecommendationResetButton) adventureRecommendationResetButton.addEventListener("click", function() {
   applyAdventureBackpackRecommendation(true);
@@ -3843,7 +4941,7 @@ if (adventurePrepResetButton) adventurePrepResetButton.addEventListener("click",
 if (adventureEndEarlyButton) adventureEndEarlyButton.addEventListener("click", function() { finishAdventureTrip("earlyReturn", "提前返回"); });
 if (adventureAgainButton) adventureAgainButton.addEventListener("click", function() { showAdventurePreparation("上一趟物品已经结算回 Storage。 "); });
 if (adventureLogMapButton) adventureLogMapButton.addEventListener("click", function() { showAdventureMapSelection("上一趟已经安全结算，可以选择下一处目的地。 "); });
-if (adventureLogExitButton) adventureLogExitButton.addEventListener("click", closeAdventurePrototypeLayer);
+if (adventureLogExitButton) adventureLogExitButton.addEventListener("click", showAdventureCenter);
 if (adventureLogResetButton) adventureLogResetButton.addEventListener("click", resetDeepMountainAdventureTestState);
 if (adventureLogRouteMapButton) adventureLogRouteMapButton.addEventListener("click", function() { openAdventureRouteMapReveal(false); });
 if (adventureRouteMapCloseButton) adventureRouteMapCloseButton.addEventListener("click", closeAdventureRouteMapReveal);
@@ -3854,11 +4952,82 @@ if (adventureRouteMapMapButton) adventureRouteMapMapButton.addEventListener("cli
 if (adventureRouteMapLayer) adventureRouteMapLayer.addEventListener("click", function(event) {
   if (event.target === adventureRouteMapLayer) closeAdventureRouteMapReveal();
 });
+if (adventureClueSortCloseButton) adventureClueSortCloseButton.addEventListener("click", closeAdventureClueSorter);
+if (adventureClueSortHintButton) adventureClueSortHintButton.addEventListener("click", function() {
+  const story = getAdventureStoryDefinition(adventurePrototypeState.activeStorySortId);
+  if (!story || adventurePrototypeState.storySortSolved) return;
+  adventurePrototypeState.storySortHintLevel += 1;
+  if (shouldPinAdventureStoryFirstClue(adventurePrototypeState.storySortAttempts, adventurePrototypeState.storySortHintLevel)) {
+    ensureAdventureStoryFirstCluePinned(story);
+  }
+  if (adventureClueSortMessage) adventureClueSortMessage.textContent = "只揭开一小部分关系，其余顺序仍要由你判断。";
+  renderAdventureClueSorter();
+});
+if (adventureClueSortResetButton) adventureClueSortResetButton.addEventListener("click", function() {
+  const story = getAdventureStoryDefinition(adventurePrototypeState.activeStorySortId);
+  if (!story || adventurePrototypeState.storySortSolved) return;
+  adventurePrototypeState.storySortOrder = getInitialAdventureStorySortOrder(story);
+  adventurePrototypeState.storySortSelected = adventurePrototypeState.storySortPinnedClueId ? [adventurePrototypeState.storySortPinnedClueId] : [];
+  if (adventurePrototypeState.storySortPinnedClueId) ensureAdventureStoryFirstCluePinned(story);
+  if (adventureClueSortMessage) adventureClueSortMessage.textContent = "";
+  renderAdventureClueSorter();
+});
+if (adventureClueSortConfirmButton) adventureClueSortConfirmButton.addEventListener("click", function() {
+  const story = getAdventureStoryDefinition(adventurePrototypeState.activeStorySortId);
+  if (!story) return;
+  const order = getAdventureStorySorterOrder(story);
+  if (adventurePrototypeState.storySortSolved && archiveAdventureStory(adventurePrototypeState.activeStorySortId, order)) {
+    closeAdventureClueSorter();
+    return;
+  }
+  if (isAdventureStoryOrderCorrect(story, order)) {
+    adventurePrototypeState.storySortSolved = true;
+    if (adventureClueSortMessage) adventureClueSortMessage.textContent = "顺序已经对上。读完整理结果后，再将故事归档。";
+    renderAdventureClueSorter();
+    return;
+  }
+  adventurePrototypeState.storySortAttempts += 1;
+  if (shouldPinAdventureStoryFirstClue(adventurePrototypeState.storySortAttempts, adventurePrototypeState.storySortHintLevel)) {
+    ensureAdventureStoryFirstCluePinned(story);
+  }
+  if (adventureClueSortMessage) adventureClueSortMessage.textContent = "有些线索似乎还没有对上。";
+  renderAdventureClueSorter();
+});
+if (adventureClueSortLayer) adventureClueSortLayer.addEventListener("click", function(event) {
+  if (event.target === adventureClueSortLayer) closeAdventureClueSorter();
+});
+document.addEventListener("pointermove", function(event) {
+  if (!adventurePrototypeState.storySortPointerClueId) return;
+  const distance = Math.abs(event.clientX - adventurePrototypeState.storySortPointerStartX) + Math.abs(event.clientY - adventurePrototypeState.storySortPointerStartY);
+  if (distance > 8) adventurePrototypeState.storySortPointerMoved = true;
+});
+document.addEventListener("pointerup", function(event) {
+  const clueId = adventurePrototypeState.storySortPointerClueId;
+  if (!clueId) return;
+  const story = getAdventureStoryDefinition(adventurePrototypeState.activeStorySortId);
+  const target = document.elementFromPoint ? document.elementFromPoint(event.clientX, event.clientY) : null;
+  const targetCard = target && target.closest ? target.closest("[data-clue-id]") : null;
+  if (story && adventurePrototypeState.storySortPointerMoved && targetCard) {
+    adventurePrototypeState.storySortSuppressClick = true;
+    if (moveAdventureStoryClue(story, clueId, targetCard.dataset.clueId)) renderAdventureClueSorter();
+    window.setTimeout(function() { adventurePrototypeState.storySortSuppressClick = false; }, 0);
+  }
+  adventurePrototypeState.storySortPointerClueId = "";
+  adventurePrototypeState.storySortPointerMoved = false;
+});
+document.addEventListener("pointercancel", function() {
+  adventurePrototypeState.storySortPointerClueId = "";
+  adventurePrototypeState.storySortPointerMoved = false;
+});
 
 document.addEventListener("keydown", function(event) {
   if (event.key !== "Escape") return;
   if (adventureRouteMapLayer && !adventureRouteMapLayer.classList.contains("hidden")) {
     closeAdventureRouteMapReveal();
+    return;
+  }
+  if (adventureClueSortLayer && !adventureClueSortLayer.classList.contains("hidden")) {
+    closeAdventureClueSorter();
     return;
   }
   if (adventureStorageLayer && !adventureStorageLayer.classList.contains("hidden")) {
@@ -3868,8 +5037,10 @@ document.addEventListener("keydown", function(event) {
   if (!adventurePrototypeState.active) return;
   if (adventurePrototypeState.mode === "running") {
     finishAdventureTrip("earlyReturn", "提前返回");
-  } else {
+  } else if (adventurePrototypeState.mode === "center") {
     closeAdventurePrototypeLayer();
+  } else {
+    showAdventureCenter();
   }
 });
 

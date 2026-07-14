@@ -204,10 +204,6 @@ img {
   text-align: left;
 }
 
-body.ui-hidden .scene-depth-control-layer {
-  display: none;
-}
-
 body:not(.build-mode) .scene-depth-control-layer {
   display: none;
 }
@@ -932,7 +928,7 @@ body.build-mode .campfire-action-target {
   }
 }
 
-body.ui-hidden .target-outline-image {
+body.ui-hidden:not(.build-mode) .target-outline-image {
   opacity: 0 !important;
 }
 
@@ -998,6 +994,14 @@ body.build-mode .queue-order-badge {
 
 body.night .lantern-glow {
   opacity: 0.85;
+}
+
+#gear-luminousPlantLamp .gear-layer-base {
+  transition: filter 320ms ease;
+}
+
+body.night #gear-luminousPlantLamp .gear-layer-base {
+  filter: drop-shadow(0 0 8px rgba(84, 234, 205, 0.72));
 }
 
 .campfire {
@@ -1333,12 +1337,6 @@ body.ui-hidden .floating-controls,
 body.ui-hidden .daily-camp-card,
 body.ui-hidden .cooler-full-hint,
 body.ui-hidden .toast-layer,
-body.ui-hidden .onboarding-layer,
-body.ui-hidden .shop-backdrop,
-body.ui-hidden .shop-drawer,
-body.ui-hidden .inventory-layer,
-body.ui-hidden .divination-layer,
-body.ui-hidden .settings-layer,
 body.ui-hidden .utility-controls {
   opacity: 0;
   pointer-events: none;
@@ -2493,6 +2491,17 @@ h2 {
   overflow-wrap: anywhere;
 }
 
+.inventory-cooking-button {
+  align-self: flex-start;
+  margin-top: 0.45rem;
+  padding: 0.42rem 0.7rem;
+  border: 1px solid rgba(255, 214, 126, 0.54);
+  border-radius: 6px;
+  color: #fff0c6;
+  background: rgba(71, 86, 48, 0.88);
+  font-weight: 900;
+}
+
 .inventory-sections {
   flex: 1 1 auto;
   min-height: 0;
@@ -3276,11 +3285,6 @@ h2 {
   place-items: center;
   font-size: 0.9rem;
   line-height: 1;
-}
-
-body.ui-hidden .sound-journal-layer {
-  opacity: 0;
-  pointer-events: none;
 }
 
 .sound-journal-layer {
@@ -6379,6 +6383,814 @@ body.divination-open .daily-camp-card {
   line-height: 1.12;
 }
 
+/* ---- Adventure center, story filing, cooking selection and injuries ---- */
+.adventure-prototype.is-center .adventure-scene,
+.adventure-prototype.is-journal .adventure-scene {
+  filter: brightness(0.42) saturate(0.82) blur(1px);
+  transform: scale(1.015);
+}
+
+.adventure-prototype.is-center .adventure-header,
+.adventure-prototype.is-center .adventure-running-ui,
+.adventure-prototype.is-journal .adventure-header,
+.adventure-prototype.is-journal .adventure-running-ui {
+  display: none;
+}
+
+.adventure-prototype.is-center .adventure-center-panel,
+.adventure-prototype.is-journal .adventure-journal-panel {
+  display: block;
+}
+
+.adventure-center-panel,
+.adventure-journal-panel {
+  background: rgba(9, 20, 14, 0.94);
+}
+
+.adventure-center-status {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.adventure-center-status article {
+  min-width: 0;
+  padding: 0.62rem;
+  border: 1px solid rgba(221, 205, 143, 0.28);
+  border-radius: 8px;
+  background: rgba(24, 43, 29, 0.88);
+}
+
+.adventure-center-status span,
+.adventure-center-status strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.adventure-center-status span {
+  color: #bfcbae;
+  font-size: 0.68rem;
+}
+
+.adventure-center-status strong {
+  margin-top: 0.18rem;
+  color: #fff0bd;
+  font-size: 0.95rem;
+}
+
+.adventure-center-actions {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.adventure-center-action {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.72rem;
+  border: 1px solid rgba(221, 205, 143, 0.32);
+  border-radius: 8px;
+  color: #f7ebc9;
+  background: rgba(21, 39, 26, 0.96);
+  text-align: left;
+}
+
+.adventure-center-action.is-primary {
+  border-color: rgba(244, 216, 131, 0.7);
+  background: rgba(48, 72, 39, 0.98);
+}
+
+.adventure-center-action-icon {
+  width: 2.4rem;
+  height: 2.4rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 230, 157, 0.35);
+  border-radius: 8px;
+  color: #ffe59c;
+  background: rgba(6, 17, 11, 0.48);
+  font-size: 1.15rem;
+}
+
+.adventure-center-action strong,
+.adventure-center-action small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.adventure-center-action strong {
+  font-size: 0.86rem;
+}
+
+.adventure-center-action small {
+  margin-top: 0.18rem;
+  color: #bdc8ae;
+  font-size: 0.66rem;
+  line-height: 1.35;
+}
+
+.adventure-center-pending {
+  display: grid;
+  gap: 0.38rem;
+  margin-top: 0.65rem;
+  padding: 0.6rem;
+  border-left: 3px solid #e4bf6d;
+  background: rgba(58, 53, 28, 0.58);
+}
+
+.adventure-center-pending:empty {
+  display: none;
+}
+
+.adventure-center-story-button,
+.adventure-center-recovery {
+  margin: 0;
+  padding: 0.48rem;
+  border: 1px solid rgba(240, 214, 141, 0.35);
+  border-radius: 6px;
+  color: #ffedba;
+  background: rgba(25, 33, 20, 0.78);
+  text-align: left;
+}
+
+.adventure-journal-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.32rem;
+  margin-bottom: 0.6rem;
+  padding: 0.25rem;
+  border: 1px solid rgba(220, 203, 142, 0.26);
+  border-radius: 8px;
+  background: rgba(7, 16, 10, 0.64);
+}
+
+.adventure-journal-tabs button {
+  min-width: 0;
+  padding: 0.5rem;
+  border: 0;
+  border-radius: 6px;
+  color: #bcc7ae;
+  background: transparent;
+  font-weight: 900;
+}
+
+.adventure-journal-tabs button.is-active {
+  color: #fff0bd;
+  background: rgba(62, 82, 47, 0.9);
+}
+
+.adventure-journal-content {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.adventure-journey-card,
+.adventure-story-archive-card {
+  min-width: 0;
+  display: grid;
+  gap: 0.42rem;
+  padding: 0.65rem;
+  border: 1px solid rgba(220, 205, 151, 0.26);
+  border-radius: 8px;
+  background: rgba(18, 35, 23, 0.94);
+}
+
+.adventure-journey-card header,
+.adventure-story-archive-card header {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.55rem;
+}
+
+.adventure-journey-card header div,
+.adventure-journey-card strong,
+.adventure-journey-card span,
+.adventure-story-archive-card strong,
+.adventure-story-archive-card span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.adventure-journey-card header span,
+.adventure-journey-card header time,
+.adventure-story-archive-card header span {
+  color: #b9c4aa;
+  font-size: 0.64rem;
+}
+
+.adventure-journey-card header strong,
+.adventure-journey-card header span {
+  display: block;
+}
+
+.adventure-journey-card p,
+.adventure-story-archive-card p,
+.adventure-story-archive-card small {
+  margin: 0;
+  color: #d7dec9;
+  font-size: 0.7rem;
+  line-height: 1.48;
+  overflow-wrap: anywhere;
+}
+
+.adventure-journey-ledger,
+.adventure-journey-clues,
+.adventure-journey-injuries,
+.adventure-story-unlocks {
+  padding: 0.42rem;
+  border-radius: 6px;
+  color: #e7d49f;
+  background: rgba(7, 18, 11, 0.62);
+  font-size: 0.65rem;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+}
+
+.adventure-story-clue-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.adventure-story-clue-list span {
+  padding: 0.28rem 0.38rem;
+  border: 1px solid rgba(219, 200, 137, 0.24);
+  border-radius: 5px;
+  color: #d9dfca;
+  background: rgba(7, 17, 11, 0.5);
+  font-size: 0.62rem;
+}
+
+.adventure-story-archive-card.is-ready {
+  border-color: rgba(240, 202, 104, 0.68);
+}
+
+.adventure-story-archive-card.is-archived {
+  border-color: rgba(137, 186, 131, 0.48);
+}
+
+.adventure-archived-story-text {
+  color: #f3e6c3 !important;
+}
+
+.adventure-hook-sort-button {
+  justify-self: start;
+}
+
+.adventure-run-injuries {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.38rem;
+}
+
+.adventure-run-injuries.hidden {
+  display: none;
+}
+
+.adventure-injury-tag {
+  max-width: 100%;
+  padding: 0.32rem 0.45rem;
+  border: 1px solid rgba(255, 159, 123, 0.62);
+  border-radius: 6px;
+  color: #ffe1d1;
+  background: rgba(99, 34, 25, 0.84);
+  font-size: 0.65rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.adventure-route-map-layer {
+  z-index: 560;
+}
+
+.adventure-storage-layer {
+  z-index: 550;
+}
+
+.adventure-clue-sort-layer,
+.cooking-recipe-layer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: calc(0.75rem + env(safe-area-inset-top, 0px)) calc(0.65rem + env(safe-area-inset-right, 0px)) calc(0.65rem + env(safe-area-inset-bottom, 0px)) calc(0.65rem + env(safe-area-inset-left, 0px));
+  background: rgba(3, 8, 5, 0.78);
+  backdrop-filter: blur(5px);
+}
+
+.adventure-clue-sort-layer {
+  position: fixed;
+  z-index: 570;
+}
+
+body.adventure-clue-sort-open {
+  overflow: hidden;
+}
+
+.cooking-recipe-layer {
+  z-index: 540;
+}
+
+.adventure-clue-sort-layer.hidden,
+.cooking-recipe-layer.hidden {
+  display: none;
+}
+
+.adventure-clue-sort-modal,
+.cooking-recipe-panel {
+  width: min(100%, 720px);
+  max-height: min(92%, 720px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0.72rem;
+  border: 1px solid rgba(236, 211, 145, 0.58);
+  border-radius: 8px;
+  color: #fff0c5;
+  background: rgba(20, 34, 23, 0.99);
+  box-shadow: 0 1rem 2.2rem rgba(0, 0, 0, 0.55);
+}
+
+.adventure-clue-sort-header,
+.cooking-recipe-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.adventure-clue-sort-header h2,
+.cooking-recipe-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.adventure-clue-sort-header .close-button {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+}
+
+.adventure-clue-sort-guide {
+  display: grid;
+  gap: 0.22rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.58rem;
+  border-left: 3px solid #e1bd64;
+  background: rgba(8, 18, 11, 0.72);
+}
+
+.adventure-clue-sort-guide strong {
+  color: #ffe29a;
+  font-size: 0.76rem;
+}
+
+.adventure-clue-sort-guide p {
+  margin: 0;
+  color: #d6dccb;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.adventure-clue-sort-intro,
+.adventure-clue-sort-message,
+.cooking-recipe-message {
+  margin: 0.48rem 0;
+  color: #c8d1bb;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.adventure-clue-sort-message {
+  min-height: 1.1rem;
+  color: #ffd19d;
+}
+
+.adventure-clue-sort-slots {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.34rem;
+  padding: 0 0 0.38rem;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+}
+
+.adventure-clue-sort-slot {
+  min-width: 7.8rem;
+  display: grid;
+  align-content: start;
+  gap: 0.16rem;
+  padding: 0.4rem 0.46rem;
+  border: 1px solid rgba(230, 207, 143, 0.36);
+  border-radius: 6px;
+  background: rgba(39, 57, 34, 0.66);
+  scroll-snap-align: start;
+}
+
+.adventure-clue-sort-slot strong {
+  color: #f5d785;
+  font-size: 0.63rem;
+}
+
+.adventure-clue-sort-slot span {
+  color: #eff0dc;
+  font-size: 0.62rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.adventure-clue-sort-slot.is-empty span {
+  color: #879484;
+}
+
+.adventure-clue-sort-slot.is-pinned {
+  border-color: rgba(134, 205, 154, 0.72);
+  background: rgba(31, 77, 48, 0.72);
+}
+
+.adventure-clue-sort-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 0.4rem;
+  padding-right: 0.12rem;
+  overflow-y: auto;
+}
+
+.adventure-clue-sort-card {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  align-items: start;
+  gap: 0.48rem;
+  padding: 0.58rem;
+  border: 1px solid rgba(220, 204, 149, 0.34);
+  border-radius: 7px;
+  color: #f4e8c8;
+  background: rgba(8, 18, 11, 0.68);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.adventure-clue-sort-card:disabled {
+  opacity: 1;
+}
+
+.adventure-clue-sort-card.is-numbered {
+  border-color: rgba(241, 205, 106, 0.78);
+  background: rgba(58, 58, 29, 0.78);
+}
+
+.adventure-clue-sort-card.is-pinned {
+  border-color: rgba(134, 205, 154, 0.8);
+  background: rgba(28, 67, 43, 0.82);
+}
+
+.adventure-clue-order-number {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: #ffe29a;
+  background: rgba(49, 68, 39, 0.92);
+  font-weight: 950;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.adventure-clue-sort-card.is-pinned .adventure-clue-order-number {
+  cursor: default;
+}
+
+.adventure-clue-sort-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.adventure-clue-sort-copy strong {
+  color: #fff0c5;
+  font-size: 0.73rem;
+  line-height: 1.35;
+}
+
+.adventure-clue-sort-copy > span {
+  color: #d8ddcf;
+  font-size: 0.67rem;
+  line-height: 1.45;
+}
+
+.adventure-clue-sort-copy small {
+  color: #aebc9f;
+  font-size: 0.61rem;
+  line-height: 1.35;
+}
+
+.adventure-clue-sort-hint {
+  margin: 0.12rem 0 0;
+  padding: 0.42rem 0.5rem;
+  border: 1px solid rgba(239, 191, 95, 0.38);
+  border-radius: 6px;
+  color: #ffe2a0;
+  background: rgba(74, 54, 19, 0.54);
+  font-size: 0.67rem;
+  line-height: 1.45;
+}
+
+.adventure-clue-sort-hint.hidden,
+.adventure-clue-sort-completion.hidden {
+  display: none;
+}
+
+.adventure-clue-sort-completion {
+  display: grid;
+  gap: 0.22rem;
+  margin-top: 0.22rem;
+  padding: 0.52rem 0.58rem;
+  border: 1px solid rgba(137, 211, 155, 0.62);
+  border-radius: 7px;
+  background: rgba(25, 67, 42, 0.78);
+}
+
+.adventure-clue-sort-completion strong {
+  color: #c9f1c6;
+  font-size: 0.74rem;
+}
+
+.adventure-clue-sort-completion p {
+  margin: 0;
+  color: #e6efdf;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.adventure-clue-sort-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+
+.cooking-recipe-layout {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(13rem, 0.8fr) minmax(17rem, 1.2fr);
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+  overflow: hidden;
+}
+
+.cooking-recipe-list {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 0.36rem;
+  overflow-y: auto;
+}
+
+.cooking-recipe-card {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.38rem;
+  border: 1px solid rgba(220, 201, 139, 0.3);
+  border-radius: 7px;
+  color: #f6e8c1;
+  background: rgba(8, 18, 11, 0.62);
+  text-align: left;
+}
+
+.cooking-recipe-card.is-selected {
+  border-color: rgba(242, 211, 126, 0.76);
+  background: rgba(54, 67, 36, 0.84);
+}
+
+.cooking-recipe-card.is-locked {
+  color: #aeb5a7;
+  filter: saturate(0.45);
+}
+
+.cooking-recipe-card img,
+.cooking-selected-heading img {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.cooking-recipe-card strong,
+.cooking-recipe-card small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.cooking-recipe-card small {
+  margin-top: 0.15rem;
+  color: #bdc6b4;
+  font-size: 0.6rem;
+  line-height: 1.3;
+}
+
+.cooking-recipe-detail {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.48rem;
+  overflow-y: auto;
+  padding: 0.58rem;
+  border: 1px solid rgba(220, 201, 139, 0.25);
+  border-radius: 8px;
+  background: rgba(7, 17, 10, 0.62);
+}
+
+.cooking-selected-heading {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cooking-selected-heading h3,
+.cooking-selected-heading p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.cooking-selected-heading h3 {
+  font-size: 0.9rem;
+}
+
+.cooking-selected-heading p {
+  margin-top: 0.16rem;
+  color: #bbc5b2;
+  font-size: 0.62rem;
+}
+
+.cooking-material-list {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.cooking-material-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.36rem;
+  border-radius: 5px;
+  background: rgba(30, 48, 29, 0.64);
+  font-size: 0.65rem;
+}
+
+.cooking-material-row.is-missing {
+  color: #ffd0bc;
+  background: rgba(87, 37, 27, 0.62);
+}
+
+.cooking-craftable-count {
+  margin: 0.36rem 0 0;
+  color: #f3d98d;
+  font-weight: 900;
+}
+
+.cooking-source-field {
+  display: grid;
+  gap: 0.25rem;
+  color: #d9dfce;
+  font-size: 0.66rem;
+}
+
+.cooking-source-field select {
+  width: 100%;
+  min-width: 0;
+  padding: 0.46rem;
+  border: 1px solid rgba(232, 207, 139, 0.4);
+  border-radius: 6px;
+  color: #fff0c6;
+  background: #17251a;
+}
+
+.cooking-quantity-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.68rem;
+}
+
+.cooking-stepper {
+  display: grid;
+  grid-template-columns: 2rem 2.2rem 2rem;
+  align-items: center;
+  text-align: center;
+}
+
+.cooking-stepper button {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(234, 211, 146, 0.4);
+  color: #ffe7a7;
+  background: rgba(41, 58, 34, 0.9);
+  font-size: 1rem;
+}
+
+@media (max-width: 560px) {
+  .adventure-center-status {
+    grid-template-columns: 1fr;
+  }
+
+  .adventure-journey-card header,
+  .adventure-story-archive-card header {
+    display: grid;
+  }
+
+  .cooking-recipe-panel,
+  .adventure-clue-sort-modal {
+    max-height: 94%;
+  }
+
+  .cooking-recipe-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(8rem, 0.72fr) minmax(15rem, 1.28fr);
+  }
+
+  .cooking-recipe-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cooking-recipe-card {
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+  }
+
+  .cooking-recipe-card img {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}
+
+@media (max-width: 390px) {
+  .adventure-center-panel,
+  .adventure-journal-panel {
+    padding-left: 0.52rem;
+    padding-right: 0.52rem;
+  }
+
+  .adventure-clue-sort-layer,
+  .cooking-recipe-layer {
+    padding-left: 0.42rem;
+    padding-right: 0.42rem;
+  }
+
+  .cooking-recipe-list {
+    grid-template-columns: 1fr;
+  }
+
+  .cooking-recipe-layout {
+    grid-template-rows: minmax(7rem, 0.62fr) minmax(16rem, 1.38fr);
+  }
+
+  .adventure-clue-sort-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #adventureClueSortHintButton {
+    grid-column: 1 / -1;
+  }
+
+  .adventure-clue-sort-modal {
+    padding: 0.56rem;
+  }
+
+  .adventure-clue-sort-guide {
+    padding: 0.42rem 0.48rem;
+  }
+
+  .adventure-clue-sort-slot {
+    min-width: 7.2rem;
+  }
+
+  .adventure-clue-sort-card {
+    grid-template-columns: 2.1rem minmax(0, 1fr);
+    padding: 0.5rem;
+  }
+}
+
 .adventure-route-map-notes {
   display: grid;
   gap: 0.28rem;
@@ -6478,14 +7290,9 @@ body.divination-open .daily-camp-card {
   text-align: center;
 }
 
-body.ui-hidden .adventure-storage-layer {
-  opacity: 0;
-  pointer-events: none;
-}
-
 .adventure-storage-layer {
   position: absolute;
-  z-index: 121;
+  z-index: 550;
   inset: 0;
   display: grid;
   place-items: center;
@@ -6527,6 +7334,11 @@ body.ui-hidden .adventure-storage-layer {
 }
 
 .adventure-storage-close-button {
+  display: grid;
+  flex: 0 0 auto;
+}
+
+.cooking-recipe-close-button {
   display: grid;
   flex: 0 0 auto;
 }

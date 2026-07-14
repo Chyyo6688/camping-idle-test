@@ -52,7 +52,7 @@ function solutionEventsFor(requirement) {
 
 check("背包容量严格为 5", data.capacity === 5, String(data.capacity));
 check("12 种深山旧物品与 6 种雨林物品均完整", Object.keys(data.catalog).length === 18 && data.deepItemPool.length === 12 && data.rainforestItemPool.length === 6, Object.keys(data.catalog).join(", "));
-check("冒险存档升级为 v9", data.saveVersion === 9, String(data.saveVersion));
+check("冒险存档升级为 v10", data.saveVersion === 10, String(data.saveVersion));
 check("启动装备迁移有独立版本", data.starterMigrationVersion === 1, String(data.starterMigrationVersion));
 check("关键路线图线索声明完整", ["rangerLeafRouteMark", "southSupplyCode", "oldForestryCoordinate", "dampSurveyRouteMap"].every((clueId) => data.keyClues[clueId]), Object.keys(data.keyClues).join(", "));
 const routeResources = JSON.stringify(data.deepRoutes) + JSON.stringify(data.rainforestRoutes);

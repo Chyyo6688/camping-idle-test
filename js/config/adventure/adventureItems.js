@@ -2,7 +2,7 @@
 
 const ADVENTURE_PROTOTYPE_TRAIT_RANGE = { min: 0, max: 100 };
 const ADVENTURE_PROTOTYPE_OUTCOME_ORDER = ["rareBad", "bad", "mixed", "good", "rareGood"];
-const ADVENTURE_SAVE_VERSION = 9;
+const ADVENTURE_SAVE_VERSION = 10;
 const ADVENTURE_STARTER_KIT_MIGRATION_VERSION = 1;
 const ADVENTURE_MAX_EVENTS_PER_TRIP = 5;
 const ADVENTURE_BACKPACK_CAPACITY = 5;
@@ -92,3 +92,38 @@ const ADVENTURE_KEY_CLUE_CATALOG = {
 
 const ADVENTURE_ROUTE_MAP_FRAGMENT_IDS = ["rangerLeafRouteMark", "southSupplyCode", "oldForestryCoordinate"];
 const ADVENTURE_ROUTE_MAP_KEY_CLUE_ID = "dampSurveyRouteMap";
+
+const ADVENTURE_ROUTE_MAP_STORY_CONFIG = {
+  sortingRule: "行动步骤",
+  instruction: "按调查路线形成的先后步骤整理线索。先找最初的方向标记，再接上补给通联，最后确认终点坐标。",
+  positionLabels: ["① 最初标记", "② 随后通联", "③ 最后确认"],
+  clues: [
+    {
+      id: "rangerLeafRouteMark",
+      title: "护林员记录中的叶片标记",
+      text: "最初的巡查页先在溪谷末端画下叶片标记，并注明“由此转向南方低地”。",
+      order: 1,
+      relationHint: "这是路线被标出的起点。"
+    },
+    {
+      id: "southSupplyCode",
+      title: "密封信上的南行补给编号",
+      text: "随后寄出的密封信引用了叶片标记，并把这段南行补给路线登记为 R-03。",
+      order: 2,
+      relationHint: "R-03 建立在叶片标记之后。"
+    },
+    {
+      id: "oldForestryCoordinate",
+      title: "瞭望塔记录中的旧林务坐标",
+      text: "最后一次通联由瞭望塔确认：R-03 的终点位于旧林务网格 S-17 / E-04。",
+      order: 3,
+      relationHint: "终点坐标是最后的确认记录。"
+    }
+  ],
+  failureHints: [
+    "注意哪条记录最早提到了叶片标记。",
+    "密封信中的补给编号，应出现在路线方向被标记之后。",
+    "瞭望塔记录写着“最后一次通联”，它负责确认终点。"
+  ],
+  completionExplanation: "护林员先标出了南方低地，随后用 R-03 运送调查站补给，最后由瞭望塔确认终点坐标。三份记录共同拼出了通往雾雨林的路线。"
+};

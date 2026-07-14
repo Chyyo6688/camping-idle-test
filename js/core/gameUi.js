@@ -70,10 +70,6 @@ function applyUiDisplayMode() {
   document.body.classList.toggle("queue-numbers-hidden", uiDisplayMode === 1);
   document.body.classList.toggle("ui-hidden", uiDisplayMode === 2);
 
-  if (uiDisplayMode === 2 && isShopOpen()) {
-    closeShop();
-  }
-
   if (uiDisplayLabel) {
     uiDisplayLabel.textContent = uiDisplayMode === 0 ? "UI" : uiDisplayMode === 1 ? "#" : "Show";
   }

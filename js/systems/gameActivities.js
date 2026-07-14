@@ -1,5 +1,25 @@
 // Activity progress, inventory, fishing, cooking, and inventory UI.
 
+const cookingRecipeLayer = document.getElementById("cookingRecipeLayer");
+const cookingRecipePanel = document.getElementById("cookingRecipePanel");
+const cookingRecipeCloseButton = document.getElementById("cookingRecipeCloseButton");
+const cookingRecipeList = document.getElementById("cookingRecipeList");
+const cookingRecipeSelected = document.getElementById("cookingRecipeSelected");
+const cookingSourceSelect = document.getElementById("cookingSourceSelect");
+const cookingQuantityMinus = document.getElementById("cookingQuantityMinus");
+const cookingQuantityPlus = document.getElementById("cookingQuantityPlus");
+const cookingQuantityValue = document.getElementById("cookingQuantityValue");
+const cookingRecipeMessage = document.getElementById("cookingRecipeMessage");
+const cookingRecipeMakeButton = document.getElementById("cookingRecipeMakeButton");
+const inventoryCookingButton = document.getElementById("inventoryCookingButton");
+
+const cookingRecipeUiState = {
+  recipeId: "",
+  sourceKey: "",
+  quantity: 1
+};
+let pendingAutonomousCookingPlan = null;
+
 function getActivityDefinition(activityId) {
   return activityId && activityDefinitions[activityId] ? activityDefinitions[activityId] : null;
 }
@@ -197,6 +217,11 @@ function sanitizeCookingProgress(progress) {
   const sourceProgress = progress && typeof progress === "object" && !Array.isArray(progress) ? progress : {};
   const unlockedRecipes = Array.from(new Set((Array.isArray(sourceProgress.unlockedRecipes) ? sourceProgress.unlockedRecipes : [])
     .filter(function(recipeId) { return Boolean(cookingRecipeCatalog[recipeId]); })));
+  const manuallyCookedRecipes = Array.from(new Set((Array.isArray(sourceProgress.manuallyCookedRecipes) ? sourceProgress.manuallyCookedRecipes : [])
+    .filter(function(recipeId) { return Boolean(cookingRecipeCatalog[recipeId]); })));
+  const recentAutoCookedRecipes = (Array.isArray(sourceProgress.recentAutoCookedRecipes) ? sourceProgress.recentAutoCookedRecipes : [])
+    .filter(function(recipeId) { return Boolean(cookingRecipeCatalog[recipeId]); })
+    .slice(0, 6);
 
   Object.keys(cookingRecipeCatalog).forEach(function(recipeId) {
     if (cookingRecipeCatalog[recipeId].defaultUnlocked && unlockedRecipes.indexOf(recipeId) === -1) {
@@ -204,11 +229,18 @@ function sanitizeCookingProgress(progress) {
     }
   });
 
+  if (!Array.isArray(sourceProgress.manuallyCookedRecipes) && Math.max(0, Math.floor(Number(sourceProgress.cooked) || 0)) > 0) {
+    const legacyRecipeId = getDefaultCookingRecipeId();
+    if (manuallyCookedRecipes.indexOf(legacyRecipeId) === -1) manuallyCookedRecipes.push(legacyRecipeId);
+  }
+
   return {
     cooked: Math.max(0, Math.floor(Number(sourceProgress.cooked) || 0)),
     autoCookDate: typeof sourceProgress.autoCookDate === "string" ? sourceProgress.autoCookDate : "",
     autoCookedToday: Math.max(0, Math.floor(Number(sourceProgress.autoCookedToday) || 0)),
-    unlockedRecipes: unlockedRecipes
+    unlockedRecipes: unlockedRecipes,
+    manuallyCookedRecipes: manuallyCookedRecipes,
+    recentAutoCookedRecipes: recentAutoCookedRecipes
   };
 }
 
@@ -458,6 +490,243 @@ function chooseCookableRecipeForFish(state) {
     })[0] || getRecipeDefinition(getDefaultCookingRecipeId());
 }
 
+function getRecipeFishCount(recipe) {
+  return Math.max(0, Math.floor(Number(recipe && recipe.fishCount) || 0));
+}
+
+function getCookingSourceOptions(recipe, state) {
+  const options = [];
+  const fishCount = getRecipeFishCount(recipe);
+  if (fishCount > 0) {
+    Object.keys(fishCatalog).forEach(function(fishId) {
+      const count = getInventoryItemCount("fish", fishId, state);
+      if (count > 0) {
+        options.push({
+          key: "fish:" + fishId,
+          type: "fish",
+          id: fishId,
+          name: fishCatalog[fishId].displayName,
+          count: count,
+          quantityPerMeal: fishCount
+        });
+      }
+    });
+  }
+  const substitute = recipe && recipe.fishSubstitute;
+  if (substitute && ingredientCatalog[substitute.ingredientId]) {
+    options.push({
+      key: "ingredient:" + substitute.ingredientId,
+      type: "ingredients",
+      id: substitute.ingredientId,
+      name: ingredientCatalog[substitute.ingredientId].displayName + "（替代鱼类）",
+      count: getInventoryItemCount("ingredients", substitute.ingredientId, state),
+      quantityPerMeal: Math.max(1, Math.floor(Number(substitute.quantity) || 1))
+    });
+  }
+  return options;
+}
+
+function getCookingSourceOption(recipe, sourceKey, state) {
+  return getCookingSourceOptions(recipe, state).find(function(option) {
+    return option.key === sourceKey;
+  }) || null;
+}
+
+function getRecipeIngredientRequirement(recipe, ingredientId, sourceOption) {
+  const base = Math.max(0, Math.floor(Number(recipe && recipe.ingredientCosts && recipe.ingredientCosts[ingredientId]) || 0));
+  const substitute = sourceOption && sourceOption.type === "ingredients" && sourceOption.id === ingredientId
+    ? sourceOption.quantityPerMeal
+    : 0;
+  return base + substitute;
+}
+
+function calculateRecipeCraftableQuantity(recipe, sourceKey, state) {
+  if (!recipe || !isCookingRecipeUnlocked(recipe.id, state)) return 0;
+  const sourceOption = getCookingSourceOption(recipe, sourceKey, state);
+  if (getRecipeFishCount(recipe) > 0 && !sourceOption) return 0;
+  let maxQuantity = sourceOption
+    ? Math.floor(sourceOption.count / Math.max(1, sourceOption.quantityPerMeal))
+    : Infinity;
+  const ingredientIds = Object.keys(recipe.ingredientCosts || {});
+  if (sourceOption && sourceOption.type === "ingredients" && ingredientIds.indexOf(sourceOption.id) === -1) {
+    ingredientIds.push(sourceOption.id);
+  }
+  ingredientIds.forEach(function(ingredientId) {
+    const requirement = getRecipeIngredientRequirement(recipe, ingredientId, sourceOption);
+    if (requirement > 0) {
+      maxQuantity = Math.min(maxQuantity, Math.floor(getInventoryItemCount("ingredients", ingredientId, state) / requirement));
+    }
+  });
+  return Number.isFinite(maxQuantity) ? Math.max(0, maxQuantity) : 0;
+}
+
+function getRecipeMissingMaterials(recipe, sourceKey, quantity, state) {
+  const amount = Math.max(1, Math.floor(Number(quantity) || 1));
+  const sourceOption = getCookingSourceOption(recipe, sourceKey, state);
+  const missing = [];
+  if (getRecipeFishCount(recipe) > 0 && !sourceOption) {
+    missing.push("鱼类或可替代原料");
+  }
+  const ingredientIds = Object.keys(recipe && recipe.ingredientCosts || {});
+  if (sourceOption && sourceOption.type === "ingredients" && ingredientIds.indexOf(sourceOption.id) === -1) ingredientIds.push(sourceOption.id);
+  ingredientIds.forEach(function(ingredientId) {
+    const required = getRecipeIngredientRequirement(recipe, ingredientId, sourceOption) * amount;
+    const owned = getInventoryItemCount("ingredients", ingredientId, state);
+    if (required > owned) {
+      missing.push((ingredientCatalog[ingredientId] ? ingredientCatalog[ingredientId].displayName : ingredientId) + " " + (required - owned));
+    }
+  });
+  if (sourceOption && sourceOption.type === "fish") {
+    const requiredFish = sourceOption.quantityPerMeal * amount;
+    if (sourceOption.count < requiredFish) missing.push(sourceOption.name + " " + (requiredFish - sourceOption.count));
+  }
+  return missing;
+}
+
+function getAutonomousCookingIngredientIds(recipe, sourceOption) {
+  const ingredientIds = Object.keys(recipe && recipe.ingredientCosts || {});
+  if (sourceOption && sourceOption.type === "ingredients" && ingredientIds.indexOf(sourceOption.id) === -1) ingredientIds.push(sourceOption.id);
+  return ingredientIds;
+}
+
+function isAutonomousCookingSourceSafe(recipe, sourceOption, state) {
+  if (!recipe || !sourceOption || calculateRecipeCraftableQuantity(recipe, sourceOption.key, state) < 1) return false;
+  return getAutonomousCookingIngredientIds(recipe, sourceOption).every(function(ingredientId) {
+    const definition = ingredientCatalog[ingredientId];
+    const required = getRecipeIngredientRequirement(recipe, ingredientId, sourceOption);
+    if (!definition || required <= 0 || !definition.preserveLastForAuto) return true;
+    return getInventoryItemCount("ingredients", ingredientId, state) - required >= 1;
+  });
+}
+
+function getAutonomousCookingSource(recipe, state) {
+  return getCookingSourceOptions(recipe, state).filter(function(sourceOption) {
+    return isAutonomousCookingSourceSafe(recipe, sourceOption, state);
+  }).sort(function(left, right) {
+    if (left.type !== right.type) return left.type === "fish" ? -1 : 1;
+    return right.count - left.count;
+  })[0] || null;
+}
+
+function getAutonomousCookingRecipeWeight(recipe, progress) {
+  const recentIndex = progress.recentAutoCookedRecipes.indexOf(recipe.id);
+  const recentFactor = recentIndex === 0 ? 0.18 : (recentIndex === 1 ? 0.45 : (recentIndex > 1 ? 0.72 : 1));
+  return Math.max(1, Number(recipe.priority) || 1) * recentFactor;
+}
+
+function chooseAutonomousCookingPlan(state) {
+  const campState = state || gameState;
+  const progress = getCookingProgress(campState);
+  if (!canAutoCookToday(campState)) return null;
+  const learnedPlans = progress.manuallyCookedRecipes.filter(function(recipeId) {
+    return isCookingRecipeUnlocked(recipeId, campState);
+  }).map(function(recipeId) {
+    const recipe = getRecipeDefinition(recipeId);
+    const sourceOption = getAutonomousCookingSource(recipe, campState);
+    return recipe && sourceOption ? { recipe: recipe, sourceOption: sourceOption } : null;
+  }).filter(Boolean);
+  let plans = learnedPlans;
+  if (!plans.length) {
+    const fallback = getRecipeDefinition(getDefaultCookingRecipeId());
+    const fallbackSource = getAutonomousCookingSource(fallback, campState);
+    plans = fallback && fallbackSource ? [{ recipe: fallback, sourceOption: fallbackSource }] : [];
+  }
+  if (!plans.length) return null;
+  const totalWeight = plans.reduce(function(total, plan) {
+    return total + getAutonomousCookingRecipeWeight(plan.recipe, progress);
+  }, 0);
+  let roll = Math.random() * totalWeight;
+  const selected = plans.find(function(plan) {
+    roll -= getAutonomousCookingRecipeWeight(plan.recipe, progress);
+    return roll <= 0;
+  }) || plans[plans.length - 1];
+  return { recipeId: selected.recipe.id, sourceKey: selected.sourceOption.key };
+}
+
+function canAutonomouslyCook(state) {
+  return Boolean(chooseAutonomousCookingPlan(state));
+}
+
+function beginAutonomousCooking(plan) {
+  const recipe = plan && getRecipeDefinition(plan.recipeId);
+  if (!recipe) return false;
+  pendingAutonomousCookingPlan = { recipeId: plan.recipeId, sourceKey: plan.sourceKey };
+  showCamperThought("今天做点" + recipe.displayName + "吧。");
+  return true;
+}
+
+function cancelAutonomousCooking() {
+  pendingAutonomousCookingPlan = null;
+}
+
+function recordManuallyCookedRecipe(recipeId, state) {
+  const progress = getCookingProgress(state);
+  if (progress.manuallyCookedRecipes.indexOf(recipeId) !== -1) return false;
+  progress.manuallyCookedRecipes.push(recipeId);
+  return true;
+}
+
+function recordRecentAutonomousRecipe(recipeId, state) {
+  const progress = getCookingProgress(state);
+  progress.recentAutoCookedRecipes = [recipeId].concat(progress.recentAutoCookedRecipes.filter(function(id) {
+    return id !== recipeId;
+  })).slice(0, 6);
+}
+
+function cookRecipeFromInventory(recipeId, sourceKey, quantity, options) {
+  const recipe = getRecipeDefinition(recipeId);
+  const amount = Math.max(1, Math.floor(Number(quantity) || 1));
+  const actionOptions = options || {};
+  const state = actionOptions.state || gameState;
+  const isAutonomous = actionOptions.source === "auto";
+  if (!recipe || !isCookingRecipeUnlocked(recipeId, state)) return false;
+  if (!actionOptions.skipStationCheck && !hasCookingStationAvailable(state)) {
+    if (!actionOptions.silentFailure) setStatus("需要炉具或 camp kitchen 才能做饭。");
+    return false;
+  }
+  const sourceOption = getCookingSourceOption(recipe, sourceKey, state);
+  if (isAutonomous && (!canAutoCookToday(state) || !isAutonomousCookingSourceSafe(recipe, sourceOption, state))) return false;
+  const missing = getRecipeMissingMaterials(recipe, sourceKey, amount, state);
+  if (missing.length || calculateRecipeCraftableQuantity(recipe, sourceKey, state) < amount) {
+    if (!actionOptions.silentFailure && cookingRecipeMessage) cookingRecipeMessage.textContent = "缺少：" + (missing.join("、") || "可用材料");
+    return false;
+  }
+  if (sourceOption.type === "fish") {
+    removeInventoryItem("fish", sourceOption.id, sourceOption.quantityPerMeal * amount, state);
+  }
+  const ingredientIds = Object.keys(recipe.ingredientCosts || {});
+  if (sourceOption.type === "ingredients" && ingredientIds.indexOf(sourceOption.id) === -1) ingredientIds.push(sourceOption.id);
+  ingredientIds.forEach(function(ingredientId) {
+    removeInventoryItem("ingredients", ingredientId, getRecipeIngredientRequirement(recipe, ingredientId, sourceOption) * amount, state);
+  });
+  addInventoryItem("meals", recipe.mealId, amount, state);
+  getCookingProgress(state).cooked += amount;
+  if (isAutonomous) {
+    recordAutoCookingCompletion(state);
+    recordRecentAutonomousRecipe(recipeId, state);
+    showCamperThought(recipe.displayName + "做好了。");
+    setStatus(recipe.displayName + "做好了，材料已从库存扣除。");
+  } else {
+    const learnedNow = recordManuallyCookedRecipe(recipeId, state);
+    const sourceName = sourceOption.name.replace("（替代鱼类）", "");
+    showCamperThought(learnedNow ? "Camper 记住了这道菜，以后可能会自己做。" : "把" + sourceName + "做成了" + recipe.displayName + "。");
+    setStatus("做出" + recipe.displayName + " ×" + amount + "，材料已从库存扣除。" + (learnedNow ? " Camper 已记住这道菜。" : ""));
+  }
+  updateScreen();
+  saveGame();
+  return true;
+}
+
+function completeAutonomousCooking() {
+  const plan = pendingAutonomousCookingPlan;
+  pendingAutonomousCookingPlan = null;
+  if (!plan) return false;
+  return cookRecipeFromInventory(plan.recipeId, plan.sourceKey, 1, {
+    source: "auto",
+    silentFailure: true
+  });
+}
+
 function calculateCookingComfortBonus(state) {
   return Math.min(cookingComfortMealCap, getInventoryTotal("meals", state));
 }
@@ -614,64 +883,20 @@ function getCookingSuccessStatus(recipe, fish, source) {
 
 function cookFishFromInventory(fishId, options) {
   const actionOptions = options || {};
-  const source = actionOptions.source || "manual";
-  const fish = getFishDefinition(fishId);
-
-  if (source === "auto" && !canAutoCookToday()) {
-    setStatus(getAutoCookingLimitMessage());
-    showCamperThought("今天先不再开火了。");
-    saveGame();
-    return false;
+  if (actionOptions.recipeId) {
+    return cookRecipeFromInventory(actionOptions.recipeId, "fish:" + fishId, actionOptions.quantity || 1, actionOptions);
   }
-
-  if (!hasCookingStationAvailable()) {
-    setStatus("需要炉具或 camp kitchen 才能做饭。");
-    showCamperThought("还没有能做饭的地方。");
-    saveGame();
-    return false;
-  }
-
-  const recipe = chooseCookableRecipeForFish();
-
-  if (!fish || !recipe || !removeInventoryItem("fish", fishId, 1)) {
-    const message = getNoFoodCookingMessage();
-    setStatus(message);
-    showCamperThought("没有可用食材。");
-    saveGame();
-    return false;
-  }
-
-  consumeRecipeIngredients(recipe);
-  addInventoryItem("meals", recipe.mealId, 1);
-  getCookingProgress().cooked += 1;
-
-  if (source === "auto") {
-    recordAutoCookingCompletion();
-  }
-
-  if (cookingCozyReward > 0) {
-    gameState.cozyPoints += cookingCozyReward;
-  }
-
-  showCamperThought("把" + fish.displayName + "做成了" + recipe.displayName + "。");
-  setStatus(getCookingSuccessStatus(recipe, fish, source));
-  updateScreen();
-  saveGame();
-  return true;
+  openCookingRecipePanel(fishId);
+  return false;
 }
 
 function handleCookingActivityCompletion(options) {
-  const actionOptions = options || {};
-  const source = actionOptions.source || "auto";
-
-  if (source === "auto" && !canAutoCookToday()) {
-    setStatus(getAutoCookingLimitMessage());
-    showCamperThought("今天先不再开火了。");
-    saveGame();
+  if (options && options.source === "auto") {
+    completeAutonomousCooking();
     return;
   }
-
-  cookFishFromInventory(getFirstAvailableFishId(), { source: source, fromActivity: true });
+  openCookingRecipePanel(getFirstAvailableFishId());
+  setStatus("炉火已经准备好，请选择要制作的菜谱。");
 }
 
 function handleActivityCompletionResult(activityId, options) {
@@ -868,6 +1093,178 @@ function resolveActivityTarget(activityId, preferredTargetId) {
   }
 
   return getActivityFallbackTarget(activity);
+}
+
+function getCookingRecipeSourceLabel(recipe) {
+  if (!recipe) return "来源未知";
+  const mapNames = { deepMountain: "深山", fogRainforest: "雾雨林" };
+  const prefix = recipe.sourceMapId && mapNames[recipe.sourceMapId] ? mapNames[recipe.sourceMapId] + " · " : "";
+  return prefix + (recipe.sourceHint || "继续探索后发现");
+}
+
+function selectCookingRecipe(recipeId, preferredFishId) {
+  const recipe = getRecipeDefinition(recipeId);
+  if (!recipe) return;
+  cookingRecipeUiState.recipeId = recipeId;
+  const preferredKey = preferredFishId ? "fish:" + preferredFishId : cookingRecipeUiState.sourceKey;
+  const options = getCookingSourceOptions(recipe);
+  cookingRecipeUiState.sourceKey = options.some(function(option) { return option.key === preferredKey; })
+    ? preferredKey
+    : ((options.find(function(option) { return option.count > 0; }) || options[0] || {}).key || "");
+  cookingRecipeUiState.quantity = 1;
+  renderCookingRecipePanel();
+}
+
+function createCookingRecipeListButton(recipe) {
+  const button = document.createElement("button");
+  const image = document.createElement("img");
+  const copy = document.createElement("span");
+  const title = document.createElement("strong");
+  const meta = document.createElement("small");
+  const unlocked = isCookingRecipeUnlocked(recipe.id);
+  button.type = "button";
+  button.className = "cooking-recipe-card";
+  button.classList.toggle("is-selected", cookingRecipeUiState.recipeId === recipe.id);
+  button.classList.toggle("is-locked", !unlocked);
+  image.src = (mealCatalog[recipe.mealId] && mealCatalog[recipe.mealId].image) || "assets/inventory/meals/grilled_fish.png";
+  image.alt = "";
+  title.textContent = recipe.displayName;
+  meta.textContent = unlocked ? "已解锁" : "未解锁 · " + getCookingRecipeSourceLabel(recipe);
+  copy.appendChild(title);
+  copy.appendChild(meta);
+  button.appendChild(image);
+  button.appendChild(copy);
+  button.addEventListener("click", function() { selectCookingRecipe(recipe.id); });
+  return button;
+}
+
+function createCookingMaterialRow(name, required, owned) {
+  const row = document.createElement("div");
+  const label = document.createElement("span");
+  const count = document.createElement("strong");
+  row.className = "cooking-material-row";
+  row.classList.toggle("is-missing", owned < required);
+  label.textContent = name;
+  count.textContent = "需要 " + required + " · 拥有 " + owned;
+  row.appendChild(label);
+  row.appendChild(count);
+  return row;
+}
+
+function renderCookingSelectedRecipe() {
+  if (!cookingRecipeSelected || !cookingSourceSelect) return;
+  const recipe = getRecipeDefinition(cookingRecipeUiState.recipeId);
+  cookingRecipeSelected.innerHTML = "";
+  cookingSourceSelect.innerHTML = "";
+  if (!recipe) return;
+  const unlocked = isCookingRecipeUnlocked(recipe.id);
+  const heading = document.createElement("div");
+  const image = document.createElement("img");
+  const copy = document.createElement("div");
+  const title = document.createElement("h3");
+  const source = document.createElement("p");
+  const requirements = document.createElement("div");
+  const craftable = document.createElement("p");
+  heading.className = "cooking-selected-heading";
+  image.src = (mealCatalog[recipe.mealId] && mealCatalog[recipe.mealId].image) || "assets/inventory/meals/grilled_fish.png";
+  image.alt = "";
+  title.textContent = recipe.displayName;
+  source.textContent = unlocked ? getCookingRecipeSourceLabel(recipe) : "未解锁 · " + getCookingRecipeSourceLabel(recipe);
+  copy.appendChild(title);
+  copy.appendChild(source);
+  heading.appendChild(image);
+  heading.appendChild(copy);
+  requirements.className = "cooking-material-list";
+  if (getRecipeFishCount(recipe) > 0) {
+    const substitute = recipe.fishSubstitute && ingredientCatalog[recipe.fishSubstitute.ingredientId];
+    requirements.appendChild(createCookingMaterialRow(
+      substitute ? "任意鱼类，或 " + substitute.displayName : "任意鱼类",
+      getRecipeFishCount(recipe),
+      getFishInventoryTotal()
+    ));
+  }
+  Object.keys(recipe.ingredientCosts || {}).forEach(function(ingredientId) {
+    requirements.appendChild(createCookingMaterialRow(
+      ingredientCatalog[ingredientId].displayName,
+      recipe.ingredientCosts[ingredientId],
+      getInventoryItemCount("ingredients", ingredientId)
+    ));
+  });
+  const sourceOptions = getCookingSourceOptions(recipe);
+  if (!sourceOptions.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "暂无可用鱼类或替代原料";
+    cookingSourceSelect.appendChild(option);
+    cookingRecipeUiState.sourceKey = "";
+  } else {
+    sourceOptions.forEach(function(sourceOption) {
+      const option = document.createElement("option");
+      option.value = sourceOption.key;
+      option.textContent = sourceOption.name + " · 拥有 " + sourceOption.count;
+      option.disabled = sourceOption.count <= 0;
+      cookingSourceSelect.appendChild(option);
+    });
+    if (!sourceOptions.some(function(sourceOption) { return sourceOption.key === cookingRecipeUiState.sourceKey && sourceOption.count > 0; })) {
+      cookingRecipeUiState.sourceKey = (sourceOptions.find(function(sourceOption) { return sourceOption.count > 0; }) || sourceOptions[0]).key;
+    }
+    cookingSourceSelect.value = cookingRecipeUiState.sourceKey;
+  }
+  const maxQuantity = calculateRecipeCraftableQuantity(recipe, cookingRecipeUiState.sourceKey);
+  cookingRecipeUiState.quantity = Math.max(1, Math.min(cookingRecipeUiState.quantity, Math.max(1, maxQuantity)));
+  craftable.className = "cooking-craftable-count";
+  craftable.textContent = "可制作 " + maxQuantity + " 份";
+  cookingRecipeSelected.appendChild(heading);
+  cookingRecipeSelected.appendChild(requirements);
+  cookingRecipeSelected.appendChild(craftable);
+  if (cookingQuantityValue) cookingQuantityValue.textContent = String(cookingRecipeUiState.quantity);
+  if (cookingQuantityMinus) cookingQuantityMinus.disabled = cookingRecipeUiState.quantity <= 1;
+  if (cookingQuantityPlus) cookingQuantityPlus.disabled = maxQuantity <= cookingRecipeUiState.quantity;
+  if (cookingRecipeMakeButton) cookingRecipeMakeButton.disabled = !unlocked || maxQuantity < cookingRecipeUiState.quantity;
+  if (cookingRecipeMessage) {
+    const missing = unlocked ? getRecipeMissingMaterials(recipe, cookingRecipeUiState.sourceKey, cookingRecipeUiState.quantity) : [];
+    cookingRecipeMessage.textContent = unlocked
+      ? (missing.length ? "缺少：" + missing.join("、") : "材料会按当前选择自动填入。")
+      : "完成对应地图探索或故事整理后解锁。";
+  }
+}
+
+function renderCookingRecipePanel() {
+  if (!cookingRecipeList) return;
+  cookingRecipeList.innerHTML = "";
+  Object.keys(cookingRecipeCatalog).forEach(function(recipeId) {
+    cookingRecipeList.appendChild(createCookingRecipeListButton(cookingRecipeCatalog[recipeId]));
+  });
+  renderCookingSelectedRecipe();
+}
+
+function openCookingRecipePanel(preferredFishId) {
+  if (!cookingRecipeLayer) return false;
+  const unlocked = getCookingProgress().unlockedRecipes.filter(function(recipeId) { return Boolean(getRecipeDefinition(recipeId)); });
+  const initialRecipeId = cookingRecipeUiState.recipeId && getRecipeDefinition(cookingRecipeUiState.recipeId)
+    ? cookingRecipeUiState.recipeId
+    : (unlocked[0] || getDefaultCookingRecipeId());
+  cookingRecipeUiState.recipeId = initialRecipeId;
+  const options = getCookingSourceOptions(getRecipeDefinition(initialRecipeId));
+  const preferredKey = preferredFishId ? "fish:" + preferredFishId : "";
+  cookingRecipeUiState.sourceKey = options.some(function(option) { return option.key === preferredKey; })
+    ? preferredKey
+    : ((options.find(function(option) { return option.count > 0; }) || options[0] || {}).key || "");
+  cookingRecipeUiState.quantity = 1;
+  closeFishActionMenu();
+  renderCookingRecipePanel();
+  cookingRecipeLayer.classList.remove("hidden");
+  cookingRecipeLayer.setAttribute("aria-hidden", "false");
+  document.body.classList.add("cooking-recipe-open");
+  return true;
+}
+
+function closeCookingRecipePanel() {
+  if (!cookingRecipeLayer) return;
+  cookingRecipeLayer.classList.add("hidden");
+  cookingRecipeLayer.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("cooking-recipe-open");
+  renderInventoryPanel();
 }
 
 function isInventoryPanelOpen() {
@@ -1173,6 +1570,7 @@ function closeInventoryPanel() {
   inventoryLayer.setAttribute("aria-hidden", "true");
   document.body.classList.remove("inventory-open");
   closeFishActionMenu();
+  closeCookingRecipePanel();
 }
 
 function syncInventoryPanel() {
@@ -1201,3 +1599,31 @@ function updateCoolerFullHint() {
   coolerFullHint.setAttribute("title", getCoolerFullMessage());
   coolerFullHint.setAttribute("aria-label", getCoolerFullMessage());
 }
+
+if (cookingRecipeCloseButton) cookingRecipeCloseButton.addEventListener("click", closeCookingRecipePanel);
+if (inventoryCookingButton) inventoryCookingButton.addEventListener("click", function() { openCookingRecipePanel(getFirstAvailableFishId()); });
+if (cookingRecipeLayer) cookingRecipeLayer.addEventListener("click", function(event) {
+  if (event.target === cookingRecipeLayer) closeCookingRecipePanel();
+});
+if (cookingSourceSelect) cookingSourceSelect.addEventListener("change", function() {
+  cookingRecipeUiState.sourceKey = cookingSourceSelect.value;
+  cookingRecipeUiState.quantity = 1;
+  renderCookingSelectedRecipe();
+});
+if (cookingQuantityMinus) cookingQuantityMinus.addEventListener("click", function() {
+  cookingRecipeUiState.quantity = Math.max(1, cookingRecipeUiState.quantity - 1);
+  renderCookingSelectedRecipe();
+});
+if (cookingQuantityPlus) cookingQuantityPlus.addEventListener("click", function() {
+  const recipe = getRecipeDefinition(cookingRecipeUiState.recipeId);
+  const maxQuantity = calculateRecipeCraftableQuantity(recipe, cookingRecipeUiState.sourceKey);
+  cookingRecipeUiState.quantity = Math.min(maxQuantity, cookingRecipeUiState.quantity + 1);
+  renderCookingSelectedRecipe();
+});
+if (cookingRecipeMakeButton) cookingRecipeMakeButton.addEventListener("click", function() {
+  if (cookRecipeFromInventory(cookingRecipeUiState.recipeId, cookingRecipeUiState.sourceKey, cookingRecipeUiState.quantity)) {
+    cookingRecipeUiState.quantity = 1;
+    renderCookingRecipePanel();
+    renderInventoryPanel();
+  }
+});

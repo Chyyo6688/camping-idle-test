@@ -130,16 +130,22 @@ const FOG_RAINFOREST_HOOKS = {
     offRouteWeight: 0.12,
     relatedEventIds: ["vineBarricade", "movingVines", "canopyWalkway", "canopyOrchids", "symbolStone"],
     relatedItems: ["vineCutter", "ropeKit", "rainCape"],
+    sortingRule: "路线连接顺序",
+    instruction: "按藤蔓后旧路从低处入口到树冠出口的连接顺序整理。留意每张记录提到的上一处标记和下一段方向。",
+    positionLabels: ["① 低处入口", "② 藤结转向", "③ 树冠步道", "④ 兰花出口"],
     clues: [
-      { id: "vineBarrierMark", label: "藤墙后露出的旧木梯刻痕", eventIds: ["vineBarricade"], flagIds: ["foundVineBarrier"] },
-      { id: "movingVineKnot", label: "与昨日标记错开的藤结", eventIds: ["movingVines"], flagIds: ["tracedMovingVines"] },
-      { id: "canopySteps", label: "树冠旧路的缺板位置", eventIds: ["canopyWalkway"], flagIds: ["foundCanopySteps", "crossedCanopy"] },
-      { id: "orchidRoutePattern", label: "树冠兰花开合指向的旧路", eventIds: ["canopyOrchids"], flagIds: ["studiedOrchids"] }
+      { id: "vineBarrierMark", label: "藤墙后露出的旧木梯刻痕", title: "藤墙后露出的旧木梯刻痕", text: "旧路从低处藤墙后的木梯开始，第一道刻痕箭头指向昨日标记的藤结。", order: 1, relationHint: "木梯刻痕是旧路入口。", eventIds: ["vineBarricade"], flagIds: ["foundVineBarrier"] },
+      { id: "movingVineKnot", label: "与昨日标记错开的藤结", title: "与昨日标记错开的藤结", text: "藤结随后向右错开半棵树，露出的旧绳头继续指向上方缺板步道。", order: 2, relationHint: "藤结连接木梯与树冠步道。", eventIds: ["movingVines"], flagIds: ["tracedMovingVines"] },
+      { id: "canopySteps", label: "树冠旧路的缺板位置", title: "树冠旧路的缺板位置", text: "沿旧绳头上到树冠后，缺板从第三格开始，跨过后才能看见成排兰花。", order: 3, relationHint: "树冠步道位于藤结之后、兰花之前。", eventIds: ["canopyWalkway"], flagIds: ["foundCanopySteps", "crossedCanopy"] },
+      { id: "orchidRoutePattern", label: "树冠兰花开合指向的旧路", title: "树冠兰花开合指向的旧路", text: "最后，缺板后的兰花依次张开，花口共同指向旧路的树冠出口。", order: 4, relationHint: "兰花确认整段旧路的出口。", eventIds: ["canopyOrchids"], flagIds: ["studiedOrchids"] }
     ],
+    failureHints: ["先找写着“旧路从低处藤墙后的木梯开始”的记录。", "错开的藤结露出旧绳头，旧绳头才通往缺板步道。", "兰花共同指向的是树冠出口，应放在最后。"],
+    completionExplanation: "旧木梯刻痕先标出入口，错开的藤结露出通往上方的旧绳头；缺板步道把路线送上树冠，最后由兰花开合方向确认出口。",
     progressFlags: { foundVineBarrier: 1, tracedMovingVines: 1, foundCanopySteps: 2, crossedCanopy: 2, studiedOrchids: 2 },
     successScore: 4,
     partialScore: 1,
-    logTitle: "藤蔓改道记录"
+    logTitle: "藤蔓改道记录",
+    archiveStory: "藤墙后的木梯刻痕、移动的藤结、树冠缺板和兰花开合方向说明藤蔓会随雾后光线改变生长路线，旧木梯仍能在合适时机重新找到。"
   },
   traceStationRecords: {
     id: "traceStationRecords",
@@ -150,16 +156,23 @@ const FOG_RAINFOREST_HOOKS = {
     offRouteWeight: 0.12,
     relatedEventIds: ["researchStation", "weatherConsole", "fieldNotebook", "lostSupplyBeacon", "floodedSupplyCrate", "wrongMemoryPlot"],
     relatedItems: ["stationPass", "repairToolkit", "fieldLantern"],
+    sortingRule: "时间顺序",
+    instruction: "按调查站记录的日期与回传批次整理。从设施启用记录开始，依次排到最后一次离站信标回传。",
+    positionLabels: ["① 设施启用", "② 次日观测", "③ 第三批采样", "④ 最后回传"],
     clues: [
-      { id: "stationDoorCode", label: "调查站门扣旁的设施编号", eventIds: ["researchStation"], flagIds: ["foundStation"] },
-      { id: "weatherConsoleDate", label: "天气终端跳过的缺失日期", eventIds: ["weatherConsole"], flagIds: ["restoredConsole"] },
-      { id: "fieldNotebookSample", label: "调查笔记夹页里的植物样本号", eventIds: ["fieldNotebook"], flagIds: ["readFieldNotebook"] },
-      { id: "supplyBeaconSignal", label: "根系下信标的回传节奏", eventIds: ["lostSupplyBeacon"], flagIds: ["foundSupplyBeacon", "recoveredStationRecord"] }
+      { id: "stationDoorCode", label: "调查站门扣旁的设施编号", title: "调查站门扣旁的设施编号", text: "6 月 12 日的启用标签先登记设施号 RS-04，门扣磨痕也从这天开始。", order: 1, relationHint: "最早的启用日期。", eventIds: ["researchStation"], flagIds: ["foundStation"] },
+      { id: "weatherConsoleDate", label: "天气终端跳过的缺失日期", title: "天气终端跳过的缺失日期", text: "6 月 13 日，天气终端第一次引用 RS-04，却跳过了午后雨量一栏。", order: 2, relationHint: "发生在设施启用次日。", eventIds: ["weatherConsole"], flagIds: ["restoredConsole"] },
+      { id: "fieldNotebookSample", label: "调查笔记夹页里的植物样本号", title: "调查笔记夹页里的植物样本号", text: "6 月 14 日第三批采样页补记缺失雨量，并将植物样本编号接到终端记录后。", order: 3, relationHint: "采样页引用了前一天的终端缺项。", eventIds: ["fieldNotebook"], flagIds: ["readFieldNotebook"] },
+      { id: "supplyBeaconSignal", label: "根系下信标的回传节奏", title: "根系下信标的回传节奏", text: "6 月 15 日最后一次离站回传，信标按 RS-04、雨量、样本号的顺序发出三段信号。", order: 4, relationHint: "最后回传汇总了前三份记录。", eventIds: ["lostSupplyBeacon"], flagIds: ["foundSupplyBeacon", "recoveredStationRecord"] }
     ],
+    failureHints: ["设施启用标签的 6 月 12 日最早。", "天气终端在 6 月 13 日，采样页在 6 月 14 日补记它的缺项。", "信标写着“最后一次离站回传”，应放在末尾。"],
+    completionExplanation: "RS-04 在 6 月 12 日启用，次日天气终端留下缺失雨量；6 月 14 日采样页补全关联编号，最后一次信标回传把三份记录按顺序汇总。",
     progressFlags: { foundStation: 1, restoredConsole: 2, readFieldNotebook: 2, foundSupplyBeacon: 1, recoveredStationRecord: 3 },
     successScore: 4,
     partialScore: 1,
-    logTitle: "调查站记录复原簿"
+    logTitle: "调查站记录复原簿",
+    archiveStory: "门扣编号、天气终端缺失日期、植物样本号与信标回传节奏属于同一组调查记录。整理后可以确认调查站曾沿南侧湿地持续补给和观测。",
+    archiveUnlocks: [{ type: "recipe", recipeId: "rainforestSourFishSoup" }]
   },
   studyLuminousPlants: {
     id: "studyLuminousPlants",
@@ -170,16 +183,23 @@ const FOG_RAINFOREST_HOOKS = {
     offRouteWeight: 0.12,
     relatedEventIds: ["luminousPlants", "sporeCloud", "canopyOrchids", "insectSwarm", "frogChorus"],
     relatedItems: ["luminousSpore", "rainCape", "fieldLantern"],
+    sortingRule: "行动步骤",
+    instruction: "按一次完整观察从低处取样到水线复核的步骤整理。每一步都会引用前一步看到的颜色、方向或节奏。",
+    positionLabels: ["① 记录叶光", "② 沿风取样", "③ 树冠比对", "④ 水线复核"],
     clues: [
-      { id: "leafGlowOrder", label: "雨后叶片依次亮起的顺序", eventIds: ["luminousPlants"], flagIds: ["foundLuminousPlants"] },
-      { id: "sporeSampleTrail", label: "低处孢子云的上风路径", eventIds: ["sporeCloud"], flagIds: ["crossedSporeCloud"] },
-      { id: "orchidGlowMatch", label: "树冠兰花里的同色微光", eventIds: ["canopyOrchids"], flagIds: ["studiedOrchids"] },
-      { id: "frogGlowRhythm", label: "蛙鸣与发光水线的节奏", eventIds: ["frogChorus"], flagIds: ["readFrogWaterline"] }
+      { id: "leafGlowOrder", label: "雨后叶片依次亮起的顺序", title: "雨后叶片依次亮起的顺序", text: "观察第一步先记录低处叶片由青到白依次亮起，作为后续比对基准。", order: 1, relationHint: "先建立颜色和节奏基准。", eventIds: ["luminousPlants"], flagIds: ["foundLuminousPlants"] },
+      { id: "sporeSampleTrail", label: "低处孢子云的上风路径", title: "低处孢子云的上风路径", text: "随后沿叶光变白的方向走到上风处，孢子样本才没有被雨水混杂。", order: 2, relationHint: "取样方向来自第一步的叶光。", eventIds: ["sporeCloud"], flagIds: ["crossedSporeCloud"] },
+      { id: "orchidGlowMatch", label: "树冠兰花里的同色微光", title: "树冠兰花里的同色微光", text: "取得孢子后上到树冠，兰花微光与样本最后变白的颜色一致。", order: 3, relationHint: "树冠比对需要先取得孢子。", eventIds: ["canopyOrchids"], flagIds: ["studiedOrchids"] },
+      { id: "frogGlowRhythm", label: "蛙鸣与发光水线的节奏", title: "蛙鸣与发光水线的节奏", text: "最后回到水线复核，蛙鸣节拍与叶片、兰花的亮起间隔完全重合。", order: 4, relationHint: "水线复核是最后的交叉确认。", eventIds: ["frogChorus"], flagIds: ["readFrogWaterline"] }
     ],
+    failureHints: ["先找写着“观察第一步”的叶光记录。", "孢子取样方向来自叶光变白的方向。", "回到水线复核的是最后一步。"],
+    completionExplanation: "先记录低处叶光作为基准，再沿变白方向取得孢子；树冠兰花提供同色比对，最后水线蛙鸣复核了整组发光节奏。",
     progressFlags: { foundLuminousPlants: 1, collectedSpores: 2, crossedSporeCloud: 1, studiedOrchids: 2, followedGlowPattern: 2 },
     successScore: 3,
     partialScore: 1,
-    logTitle: "发光植物观察手记"
+    logTitle: "发光植物观察手记",
+    archiveStory: "叶片发光顺序、孢子上风路径、树冠兰花微光与蛙鸣水线形成了稳定对应。雨后微光不是普通反射，而是一组能够沿旧步道重复观察的自然节律。",
+    archiveUnlocks: [{ type: "gear", gearId: "luminousPlantLamp" }]
   },
   recoverLostSupplies: {
     id: "recoverLostSupplies",
@@ -190,16 +210,22 @@ const FOG_RAINFOREST_HOOKS = {
     offRouteWeight: 0.12,
     relatedEventIds: ["muddyCrossing", "flashFloodDebris", "floodedSupplyCrate", "lostSupplyBeacon", "riverbankTracks"],
     relatedItems: ["ropeKit", "rainCape", "repairToolkit"],
+    sortingRule: "因果顺序",
+    instruction: "按一项发现如何缩小补给位置的因果关系整理。先找洪水带来的外部痕迹，再用标签、清单和水线逐步确认。",
+    positionLabels: ["① 发现漂流物", "② 对上箱号", "③ 核对清单", "④ 确认河弯"],
     clues: [
-      { id: "floodDebrisBand", label: "洪水漂流物上的调查箱绑带", eventIds: ["flashFloodDebris"], flagIds: ["foundFloodDebris"] },
-      { id: "floodedCrateLabel", label: "泡水调查箱侧面的补给标签", eventIds: ["floodedSupplyCrate"], flagIds: ["foundSupplyCrate", "openedSupplyCrate"] },
-      { id: "beaconBagList", label: "信标旁防水袋里的补给清单", eventIds: ["lostSupplyBeacon"], flagIds: ["foundSupplyBeacon"] },
-      { id: "mudWaterline", label: "泥水退去后留下的稳定水线", eventIds: ["muddyCrossing", "riverbankTracks"], flagIds: ["crossedMudSafely", "readRiverbankTracks"] }
+      { id: "floodDebrisBand", label: "洪水漂流物上的调查箱绑带", title: "洪水漂流物上的调查箱绑带", text: "最先捞到的漂流绑带印着调查箱批次 C-8，说明补给被洪水带离储藏区。", order: 1, relationHint: "绑带首先给出箱号。", eventIds: ["flashFloodDebris"], flagIds: ["foundFloodDebris"] },
+      { id: "floodedCrateLabel", label: "泡水调查箱侧面的补给标签", title: "泡水调查箱侧面的补给标签", text: "沿绑带漂来的方向找到泡水箱，侧面标签同为 C-8，并标出下游信标编号。", order: 2, relationHint: "箱体标签承接绑带批次。", eventIds: ["floodedSupplyCrate"], flagIds: ["foundSupplyCrate", "openedSupplyCrate"] },
+      { id: "beaconBagList", label: "信标旁防水袋里的补给清单", title: "信标旁防水袋里的补给清单", text: "依照箱侧编号找到信标，防水袋清单列出 C-8 缺失物，并注明退水后检查河弯。", order: 3, relationHint: "清单由箱侧信标编号引出。", eventIds: ["lostSupplyBeacon"], flagIds: ["foundSupplyBeacon"] },
+      { id: "mudWaterline", label: "泥水退去后留下的稳定水线", title: "泥水退去后留下的稳定水线", text: "最后按清单复查退水线，所有 C-8 散落物都停在同一稳定河弯。", order: 4, relationHint: "水线最终确认补给落点。", eventIds: ["muddyCrossing", "riverbankTracks"], flagIds: ["crossedMudSafely", "readRiverbankTracks"] }
     ],
+    failureHints: ["最先出现的是印有 C-8 的漂流绑带。", "先由绑带找到同批次箱体，再由箱侧编号找到信标。", "稳定水线是清单要求的最后复查。"],
+    completionExplanation: "C-8 绑带先证明补给被冲走，同批次箱体给出信标编号；防水袋清单进一步缩小范围，退水后的稳定水线最终确认了散落补给所在河弯。",
     progressFlags: { crossedMudSafely: 1, foundFloodDebris: 1, openedSupplyCrate: 2, foundSupplyBeacon: 2, recoveredRainforestSupplies: 3 },
     successScore: 4,
     partialScore: 1,
-    logTitle: "雨林补给寻回记录"
+    logTitle: "雨林补给寻回记录",
+    archiveStory: "调查箱绑带、泡水补给标签、防水袋清单与退水线把遗失物指向同一河弯。顺着稳定水线，散落补给可以被安全带回调查区。"
   }
 };
 

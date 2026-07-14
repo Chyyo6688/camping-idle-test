@@ -113,13 +113,13 @@ const mealCatalog = {
 };
 
 const ingredientCatalog = {
-  wildMushroom: { id: "wildMushroom", displayName: "山野菌", detail: "深山原料", image: "assets/inventory/meals/grilled_fish.png" },
-  wildOnion: { id: "wildOnion", displayName: "野葱", detail: "深山原料", image: "assets/inventory/meals/grilled_fish.png" },
-  pineNut: { id: "pineNut", displayName: "松子", detail: "深山原料", image: "assets/inventory/meals/grilled_fish.png" },
-  rainGinger: { id: "rainGinger", displayName: "雨姜", detail: "雾雨林原料", image: "assets/inventory/meals/grilled_fish.png" },
-  sourBerry: { id: "sourBerry", displayName: "酸浆果", detail: "雾雨林原料", image: "assets/inventory/meals/grilled_fish.png" },
-  aromaticLeaf: { id: "aromaticLeaf", displayName: "香叶", detail: "雾雨林原料", image: "assets/inventory/meals/grilled_fish.png" },
-  rainforestMushroom: { id: "rainforestMushroom", displayName: "雨林菌", detail: "雾雨林原料", image: "assets/inventory/meals/grilled_fish.png" }
+  wildMushroom: { id: "wildMushroom", displayName: "山野菌", detail: "深山原料", image: "assets/inventory/meals/grilled_fish.png", preserveLastForAuto: true },
+  wildOnion: { id: "wildOnion", displayName: "野葱", detail: "深山原料", image: "assets/inventory/meals/grilled_fish.png", preserveLastForAuto: true },
+  pineNut: { id: "pineNut", displayName: "松子", detail: "深山原料", image: "assets/inventory/meals/grilled_fish.png", preserveLastForAuto: true },
+  rainGinger: { id: "rainGinger", displayName: "雨姜", detail: "雾雨林原料", image: "assets/inventory/meals/grilled_fish.png", preserveLastForAuto: true },
+  sourBerry: { id: "sourBerry", displayName: "酸浆果", detail: "雾雨林原料", image: "assets/inventory/meals/grilled_fish.png", preserveLastForAuto: true },
+  aromaticLeaf: { id: "aromaticLeaf", displayName: "香叶", detail: "雾雨林原料", image: "assets/inventory/meals/grilled_fish.png", preserveLastForAuto: true },
+  rainforestMushroom: { id: "rainforestMushroom", displayName: "雨林菌", detail: "雾雨林原料", image: "assets/inventory/meals/grilled_fish.png", preserveLastForAuto: true }
 };
 
 const cookingRecipeCatalog = {
@@ -129,42 +129,74 @@ const cookingRecipeCatalog = {
     displayName: "烤湖鱼",
     ingredientCosts: {},
     priority: 1,
-    defaultUnlocked: true
+    defaultUnlocked: true,
+    fishCount: 1,
+    sourceType: "camp",
+    sourceHint: "营地基础料理"
   },
   wildMushroomFishSoup: {
     id: "wildMushroomFishSoup",
     mealId: "wildMushroomFishSoup",
     displayName: "山野菌鱼汤",
     ingredientCosts: { wildMushroom: 1, wildOnion: 1 },
-    priority: 35
+    priority: 35,
+    fishCount: 1,
+    sourceType: "story",
+    sourceMapId: "deepMountain",
+    sourceStoryId: "deepMountain:findMissingRanger",
+    sourceHint: "护林员补给记录"
   },
   pineNutGrilledFish: {
     id: "pineNutGrilledFish",
     mealId: "pineNutGrilledFish",
     displayName: "松仁烤鱼",
     ingredientCosts: { pineNut: 1 },
-    priority: 30
+    priority: 30,
+    fishCount: 1,
+    sourceType: "exploration",
+    sourceMapId: "deepMountain",
+    sourceRouteIds: ["creekValley", "denseForest", "mountainRidge"],
+    sourceEventIds: ["washedOutCache", "abandonedCabin"],
+    sourceHint: "废弃木屋 / 溪边补给箱"
   },
   rainforestSourFishSoup: {
     id: "rainforestSourFishSoup",
     mealId: "rainforestSourFishSoup",
     displayName: "雨林酸汤鱼",
     ingredientCosts: { rainGinger: 1, sourBerry: 1 },
-    priority: 45
+    priority: 45,
+    fishCount: 1,
+    sourceType: "story",
+    sourceMapId: "fogRainforest",
+    sourceStoryId: "fogRainforest:traceStationRecords",
+    sourceHint: "调查站整理记录"
   },
   aromaticLeafGrilledFish: {
     id: "aromaticLeafGrilledFish",
     mealId: "aromaticLeafGrilledFish",
     displayName: "香叶烤鱼",
     ingredientCosts: { aromaticLeaf: 1 },
-    priority: 40
+    priority: 40,
+    fishCount: 1,
+    sourceType: "exploration",
+    sourceMapId: "fogRainforest",
+    sourceRouteIds: ["riverWetlands", "vineThicket", "canopyOldWay"],
+    sourceEventIds: ["canopyOrchids", "luminousPlants"],
+    sourceHint: "树冠兰花 / 发光植物观察"
   },
   wildGingerMushroomSoup: {
     id: "wildGingerMushroomSoup",
     mealId: "wildGingerMushroomSoup",
     displayName: "野姜菌汤",
     ingredientCosts: { rainGinger: 1, rainforestMushroom: 1 },
-    priority: 42
+    priority: 42,
+    fishCount: 1,
+    fishSubstitute: { ingredientId: "rainforestMushroom", quantity: 1 },
+    sourceType: "exploration",
+    sourceMapId: "fogRainforest",
+    sourceRouteIds: ["vineThicket", "canopyOldWay", "abandonedSurveyZone"],
+    sourceEventIds: ["fieldNotebook", "researchStation"],
+    sourceHint: "调查站样本 / 藤蔓密径"
   }
 };
 

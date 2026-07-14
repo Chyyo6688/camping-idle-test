@@ -1213,7 +1213,7 @@ function getRelaxingActionEntries() {
   getActivityIds().forEach(function(activityId) {
     const activity = getActivityDefinition(activityId);
 
-    if (activityId === "cook" && (!hasCookableFish() || !canAutoCookToday())) {
+    if (activityId === "cook" && !canAutonomouslyCook()) {
       return;
     }
 
@@ -1244,8 +1244,14 @@ function chooseRelaxingAction() {
   const activity = getActivityDefinition(action);
 
   if (activity) {
-    if (!startActivity(action)) {
+    const cookingPlan = action === "cook" ? chooseAutonomousCookingPlan() : null;
+    if (action === "cook" && !cookingPlan) {
       startMovingTo(getRandomWanderPoint(), "wandering", { labelAction: "wandering" });
+    } else if (!startActivity(action)) {
+      if (action === "cook") cancelAutonomousCooking();
+      startMovingTo(getRandomWanderPoint(), "wandering", { labelAction: "wandering" });
+    } else if (cookingPlan) {
+      beginAutonomousCooking(cookingPlan);
     }
   } else if (action === "lookingAtLake") {
     startMovingTo(campSpots.lake, "lookingAtLake");

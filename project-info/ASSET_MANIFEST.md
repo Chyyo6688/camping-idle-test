@@ -1,11 +1,11 @@
 # Cozy Camping Idle - Asset Manifest
 
-最后核对：2026-07-13。V5.0 / adventure v9 新增受潮调查路线图运行时图像，用于雾雨林关键线索解锁演出。
+最后核对：2026-07-13。V5.0 / adventure v10 新增三件故事归档 Gear，用于营地 Build Mode 摆放。
 
 ## 当前资源包
 
-- `assets/` 当前约 149 MB，共 378 个文件。
-- `assets/gear/` 当前有 57 个 gear asset folder，覆盖 11 个分类。
+- `assets/` 当前约 156 MB，共 384 个文件。
+- `assets/gear/` 当前有 60 个 gear asset folder，覆盖 11 个分类。
 - 开发/参考资源在 `assets/reference/`、`assets/generated_sources/`、`tmp/`；上传 GitHub runtime 包前应排除。
 
 ## 运行结构
@@ -39,6 +39,13 @@ assets/gear/<category>/<gearId>/icon_base.png
 ```
 
 部分装备还有 glow、headlamp front/back、flashlight cone 等 layer 文件。
+
+故事归档 Gear：
+
+- `assets/gear/activity/mistTraceObservationBoard/icon.png`：雾痕观察板，白色纤维、照片与手写记录组成的观察板。
+- `assets/gear/activity/oldForestryRouteBoard/icon.png`：旧林务路线板，旧地图、瞭望塔路线和林务标记组成的展示板。
+- `assets/gear/light/luminousPlantLamp/icon.png`：微光植物灯，玻璃罩内的发光雨林植物；夜间由场景样式增加轻微辉光。
+- `assets/generated_sources/adventure-story-gear/*-chroma.png`：上述 Gear 的 imageGen 色键源图，仅供开发与重新处理，不由运行时加载。
 
 ## 替换规则
 

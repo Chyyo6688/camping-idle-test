@@ -257,7 +257,9 @@ const defaultGameState = {
     cooked: 0,
     autoCookDate: "",
     autoCookedToday: 0,
-    unlockedRecipes: ["simpleGrilledFish"]
+    unlockedRecipes: ["simpleGrilledFish"],
+    manuallyCookedRecipes: [],
+    recentAutoCookedRecipes: []
   },
   dailyWeather: {
     userSeed: "",
@@ -359,7 +361,9 @@ function createDefaultGameState() {
     fishing: { ...defaultGameState.fishing },
     cooking: {
       ...defaultGameState.cooking,
-      unlockedRecipes: defaultGameState.cooking.unlockedRecipes.slice()
+      unlockedRecipes: defaultGameState.cooking.unlockedRecipes.slice(),
+      manuallyCookedRecipes: defaultGameState.cooking.manuallyCookedRecipes.slice(),
+      recentAutoCookedRecipes: defaultGameState.cooking.recentAutoCookedRecipes.slice()
     },
     dailyWeather: { ...defaultGameState.dailyWeather },
     todayDivinations: {

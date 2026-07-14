@@ -123,9 +123,9 @@
           <span>Camper</span>
         </button>
 
-        <button id="adventureStorageButton" class="utility-button adventure-storage-entry-button" type="button" aria-label="打开冒险仓库">
+        <button id="adventureCenterButton" class="utility-button adventure-storage-entry-button" type="button" aria-label="打开冒险中心">
           <span class="adventure-storage-entry-icon adventure-item-icon item-map" aria-hidden="true"></span>
-          <span>冒险仓库</span>
+          <span>冒险</span>
           <strong id="adventureStorageBadge" class="adventure-storage-entry-badge">0</strong>
         </button>
       </nav>
@@ -191,6 +191,7 @@
             </div>
 
             <p id="inventoryStatsLine" class="inventory-stats"></p>
+            <button id="inventoryCookingButton" class="inventory-cooking-button" type="button">烹饪</button>
 
             <div class="inventory-sections">
               <section class="inventory-section" aria-label="Fish inventory">
@@ -210,6 +211,40 @@
             </div>
 
             <div id="inventoryFishMenu" class="inventory-fish-menu hidden" role="menu" aria-hidden="true"></div>
+          </section>
+        </div>
+
+        <div id="cookingRecipeLayer" class="cooking-recipe-layer hidden" aria-hidden="true" aria-live="polite">
+          <section id="cookingRecipePanel" class="cooking-recipe-panel" aria-label="选择菜谱烹饪">
+            <header class="cooking-recipe-header">
+              <div>
+                <p class="eyebrow">Camp Kitchen</p>
+                <h2>选择菜谱</h2>
+              </div>
+              <button id="cookingRecipeCloseButton" class="close-button cooking-recipe-close-button" type="button" aria-label="关闭烹饪">
+                <img src="assets/ui/icon_close.png?v=4.9" alt="">
+              </button>
+            </header>
+            <div class="cooking-recipe-layout">
+              <nav id="cookingRecipeList" class="cooking-recipe-list" aria-label="菜谱列表"></nav>
+              <section class="cooking-recipe-detail" aria-live="polite">
+                <div id="cookingRecipeSelected"></div>
+                <label class="cooking-source-field" for="cookingSourceSelect">
+                  <span>选择鱼类或替代原料</span>
+                  <select id="cookingSourceSelect"></select>
+                </label>
+                <div class="cooking-quantity-row">
+                  <span>制作数量</span>
+                  <div class="cooking-stepper">
+                    <button id="cookingQuantityMinus" type="button" aria-label="减少制作数量">−</button>
+                    <strong id="cookingQuantityValue">1</strong>
+                    <button id="cookingQuantityPlus" type="button" aria-label="增加制作数量">+</button>
+                  </div>
+                </div>
+                <p id="cookingRecipeMessage" class="cooking-recipe-message"></p>
+                <button id="cookingRecipeMakeButton" class="adventure-control adventure-control-primary" type="button">烹饪</button>
+              </section>
+            </div>
           </section>
         </div>
 
@@ -275,12 +310,6 @@
                 <button class="settings-subitem" type="button" data-guide="buildMode">建造模式</button>
               </div>
 
-              <button id="settingsAdventurePrototypeItem" class="settings-item settings-item-adventure" type="button">
-                <span class="settings-item-icon" aria-hidden="true">🏔️</span>
-                <span class="settings-item-label">冒险测试</span>
-                <span class="settings-item-badge">DEV</span>
-              </button>
-
               <button id="settingsResetItem" class="settings-item settings-item-danger" type="button">
                 <span class="settings-item-icon" aria-hidden="true"><img src="assets/ui/icon_tools.png?v=3.3" alt=""></span>
                 <span class="settings-item-label">Reset</span>
@@ -290,7 +319,7 @@
         </div>
 
         <div id="adventurePrototypeLayer" class="adventure-prototype-layer hidden" aria-hidden="true">
-          <section id="adventurePrototype" class="adventure-prototype is-map-select" aria-label="冒险测试">
+          <section id="adventurePrototype" class="adventure-prototype is-center" aria-label="冒险">
             <div id="adventureScene" class="adventure-scene">
               <img id="adventureBackground" class="adventure-background" src="assets/adventure/deep-mountain/deep-mountain-background.png?v=4.8" alt="">
               <div id="adventureAtmosphere" class="adventure-atmosphere" aria-hidden="true"></div>
@@ -319,6 +348,7 @@
                 <span id="adventureRunStamina">体力 100 / 100</span>
                 <span id="adventureRunBackpack">背包 0 / 5</span>
               </div>
+              <div id="adventureRunInjuries" class="adventure-run-injuries hidden" aria-live="polite"></div>
 
               <div id="adventureResult" class="adventure-result" aria-live="polite">
                 <p id="adventureEventTitle" class="adventure-event-title">山路很安静</p>
@@ -331,13 +361,58 @@
               </nav>
             </div>
 
+            <section id="adventureCenterPanel" class="adventure-screen-panel adventure-center-panel" aria-label="冒险中心">
+              <header class="adventure-panel-header">
+                <div>
+                  <p class="eyebrow">Adventure Center</p>
+                  <h2>冒险</h2>
+                </div>
+                <button id="adventureCenterCloseButton" class="adventure-panel-close" type="button">返回营地</button>
+              </header>
+              <div class="adventure-center-status">
+                <article><span>当前体力</span><strong id="adventureCenterStamina">100 / 100</strong></article>
+                <article><span>冒险仓库</span><strong id="adventureCenterStorageCount">0 件</strong></article>
+                <article><span>旅程记录</span><strong id="adventureCenterJourneyCount">0 篇</strong></article>
+              </div>
+              <div class="adventure-center-actions">
+                <button id="adventureCenterDepartButton" class="adventure-center-action is-primary" type="button">
+                  <span class="adventure-center-action-icon" aria-hidden="true">↗</span>
+                  <span><strong>选择地图并出发</strong><small>查看路线、挂心之事与推荐背包</small></span>
+                </button>
+                <button id="adventureCenterStorageButton" class="adventure-center-action" type="button">
+                  <span class="adventure-center-action-icon" aria-hidden="true">▣</span>
+                  <span><strong>冒险仓库</strong><small>查看从两张地图带回的物件</small></span>
+                </button>
+                <button id="adventureCenterJournalButton" class="adventure-center-action" type="button">
+                  <span class="adventure-center-action-icon" aria-hidden="true">≡</span>
+                  <span><strong>冒险日记</strong><small>旅程记录与整理完成的故事档案</small></span>
+                </button>
+              </div>
+              <section id="adventureCenterPendingStories" class="adventure-center-pending"></section>
+            </section>
+
+            <section id="adventureJournalPanel" class="adventure-screen-panel adventure-journal-panel" aria-label="冒险日记">
+              <header class="adventure-panel-header">
+                <div>
+                  <p class="eyebrow">Adventure Journal</p>
+                  <h2>冒险日记</h2>
+                </div>
+                <button id="adventureJournalCloseButton" class="adventure-panel-close" type="button">冒险中心</button>
+              </header>
+              <div class="adventure-journal-tabs" role="tablist" aria-label="日记分类">
+                <button id="adventureJourneyTab" class="is-active" type="button" role="tab" aria-selected="true">旅程记录</button>
+                <button id="adventureStoryArchiveTab" type="button" role="tab" aria-selected="false">故事档案</button>
+              </div>
+              <div id="adventureJournalContent" class="adventure-journal-content"></div>
+            </section>
+
             <section id="adventureMapPanel" class="adventure-screen-panel adventure-map-panel" aria-label="选择冒险地图">
               <header class="adventure-panel-header">
                 <div>
                   <p class="eyebrow">Adventure Maps</p>
                   <h2>选择地图</h2>
                 </div>
-                <button id="adventureMapCloseButton" class="adventure-panel-close" type="button">返回营地</button>
+                <button id="adventureMapCloseButton" class="adventure-panel-close" type="button">冒险中心</button>
               </header>
 
               <p id="adventureMapMessage" class="adventure-map-message" aria-live="polite">今天想去哪里走走？</p>
@@ -465,7 +540,7 @@
                 <button id="adventureAgainButton" class="adventure-control adventure-control-primary" type="button">再次前往此地图</button>
                 <button id="adventureLogMapButton" class="adventure-control" type="button">选择其他地图</button>
                 <button id="adventureLogRouteMapButton" class="adventure-control hidden" type="button">查看路线图</button>
-                <button id="adventureLogExitButton" class="adventure-control" type="button">返回营地</button>
+                <button id="adventureLogExitButton" class="adventure-control" type="button">冒险中心</button>
                 <button id="adventureLogResetButton" class="adventure-control" type="button">重置测试</button>
               </div>
             </section>
@@ -492,6 +567,35 @@
                 <button id="adventureRouteMapCloseButton" class="adventure-control" type="button">收起路线图</button>
                 <button id="adventureRouteMapMapButton" class="adventure-control adventure-control-primary" type="button">查看新地图</button>
               </div>
+            </div>
+          </section>
+        </div>
+
+        <div id="adventureClueSortLayer" class="adventure-clue-sort-layer hidden" aria-hidden="true">
+          <section class="adventure-clue-sort-modal" aria-label="整理线索">
+            <header class="adventure-clue-sort-header">
+              <div>
+                <p class="eyebrow">Story Filing</p>
+                <h2 id="adventureClueSortTitle">整理线索</h2>
+              </div>
+              <button id="adventureClueSortCloseButton" class="close-button" type="button" aria-label="关闭线索整理">
+                <img src="assets/ui/icon_close.png?v=4.9" alt="">
+              </button>
+            </header>
+            <div class="adventure-clue-sort-guide">
+              <strong id="adventureClueSortRule">按线索顺序整理</strong>
+              <p id="adventureClueSortInstruction">阅读每张线索中的时间、地点和因果关系，再调整顺序。</p>
+            </div>
+            <p class="adventure-clue-sort-intro">点击卡片依次编号；也可以按住左侧手柄拖动调整。点击卡片可阅读完整记录。</p>
+            <div id="adventureClueSortSlots" class="adventure-clue-sort-slots" aria-label="当前线索顺序"></div>
+            <div id="adventureClueSortList" class="adventure-clue-sort-list"></div>
+            <p id="adventureClueSortMessage" class="adventure-clue-sort-message" aria-live="polite"></p>
+            <p id="adventureClueSortHint" class="adventure-clue-sort-hint hidden" aria-live="polite"></p>
+            <div id="adventureClueSortCompletion" class="adventure-clue-sort-completion hidden" aria-live="polite"></div>
+            <div class="adventure-clue-sort-actions">
+              <button id="adventureClueSortHintButton" class="adventure-control" type="button">获得一点提示</button>
+              <button id="adventureClueSortResetButton" class="adventure-control" type="button">重新排列</button>
+              <button id="adventureClueSortConfirmButton" class="adventure-control adventure-control-primary" type="button">确认整理</button>
             </div>
           </section>
         </div>

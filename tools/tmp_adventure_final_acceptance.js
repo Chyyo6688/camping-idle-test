@@ -47,6 +47,10 @@ globalThis.__finalRuntime = {
   createAdventureHookSnapshot,
   collectAdventureHookClues,
   grantAdventureKeyClue,
+  getAdventureStoryState,
+  getAdventureStoryDefinition,
+  archiveAdventureStory,
+  routeMapStoryId: ADVENTURE_ROUTE_MAP_STORY_ID,
   buildRecommendedAdventureBackpack,
   recoverInterruptedAdventureBackpack,
   deepHooks: DEEP_MOUNTAIN_ADVENTURE_HOOKS,
@@ -58,7 +62,7 @@ globalThis.__finalRuntime = {
 const runtime = sandbox.__finalRuntime;
 const now = Date.now();
 const fresh = runtime.createDefaultAdventureProgress(now);
-check("新档具备 v9、满体力、启动物资、关键线索容器与两张独立地图状态", fresh.version === 9 && fresh.stamina.value === 100 && fresh.storage.ropeKit === 1 && fresh.storage.fieldLantern === 1 && fresh.unlockedMaps.join("|") === "deepMountain" && Array.isArray(fresh.keyClues) && fresh.hookClues && fresh.mapStates.deepMountain !== fresh.mapStates.fogRainforest, JSON.stringify({ version: fresh.version, stamina: fresh.stamina, storage: fresh.storage, unlockedMaps: fresh.unlockedMaps, keyClues: fresh.keyClues }));
+check("新档具备 v10、满体力、故事与日记容器及两张独立地图状态", fresh.version === 10 && fresh.stamina.value === 100 && fresh.storage.ropeKit === 1 && fresh.storage.fieldLantern === 1 && fresh.unlockedMaps.join("|") === "deepMountain" && Array.isArray(fresh.keyClues) && fresh.hookClues && fresh.storyStates && Array.isArray(fresh.journeyLogs) && Array.isArray(fresh.revealedKeyItems) && fresh.mapStates.deepMountain !== fresh.mapStates.fogRainforest, JSON.stringify({ version: fresh.version, stamina: fresh.stamina, storage: fresh.storage, unlockedMaps: fresh.unlockedMaps, keyClues: fresh.keyClues }));
 
 const legacy = runtime.sanitizeAdventureProgress({
   version: 2,
@@ -69,7 +73,7 @@ const legacy = runtime.sanitizeAdventureProgress({
   mapStates: { deepMountain: { bridgeRepaired: true, cabinSearched: true } },
   pendingBackpack: {}, pendingLoot: {}, recentAdventureHistory: []
 });
-check("旧档迁移保留库存、体力、路线和深山状态", legacy.version === 9 && legacy.storage.fieldLantern === 1 && legacy.storage.oldKey === 2 && legacy.stamina.value === 61 && legacy.unlockedRoutes.includes("ridgeTrail") && legacy.mapStates.deepMountain.bridgeRepaired && legacy.mapStates.deepMountain.cabinSearched === 1 && !("selectedGoal" in legacy), JSON.stringify({ version: legacy.version, storage: legacy.storage, stamina: legacy.stamina, routes: legacy.unlockedRoutes, state: legacy.mapStates.deepMountain }));
+check("旧档迁移保留库存、体力、路线和深山状态", legacy.version === 10 && legacy.storage.fieldLantern === 1 && legacy.storage.oldKey === 2 && legacy.stamina.value === 61 && legacy.unlockedRoutes.includes("ridgeTrail") && legacy.mapStates.deepMountain.bridgeRepaired && legacy.mapStates.deepMountain.cabinSearched === 1 && !("selectedGoal" in legacy), JSON.stringify({ version: legacy.version, storage: legacy.storage, stamina: legacy.stamina, routes: legacy.unlockedRoutes, state: legacy.mapStates.deepMountain }));
 
 const emptyStorage = runtime.sanitizeAdventureProgress(Object.assign({}, fresh, { storage: {}, adventureStarterKitMigrationVersion: 1 }));
 check("已完成迁移的空 Adventure Storage 异常档不会重复补发", Object.keys(emptyStorage.storage).length === 0 && emptyStorage.adventureStarterKitMigrationVersion === 1, JSON.stringify(emptyStorage.storage));
@@ -125,7 +129,15 @@ runtime.setProgress(routeMapClueProgress);
 runtime.grantAdventureKeyClue(routeMapTrip, "rangerLeafRouteMark", [], []);
 runtime.grantAdventureKeyClue(routeMapTrip, "southSupplyCode", [], []);
 runtime.grantAdventureKeyClue(routeMapTrip, "oldForestryCoordinate", [], []);
-check("三条关键线索合成受潮调查路线图并解锁雨林", routeMapClueProgress.keyClues.includes("dampSurveyRouteMap") && routeMapTrip.importantDiscoveries.some((entry) => entry.id === "dampSurveyRouteMap") && runtime.isAdventureMapUnlocked("fogRainforest", routeMapClueProgress), JSON.stringify({ keyClues: routeMapClueProgress.keyClues, important: routeMapTrip.importantDiscoveries, unlockedMaps: routeMapClueProgress.unlockedMaps }));
+const routeMapStory = runtime.getAdventureStoryDefinition(runtime.routeMapStoryId);
+const routeMapReady = runtime.getAdventureStoryState(routeMapClueProgress, runtime.routeMapStoryId);
+const wrongRouteMapOrder = routeMapStory.clues.map((clue) => clue.id).reverse();
+const correctRouteMapOrder = routeMapStory.clues.map((clue) => clue.id);
+const wrongArchive = runtime.archiveAdventureStory(runtime.routeMapStoryId, wrongRouteMapOrder);
+check("三条关键线索收齐后等待玩家整理，不会自动解锁雨林", routeMapReady.status === "ready" && !wrongArchive && !routeMapClueProgress.keyClues.includes("dampSurveyRouteMap") && !runtime.isAdventureMapUnlocked("fogRainforest", routeMapClueProgress), JSON.stringify({ state: routeMapReady, keyClues: routeMapClueProgress.keyClues, unlockedMaps: routeMapClueProgress.unlockedMaps }));
+const archivedRouteMap = runtime.archiveAdventureStory(runtime.routeMapStoryId, correctRouteMapOrder);
+check("路线图排序正确后生成关键物品、记录 pending reveal 并解锁雨林", archivedRouteMap && routeMapClueProgress.keyClues.includes("dampSurveyRouteMap") && routeMapClueProgress.pendingKeyItemReveal === "dampRouteMap" && runtime.isAdventureMapUnlocked("fogRainforest", routeMapClueProgress), JSON.stringify({ state: routeMapClueProgress.storyStates[runtime.routeMapStoryId], keyClues: routeMapClueProgress.keyClues, pending: routeMapClueProgress.pendingKeyItemReveal, unlockedMaps: routeMapClueProgress.unlockedMaps }));
+check("已归档故事重复提交不会重复发放", !runtime.archiveAdventureStory(runtime.routeMapStoryId, correctRouteMapOrder) && routeMapClueProgress.unlockedMaps.filter((id) => id === "fogRainforest").length === 1, JSON.stringify(routeMapClueProgress.unlockedMaps));
 
 const recProgress = runtime.createDefaultAdventureProgress(now);
 recProgress.storage = { fieldLantern: 1, forestCharm: 1, trailMap: 1, trailRation: 2, firstAidPouch: 1 };

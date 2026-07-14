@@ -18,6 +18,12 @@
     "sleepingGear"
   ];
 
+  const STORY_ARCHIVE_GEAR_REWARDS = {
+    "deepMountain:investigateWhiteShadow": "mistTraceObservationBoard",
+    "deepMountain:findWatchtowerClue": "oldForestryRouteBoard",
+    "fogRainforest:studyLuminousPlants": "luminousPlantLamp"
+  };
+
   const SHOP_GROUPS = {
     fire: {
       label: "Fire",
@@ -154,7 +160,10 @@
     campBoardGame: { width: 80, height: 64 },
     campGuitar: { width: 80, height: 96 },
     binoculars: { width: 64, height: 48 },
-    cameraTripod: { width: 80, height: 100 }
+    cameraTripod: { width: 80, height: 100 },
+    mistTraceObservationBoard: { width: 112, height: 112 },
+    oldForestryRouteBoard: { width: 112, height: 112 },
+    luminousPlantLamp: { width: 72, height: 108 }
   };
 
   function getSpriteSize(id) {
@@ -851,6 +860,39 @@
       detail: "+5 Comfort", 
       image: imagePath("activity", "cameraTripod", "png"), 
       scene: scene({ x: 35, y: 51 }, 10, 16, { mirrored: true }) }),
+    gear({
+      id: "mistTraceObservationBoard",
+      category: "activity",
+      shopGroup: "activity",
+      displayName: "雾痕观察板",
+      detail: "树林中的白影 · 归档奖励",
+      storyReward: true,
+      shopVisible: false,
+      image: imagePath("activity", "mistTraceObservationBoard", "png"),
+      scene: scene({ x: 21, y: 74 }, 12.5, 18)
+    }),
+    gear({
+      id: "oldForestryRouteBoard",
+      category: "activity",
+      shopGroup: "activity",
+      displayName: "旧林务路线板",
+      detail: "旧瞭望塔留下的痕迹 · 归档奖励",
+      storyReward: true,
+      shopVisible: false,
+      image: imagePath("activity", "oldForestryRouteBoard", "png"),
+      scene: scene({ x: 76, y: 73 }, 13, 18)
+    }),
+    gear({
+      id: "luminousPlantLamp",
+      category: "light",
+      shopGroup: "light",
+      displayName: "微光植物灯",
+      detail: "雨后亮起的植物 · 归档奖励",
+      storyReward: true,
+      shopVisible: false,
+      image: imagePath("light", "luminousPlantLamp", "png"),
+      scene: scene({ x: 58, y: 76 }, 7.8, 24)
+    }),
 
     gear({ id: "sleepingBag", 
       category: "sleepingGear", 
@@ -890,6 +932,7 @@
   });
 
   global.GEAR_CATEGORIES = GEAR_CATEGORIES;
+  global.STORY_ARCHIVE_GEAR_REWARDS = STORY_ARCHIVE_GEAR_REWARDS;
   global.SHOP_GROUPS = SHOP_GROUPS;
   global.LEGACY_GEAR_ID_MAP = LEGACY_GEAR_ID_MAP;
   global.GEAR_CATALOG = GEAR_CATALOG;
