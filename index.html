@@ -362,33 +362,51 @@
             </div>
 
             <section id="adventureCenterPanel" class="adventure-screen-panel adventure-center-panel" aria-label="冒险中心">
-              <header class="adventure-panel-header">
-                <div>
-                  <p class="eyebrow">Adventure Center</p>
-                  <h2>冒险</h2>
+              <div class="adventure-center-window">
+                <header class="adventure-panel-header adventure-center-header">
+                  <div>
+                    <p class="eyebrow">Adventure Center</p>
+                    <h2>冒险</h2>
+                  </div>
+                  <button id="adventureCenterCloseButton" class="adventure-center-close" type="button" aria-label="返回营地" title="返回营地">
+                    <img src="assets/ui/icon_close.png?v=4.9" alt="">
+                  </button>
+                </header>
+                <p class="adventure-center-intro">从营火边收拾行装，沿熟悉的路继续向远处走。</p>
+                <div class="adventure-center-actions">
+                  <button id="adventureCenterDepartButton" class="adventure-center-action" type="button">
+                    <span class="adventure-center-action-visual" aria-hidden="true">
+                      <img src="assets/adventure/deep-mountain/deep-mountain-background.png?v=4.9" alt="">
+                    </span>
+                    <span class="adventure-center-action-copy">
+                      <strong>选择地图并出发</strong>
+                      <small>路线、挂心之事与背包准备</small>
+                      <span class="adventure-center-action-link">整装出发 <span aria-hidden="true">→</span></span>
+                    </span>
+                  </button>
+                  <button id="adventureCenterStorageButton" class="adventure-center-action" type="button">
+                    <span class="adventure-center-action-visual is-storage" aria-hidden="true">
+                      <img src="assets/gear/storage/stackedShelfContainerSet/icon.png?v=4.9" alt="">
+                    </span>
+                    <span class="adventure-center-action-copy">
+                      <strong>冒险仓库</strong>
+                      <small>整理沿途带回的物件</small>
+                      <span class="adventure-center-action-link">打开仓库 <span aria-hidden="true">→</span></span>
+                    </span>
+                  </button>
+                  <button id="adventureCenterJournalButton" class="adventure-center-action" type="button">
+                    <span class="adventure-center-action-visual is-journal" aria-hidden="true">
+                      <img src="assets/adventure/fog-rainforest/damp-route-map.png?v=4.9" alt="">
+                    </span>
+                    <span class="adventure-center-action-copy">
+                      <strong>冒险日记</strong>
+                      <small>沿途见闻与故事档案</small>
+                      <span class="adventure-center-action-link">翻开日记 <span aria-hidden="true">→</span></span>
+                    </span>
+                  </button>
                 </div>
-                <button id="adventureCenterCloseButton" class="adventure-panel-close" type="button">返回营地</button>
-              </header>
-              <div class="adventure-center-status">
-                <article><span>当前体力</span><strong id="adventureCenterStamina">100 / 100</strong></article>
-                <article><span>冒险仓库</span><strong id="adventureCenterStorageCount">0 件</strong></article>
-                <article><span>旅程记录</span><strong id="adventureCenterJourneyCount">0 篇</strong></article>
+                <section id="adventureCenterPendingStories" class="adventure-center-pending"></section>
               </div>
-              <div class="adventure-center-actions">
-                <button id="adventureCenterDepartButton" class="adventure-center-action is-primary" type="button">
-                  <span class="adventure-center-action-icon" aria-hidden="true">↗</span>
-                  <span><strong>选择地图并出发</strong><small>查看路线、挂心之事与推荐背包</small></span>
-                </button>
-                <button id="adventureCenterStorageButton" class="adventure-center-action" type="button">
-                  <span class="adventure-center-action-icon" aria-hidden="true">▣</span>
-                  <span><strong>冒险仓库</strong><small>查看从两张地图带回的物件</small></span>
-                </button>
-                <button id="adventureCenterJournalButton" class="adventure-center-action" type="button">
-                  <span class="adventure-center-action-icon" aria-hidden="true">≡</span>
-                  <span><strong>冒险日记</strong><small>旅程记录与整理完成的故事档案</small></span>
-                </button>
-              </div>
-              <section id="adventureCenterPendingStories" class="adventure-center-pending"></section>
             </section>
 
             <section id="adventureJournalPanel" class="adventure-screen-panel adventure-journal-panel" aria-label="冒险日记">

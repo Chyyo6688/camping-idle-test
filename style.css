@@ -2926,6 +2926,68 @@ h2 {
     linear-gradient(180deg, rgba(105, 94, 68, 0.6), rgba(72, 66, 51, 0.68));
 }
 
+@media (max-width: 430px) {
+  .shop-drawer {
+    --shop-inner-padding: 12px;
+  }
+
+  .shop-section,
+  .shop-content.single-category .shop-section {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 8px;
+    row-gap: 8px;
+  }
+
+  .shop-card {
+    min-height: 7rem;
+    aspect-ratio: auto;
+    grid-template-rows: 3.2rem minmax(2rem, auto) auto;
+    gap: 0.2rem;
+    padding: 0.5rem 0.3rem 0.34rem;
+  }
+
+  .shop-card .item-art {
+    width: 90%;
+    height: 3.2rem;
+  }
+
+  .shop-card .item-copy {
+    width: 100%;
+    align-self: start;
+  }
+
+  .shop-card .item-name {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.62rem;
+    line-height: 1.16;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .shop-card .item-detail {
+    font-size: 0.49rem;
+  }
+
+  .shop-card .item-action {
+    width: 100%;
+    padding: 0.24rem 0.28rem;
+    font-size: 0.56rem;
+  }
+
+  .shop-card.featured {
+    grid-template-columns: 5.4rem minmax(0, 1fr);
+    min-height: 6.1rem;
+    padding: 0.62rem 0.7rem;
+    column-gap: 0.6rem;
+  }
+
+  .shop-card.featured .item-art {
+    width: 5rem;
+    height: 4.7rem;
+  }
+}
+
 .drawer-summary {
   flex: 0 0 auto;
   display: flex;
@@ -6402,95 +6464,186 @@ body.divination-open .daily-camp-card {
   display: block;
 }
 
-.adventure-center-panel,
+.adventure-prototype.is-center .adventure-center-panel {
+  display: grid;
+  place-items: center;
+}
+
+.adventure-center-panel {
+  padding: calc(0.72rem + env(safe-area-inset-top, 0px)) calc(0.68rem + env(safe-area-inset-right, 0px)) calc(0.72rem + env(safe-area-inset-bottom, 0px)) calc(0.68rem + env(safe-area-inset-left, 0px));
+  background: rgba(4, 11, 7, 0.44);
+  backdrop-filter: blur(3px);
+}
+
 .adventure-journal-panel {
   background: rgba(9, 20, 14, 0.94);
 }
 
-.adventure-center-status {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.5rem;
-  margin-bottom: 0.65rem;
-}
-
-.adventure-center-status article {
-  min-width: 0;
-  padding: 0.62rem;
-  border: 1px solid rgba(221, 205, 143, 0.28);
+.adventure-center-window {
+  position: relative;
+  width: min(100%, 50rem);
+  max-height: min(92%, 43rem);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: clamp(0.72rem, 2.1vw, 1.05rem);
+  border: 1px solid rgba(239, 211, 145, 0.56);
   border-radius: 8px;
-  background: rgba(24, 43, 29, 0.88);
+  color: #f8edcf;
+  background:
+    linear-gradient(180deg, rgba(16, 31, 20, 0.76), rgba(8, 20, 13, 0.96)),
+    url("assets/adventure/deep-mountain/deep-mountain-background.png?v=4.9") center 42% / cover;
+  box-shadow:
+    0 1.25rem 3rem rgba(0, 0, 0, 0.58),
+    inset 0 1px 0 rgba(255, 244, 202, 0.12);
+  scrollbar-width: thin;
 }
 
-.adventure-center-status span,
-.adventure-center-status strong {
-  display: block;
-  overflow-wrap: anywhere;
+.adventure-center-window::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(125deg, rgba(230, 204, 132, 0.08), transparent 38%, rgba(5, 16, 10, 0.3));
+  pointer-events: none;
 }
 
-.adventure-center-status span {
-  color: #bfcbae;
-  font-size: 0.68rem;
+.adventure-center-window > * {
+  position: relative;
 }
 
-.adventure-center-status strong {
-  margin-top: 0.18rem;
+.adventure-center-header {
+  align-items: center;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(231, 210, 153, 0.24);
+}
+
+.adventure-center-header h2 {
   color: #fff0bd;
-  font-size: 0.95rem;
+  font-family: "ZCOOL XiaoWei", var(--font-family-mixed);
+  font-size: clamp(1.28rem, 3.2vw, 1.72rem);
+  line-height: 1;
+}
+
+.adventure-center-close {
+  width: 2.35rem;
+  height: 2.35rem;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0.48rem;
+  border: 1px solid rgba(235, 211, 151, 0.36);
+  border-radius: 7px;
+  background: rgba(7, 18, 11, 0.68);
+}
+
+.adventure-center-close img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.adventure-center-intro {
+  margin: 0.62rem 0 0;
+  color: #cdd8be;
+  font-size: clamp(0.62rem, 1.7vw, 0.74rem);
+  line-height: 1.4;
 }
 
 .adventure-center-actions {
   display: grid;
-  gap: 0.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(0.45rem, 1.4vw, 0.68rem);
+  margin-top: 0.68rem;
 }
 
 .adventure-center-action {
   width: 100%;
   min-width: 0;
   display: grid;
-  grid-template-columns: 2.4rem minmax(0, 1fr);
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.72rem;
-  border: 1px solid rgba(221, 205, 143, 0.32);
+  grid-template-rows: minmax(6.6rem, 1fr) auto;
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgba(227, 205, 144, 0.34);
   border-radius: 8px;
   color: #f7ebc9;
-  background: rgba(21, 39, 26, 0.96);
+  background: rgba(15, 31, 20, 0.92);
+  box-shadow: inset 0 1px 0 rgba(255, 244, 202, 0.08);
   text-align: left;
+  transition: border-color 160ms ease, filter 160ms ease, transform 160ms ease;
 }
 
-.adventure-center-action.is-primary {
-  border-color: rgba(244, 216, 131, 0.7);
-  background: rgba(48, 72, 39, 0.98);
+.adventure-center-action:hover,
+.adventure-center-action:focus-visible {
+  border-color: rgba(246, 218, 139, 0.76);
+  filter: brightness(1.08);
+  outline: none;
+  transform: translateY(-2px);
 }
 
-.adventure-center-action-icon {
-  width: 2.4rem;
-  height: 2.4rem;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(255, 230, 157, 0.35);
-  border-radius: 8px;
-  color: #ffe59c;
-  background: rgba(6, 17, 11, 0.48);
-  font-size: 1.15rem;
+.adventure-center-action-visual {
+  min-height: 0;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(229, 208, 149, 0.24);
+  background: rgba(7, 18, 11, 0.72);
+}
+
+.adventure-center-action-visual img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 220ms ease;
+}
+
+.adventure-center-action-visual.is-storage img {
+  object-fit: contain;
+  padding: 0.48rem;
+  background: linear-gradient(145deg, rgba(56, 76, 46, 0.96), rgba(18, 37, 24, 0.96));
+}
+
+.adventure-center-action-visual.is-journal img {
+  object-position: 50% 44%;
+}
+
+.adventure-center-action:hover .adventure-center-action-visual img,
+.adventure-center-action:focus-visible .adventure-center-action-visual img {
+  transform: scale(1.035);
+}
+
+.adventure-center-action-copy {
+  min-width: 0;
+  display: flex;
+  min-height: 6.1rem;
+  flex-direction: column;
+  padding: 0.62rem;
 }
 
 .adventure-center-action strong,
-.adventure-center-action small {
+.adventure-center-action small,
+.adventure-center-action-link {
   display: block;
   overflow-wrap: anywhere;
 }
 
 .adventure-center-action strong {
-  font-size: 0.86rem;
+  color: #fff0bd;
+  font-size: clamp(0.74rem, 1.9vw, 0.88rem);
+  line-height: 1.24;
 }
 
 .adventure-center-action small {
   margin-top: 0.18rem;
-  color: #bdc8ae;
-  font-size: 0.66rem;
+  color: #bfcbb4;
+  font-size: clamp(0.56rem, 1.5vw, 0.66rem);
   line-height: 1.35;
+}
+
+.adventure-center-action-link {
+  margin-top: auto;
+  padding-top: 0.62rem;
+  color: #e8cc84;
+  font-size: clamp(0.54rem, 1.45vw, 0.64rem);
+  font-weight: 900;
 }
 
 .adventure-center-pending {
@@ -6945,9 +7098,10 @@ body.adventure-clue-sort-open {
 }
 
 .cooking-recipe-layout {
+  flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(13rem, 0.8fr) minmax(17rem, 1.2fr);
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
   gap: 0.6rem;
   margin-top: 0.6rem;
   overflow: hidden;
@@ -7110,8 +7264,34 @@ body.adventure-clue-sort-open {
 }
 
 @media (max-width: 560px) {
-  .adventure-center-status {
+  .adventure-center-window {
+    width: min(100%, 28rem);
+    max-height: 96%;
+  }
+
+  .adventure-center-actions {
     grid-template-columns: 1fr;
+  }
+
+  .adventure-center-action {
+    grid-template-columns: minmax(6.4rem, 34%) minmax(0, 1fr);
+    grid-template-rows: minmax(6rem, auto);
+  }
+
+  .adventure-center-action-visual {
+    position: relative;
+    min-height: 6rem;
+    border-right: 1px solid rgba(229, 208, 149, 0.24);
+    border-bottom: 0;
+  }
+
+  .adventure-center-action-visual img {
+    position: absolute;
+    inset: 0;
+  }
+
+  .adventure-center-action-copy {
+    min-height: 6rem;
   }
 
   .adventure-journey-card header,
@@ -7125,29 +7305,72 @@ body.adventure-clue-sort-open {
   }
 
   .cooking-recipe-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(8rem, 0.72fr) minmax(15rem, 1.28fr);
+    grid-template-columns: minmax(8.6rem, 0.86fr) minmax(0, 1.14fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 0.42rem;
   }
 
   .cooking-recipe-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .cooking-recipe-card {
-    grid-template-columns: 2.5rem minmax(0, 1fr);
+    grid-template-columns: 2.35rem minmax(0, 1fr);
+    gap: 0.34rem;
+    padding: 0.32rem;
   }
 
   .cooking-recipe-card img {
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 2.35rem;
+    height: 2.35rem;
   }
 }
 
 @media (max-width: 390px) {
-  .adventure-center-panel,
   .adventure-journal-panel {
     padding-left: 0.52rem;
     padding-right: 0.52rem;
+  }
+
+  .adventure-center-panel {
+    padding: calc(0.42rem + env(safe-area-inset-top, 0px)) calc(0.42rem + env(safe-area-inset-right, 0px)) calc(0.42rem + env(safe-area-inset-bottom, 0px)) calc(0.42rem + env(safe-area-inset-left, 0px));
+  }
+
+  .adventure-center-window {
+    max-height: 98%;
+    padding: 0.58rem;
+  }
+
+  .adventure-center-intro {
+    margin-top: 0.48rem;
+  }
+
+  .adventure-center-actions {
+    gap: 0.38rem;
+    margin-top: 0.5rem;
+  }
+
+  .adventure-center-action {
+    grid-template-columns: minmax(5.5rem, 31%) minmax(0, 1fr);
+    grid-template-rows: minmax(5.35rem, auto);
+  }
+
+  .adventure-center-action-copy {
+    min-height: 5.35rem;
+    padding: 0.48rem;
+  }
+
+  .adventure-center-action-visual {
+    min-height: 5.35rem;
+  }
+
+  .adventure-center-action-link {
+    padding-top: 0.38rem;
+  }
+
+  .adventure-center-pending {
+    margin-top: 0.48rem;
+    padding: 0.48rem;
   }
 
   .adventure-clue-sort-layer,
@@ -7156,12 +7379,85 @@ body.adventure-clue-sort-open {
     padding-right: 0.42rem;
   }
 
-  .cooking-recipe-list {
-    grid-template-columns: 1fr;
+  .cooking-recipe-panel {
+    max-height: 96%;
+    padding: 0.52rem;
   }
 
   .cooking-recipe-layout {
-    grid-template-rows: minmax(7rem, 0.62fr) minmax(16rem, 1.38fr);
+    grid-template-columns: minmax(7.45rem, 0.82fr) minmax(0, 1.18fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 0.3rem;
+    margin-top: 0.45rem;
+  }
+
+  .cooking-recipe-card {
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: 0.25rem;
+    padding: 0.25rem;
+  }
+
+  .cooking-recipe-card img {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .cooking-recipe-card strong {
+    font-size: 0.64rem;
+    line-height: 1.2;
+  }
+
+  .cooking-recipe-card small {
+    font-size: 0.52rem;
+  }
+
+  .cooking-recipe-detail {
+    gap: 0.36rem;
+    padding: 0.38rem;
+  }
+
+  .cooking-selected-heading {
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+    gap: 0.34rem;
+  }
+
+  .cooking-selected-heading img {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .cooking-selected-heading h3 {
+    font-size: 0.74rem;
+  }
+
+  .cooking-selected-heading p,
+  .cooking-source-field,
+  .cooking-material-row,
+  .cooking-quantity-row {
+    font-size: 0.56rem;
+  }
+
+  .cooking-material-list {
+    gap: 0.22rem;
+  }
+
+  .cooking-material-row {
+    gap: 0.28rem;
+    padding: 0.28rem;
+  }
+
+  .cooking-source-field select {
+    padding: 0.36rem;
+    font-size: 0.58rem;
+  }
+
+  .cooking-stepper {
+    grid-template-columns: 1.62rem 1.78rem 1.62rem;
+  }
+
+  .cooking-stepper button {
+    width: 1.62rem;
+    height: 1.62rem;
   }
 
   .adventure-clue-sort-actions {
