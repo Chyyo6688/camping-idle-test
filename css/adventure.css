@@ -578,12 +578,12 @@
   color: #24331f;
   border-color: rgba(244, 222, 166, 0.74);
   background: linear-gradient(180deg, #f1d99c, #c8ae6d);
+  font-size: medium;
 }
 
 #adventureStartButton {
   min-height: 1.5rem;
   padding: 0.5rem 1.5rem;
-  font-size: small;
   font-weight: 900;
   align-self: center;
 }
