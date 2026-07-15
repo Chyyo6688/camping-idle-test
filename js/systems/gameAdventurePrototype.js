@@ -75,7 +75,6 @@ const adventureHookEyebrow = document.getElementById("adventureHookEyebrow");
 const adventureHookTitle = document.getElementById("adventureHookTitle");
 const adventureHookIntro = document.getElementById("adventureHookIntro");
 const adventureHookClueMeta = document.getElementById("adventureHookClueMeta");
-const adventureHookDetail = document.getElementById("adventureHookDetail");
 const adventureRecommendationText = document.getElementById("adventureRecommendationText");
 const adventureRecommendationResetButton = document.getElementById("adventureRecommendationResetButton");
 
@@ -661,7 +660,7 @@ function getAdventureRouteResourceSummary(mapId, routeId) {
   } else {
     lines.push("本路线菜谱已全部掌握");
   }
-  return lines.join(" ");
+  return "\n" + lines.join("\n");
 }
 
 function getAdventureMapRoutes(mapId) {
@@ -676,7 +675,15 @@ function getAdventureRoutePresentation(mapId, routeId) {
 }
 
 function getAdventureCssImage(path) {
-  return path ? "url(\"" + String(path).replace(/\"/g, "") + "\")" : "none";
+  if (!path) return "none";
+  const cleanPath = String(path).replace(/[\r\n\"]/g, "");
+  let resolvedPath = cleanPath;
+  try {
+    resolvedPath = new URL(cleanPath, document.baseURI).href;
+  } catch (error) {
+    resolvedPath = cleanPath;
+  }
+  return "url(\"" + resolvedPath.replace(/\"/g, "") + "\")";
 }
 
 function applyAdventureMapPresentation(mapId) {
@@ -1576,7 +1583,7 @@ function applyAdventureItemIcon(icon, descriptor) {
   icon.style.backgroundImage = "";
   if (descriptor.image) {
     icon.classList.add("is-external-item");
-    icon.style.backgroundImage = 'url("' + descriptor.image + '")';
+    icon.style.backgroundImage = getAdventureCssImage(descriptor.image);
     icon.style.backgroundPosition = descriptor.imagePosition || "center";
     icon.style.backgroundSize = descriptor.imageSize || "contain";
   } else if (descriptor.iconClass) {
@@ -1889,7 +1896,6 @@ function chooseAdventureMapForPreparation(mapId) {
 function renderAdventureHookPreview() {
   const progress = ensureAdventureProgress();
   const mapId = adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
-  const routeId = adventurePrototypeState.draftRouteId || getAdventureMapDefaultRouteId(mapId);
   const hook = ensureDraftAdventureHook(false);
   const clueProgress = getAdventureHookClueProgress(progress, mapId, hook.id);
   const storyState = getAdventureStoryState(progress, mapId + ":" + hook.id);
@@ -1903,14 +1909,7 @@ function renderAdventureHookPreview() {
   }
   if (adventureHookTitle) adventureHookTitle.textContent = hook.title + (archived ? " · 已查清" : (ready ? " · 待整理" : ""));
   if (adventureHookClueMeta) adventureHookClueMeta.textContent = formatAdventureHookClueProgress(clueProgress);
-  if (adventureHookIntro) adventureHookIntro.textContent = archived
-    ? "这件事已经整理归档，接下来可以按路线资源整理背包。"
-    : (ready ? "线索已经收齐，需要由你整理出完整经过。" : hook.intro);
-  if (adventureHookDetail) {
-    adventureHookDetail.textContent = archived
-      ? getAdventureRouteResourceSummary(mapId, routeId)
-      : (ready ? "线索已收齐，等待整理。" : (clueProgress.discovered ? "还剩 " + clueProgress.remaining + " 条线索。" : "尚未发现"));
-  }
+  if (adventureHookIntro) adventureHookIntro.textContent = hook.intro;
   if (adventureHookPreview) {
     const existingButton = adventureHookPreview.querySelector(".adventure-hook-sort-button");
     if (existingButton) existingButton.remove();
@@ -1920,7 +1919,10 @@ function renderAdventureHookPreview() {
       button.className = "adventure-mini-control adventure-hook-sort-button";
       button.textContent = "整理线索";
       button.addEventListener("click", function() { openAdventureClueSorter(mapId + ":" + hook.id); });
-      adventureHookPreview.appendChild(button);
+      const titleLine = adventureHookTitle && adventureHookTitle.parentElement && adventureHookTitle.parentElement.classList.contains("adventure-hook-title-line")
+        ? adventureHookTitle.parentElement
+        : adventureHookPreview;
+      titleLine.appendChild(button);
     }
   }
 }
@@ -2009,7 +2011,7 @@ function applyAdventureBackpackRecommendation(force) {
 function renderAdventureRecommendationStatus() {
   if (!adventureRecommendationText) return;
   const selectedCount = getAdventureCountTotal(adventurePrototypeState.draftBackpack);
-  adventureRecommendationText.textContent = "推荐携带 " + selectedCount + " / " + ADVENTURE_BACKPACK_CAPACITY + "。根据当前路线和挂心之事整理，可自由调整。";
+  adventureRecommendationText.textContent = "根据当前路线和挂心之事整理，可自由调整。";
 }
 
 function renderAdventureRouteChoices(progress) {
@@ -4848,6 +4850,7 @@ function resetDeepMountainAdventureTestState() {
 }
 
 window.resetDeepMountainAdventureTest = resetDeepMountainAdventureTestState;
+window.resetAdventureTestState = resetDeepMountainAdventureTestState;
 window.configureDeepMountainAdventureTestState = function(options) {
   const source = options && typeof options === "object" ? options : {};
   const progress = ensureAdventureProgress();

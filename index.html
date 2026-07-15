@@ -7,9 +7,18 @@
   <script>
     window.APP_VERSION = "4.9";
   </script>
-  <link id="appStylesheet" rel="stylesheet" href="style.css?v=3.0">
+  <link rel="stylesheet" href="css/tokens-base.css?v=3.0" data-app-stylesheet>
+  <link rel="stylesheet" href="css/scene-hud.css?v=3.0" data-app-stylesheet>
+  <link rel="stylesheet" href="css/camper-shop.css?v=3.0" data-app-stylesheet>
+  <link rel="stylesheet" href="css/daily-sound.css?v=3.0" data-app-stylesheet>
+  <link rel="stylesheet" href="css/divination-settings.css?v=3.0" data-app-stylesheet>
+  <link rel="stylesheet" href="css/adventure.css?v=3.0" data-app-stylesheet>
+  <link rel="stylesheet" href="css/cooking-storage.css?v=3.0" data-app-stylesheet>
+  <link rel="stylesheet" href="css/responsive.css?v=3.0" data-app-stylesheet>
   <script>
-    document.getElementById("appStylesheet").href = "style.css?v=" + window.APP_VERSION;
+    document.querySelectorAll("link[data-app-stylesheet]").forEach(function(stylesheet) {
+      stylesheet.href = stylesheet.getAttribute("href").split("?")[0] + "?v=" + window.APP_VERSION;
+    });
   </script>
 </head>
 <body class="day">
@@ -132,7 +141,7 @@
 
       <nav class="ui-display-controls" aria-label="Display controls">
         <button id="uiDisplayToggle" class="utility-button ui-toggle-button" type="button" aria-label="Toggle UI display">
-          <span id="uiDisplayLabel">UI</span>
+          <span id="uiDisplayLabel">隐藏序号</span>
         </button>
       </nav>
 
@@ -386,7 +395,7 @@
                   </button>
                   <button id="adventureCenterStorageButton" class="adventure-center-action" type="button">
                     <span class="adventure-center-action-visual is-storage" aria-hidden="true">
-                      <img src="assets/gear/storage/stackedShelfContainerSet/icon.png?v=4.9" alt="">
+                      <img src="assets/adventure/backgrounds/adventure-storage.png?v=4.9" alt="">
                     </span>
                     <span class="adventure-center-action-copy">
                       <strong>冒险仓库</strong>
@@ -411,11 +420,15 @@
 
             <section id="adventureJournalPanel" class="adventure-screen-panel adventure-journal-panel" aria-label="冒险日记">
               <header class="adventure-panel-header">
-                <div>
-                  <p class="eyebrow">Adventure Journal</p>
-                  <h2>冒险日记</h2>
+                <div class="adventure-panel-title-row">
+                  <button id="adventureJournalCloseButton" class="adventure-panel-back" type="button" aria-label="返回冒险中心" title="返回冒险中心">
+                    <span aria-hidden="true">‹</span>
+                  </button>
+                  <div>
+                    <p class="eyebrow">Adventure Journal</p>
+                    <h2>冒险日记</h2>
+                  </div>
                 </div>
-                <button id="adventureJournalCloseButton" class="adventure-panel-close" type="button">冒险中心</button>
               </header>
               <div class="adventure-journal-tabs" role="tablist" aria-label="日记分类">
                 <button id="adventureJourneyTab" class="is-active" type="button" role="tab" aria-selected="true">旅程记录</button>
@@ -426,11 +439,15 @@
 
             <section id="adventureMapPanel" class="adventure-screen-panel adventure-map-panel" aria-label="选择冒险地图">
               <header class="adventure-panel-header">
-                <div>
-                  <p class="eyebrow">Adventure Maps</p>
-                  <h2>选择地图</h2>
+                <div class="adventure-panel-title-row">
+                  <button id="adventureMapCloseButton" class="adventure-panel-back" type="button" aria-label="返回冒险中心" title="返回冒险中心">
+                    <span aria-hidden="true">‹</span>
+                  </button>
+                  <div>
+                    <p class="eyebrow">Adventure Maps</p>
+                    <h2>选择地图</h2>
+                  </div>
                 </div>
-                <button id="adventureMapCloseButton" class="adventure-panel-close" type="button">冒险中心</button>
               </header>
 
               <p id="adventureMapMessage" class="adventure-map-message" aria-live="polite">今天想去哪里走走？</p>
@@ -444,11 +461,16 @@
 
             <section id="adventurePrepPanel" class="adventure-screen-panel adventure-prep-panel" aria-label="出发准备">
               <header class="adventure-panel-header">
-                <div>
-                  <p id="adventurePrepMapEyebrow" class="eyebrow">Deep Mountain</p>
-                  <h2>出发准备</h2>
+                <div class="adventure-panel-title-row">
+                  <button id="adventurePrepCloseButton" class="adventure-panel-back" type="button" aria-label="返回选择地图" title="返回选择地图">
+                    <span aria-hidden="true">‹</span>
+                  </button>
+                  <div>
+                    <p id="adventurePrepMapEyebrow" class="eyebrow">Deep Mountain</p>
+                    <h2>出发准备</h2>
+                  </div>
                 </div>
-                <button id="adventurePrepCloseButton" class="adventure-panel-close" type="button">选择地图</button>
+                <button id="adventureStartButton" class="adventure-control adventure-control-primary adventure-panel-start" type="button">整装出发</button>
               </header>
 
               <div id="adventurePrepIllustration" class="adventure-prep-illustration" aria-hidden="true">
@@ -466,10 +488,11 @@
 
               <aside id="adventureHookPreview" class="adventure-hook-preview" aria-live="polite">
                 <span id="adventureHookEyebrow">这次出发前听到的传闻</span>
-                <strong id="adventureHookTitle">山路上的新动静</strong>
-                <em id="adventureHookClueMeta">尚未发现</em>
+                <div class="adventure-hook-title-line">
+                  <strong id="adventureHookTitle">山路上的新动静</strong>
+                  <em id="adventureHookClueMeta">尚未发现</em>
+                </div>
                 <p id="adventureHookIntro">沿途也许会遇见一些没有预料到的事情。</p>
-                <p id="adventureHookDetail" class="adventure-hook-detail">尚未发现</p>
               </aside>
 
               <section class="adventure-stamina-card" aria-label="冒险体力">
@@ -485,7 +508,7 @@
                 <section class="adventure-inventory-column" aria-label="本次可携带物">
                   <div class="adventure-section-heading">
                     <strong>可携带物</strong>
-                    <span>按来源分开</span>
+                    <span>点击放入冒险背包</span>
                   </div>
                   <div id="adventureStorageList" class="adventure-item-list"></div>
                 </section>
@@ -496,19 +519,14 @@
                     <span id="adventureBackpackCapacity">已携带 0 / 5</span>
                   </div>
                   <div class="adventure-recommendation-bar">
-                    <span id="adventureRecommendationText">推荐携带 0 / 5。根据当前路线和挂心之事整理，可自由调整。</span>
-                    <button id="adventureRecommendationResetButton" class="adventure-mini-control" type="button">按当前挂心之事重新整理</button>
+                    <span id="adventureRecommendationText">根据当前路线和挂心之事整理，可自由调整。</span>
+                    <button id="adventureRecommendationResetButton" class="adventure-mini-control" type="button">一键推荐</button>
                   </div>
                   <div id="adventureBackpackList" class="adventure-item-list"></div>
                 </section>
               </div>
 
               <p id="adventurePrepMessage" class="adventure-prep-message" aria-live="polite">背包最多携带 5 件，途中发现的物品会另行收好。</p>
-
-              <div class="adventure-panel-actions">
-                <button id="adventureStartButton" class="adventure-control adventure-control-primary" type="button">带上背包出发</button>
-                <button id="adventurePrepResetButton" class="adventure-control" type="button">重置测试状态</button>
-              </div>
             </section>
 
             <section id="adventureLogPanel" class="adventure-screen-panel adventure-log-panel" aria-label="本次冒险日志">
@@ -559,7 +577,6 @@
                 <button id="adventureLogMapButton" class="adventure-control" type="button">选择其他地图</button>
                 <button id="adventureLogRouteMapButton" class="adventure-control hidden" type="button">查看路线图</button>
                 <button id="adventureLogExitButton" class="adventure-control" type="button">冒险中心</button>
-                <button id="adventureLogResetButton" class="adventure-control" type="button">重置测试</button>
               </div>
             </section>
 

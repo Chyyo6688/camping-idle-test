@@ -71,7 +71,7 @@ function applyUiDisplayMode() {
   document.body.classList.toggle("ui-hidden", uiDisplayMode === 2);
 
   if (uiDisplayLabel) {
-    uiDisplayLabel.textContent = uiDisplayMode === 0 ? "UI" : uiDisplayMode === 1 ? "#" : "Show";
+    uiDisplayLabel.textContent = uiDisplayMode === 0 ? "序号" : uiDisplayMode === 1 ? "沉浸" : "退出";
   }
 
   if (uiDisplayToggle) {

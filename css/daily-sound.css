@@ -1,0 +1,497 @@
+/* daily-sound.css — split from style.css; component rules keep their source order. */
+
+.daily-camp-card.open + .cooler-full-hint {
+  opacity: 0;
+  transform: translateX(0.25rem);
+  pointer-events: none;
+}
+
+.daily-camp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: transparent;
+}
+
+.daily-camp-backdrop.hidden {
+  display: none;
+}
+
+.daily-camp-card {
+  --daily-drawer-width: 350px;
+  --daily-drawer-tab-width: 46px;
+  width: var(--daily-drawer-width);
+  position: absolute;
+  z-index: 66;
+  right: 0;
+  top: 14%;
+  display: grid;
+  grid-template-columns: var(--daily-drawer-tab-width) minmax(0, 1fr);
+  align-items: stretch;
+  color: #f3e2bb;
+  transform: translate3d(calc(100% - var(--daily-drawer-tab-width)), 0, 0);
+  transition: opacity 0.2s ease, transform 0.24s ease;
+  pointer-events: none;
+}
+
+.daily-camp-card.open {
+  transform: translate3d(0, 0, 0);
+}
+
+.daily-camp-drawer-toggle {
+  min-width: 0;
+  min-height: 88px;
+  align-self: start;
+  display: grid;
+  grid-template-rows: auto auto auto;
+  place-items: center;
+  gap: 0.18rem;
+  padding: 0.38rem 0.22rem;
+  border: 1px solid rgba(230, 188, 107, 0.52);
+  border-right: 0;
+  border-radius: 10px 0 0 10px;
+  color: #fff1c5;
+  background:
+    linear-gradient(180deg, rgba(36, 49, 34, 0.88), rgba(22, 31, 25, 0.82));
+  box-shadow: 0 0.36rem 0.9rem rgba(10, 15, 10, 0.2);
+  backdrop-filter: blur(7px);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.daily-camp-drawer-toggle:hover {
+  filter: brightness(1.06);
+}
+
+.daily-camp-drawer-toggle:active {
+  transform: translateX(-1px);
+}
+
+.daily-weather-tab-icon,
+.daily-weather-icon {
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 224, 154, 0.3);
+  border-radius: 8px;
+  color: #342610;
+  background: linear-gradient(180deg, #ffd983, #c9903e);
+  box-shadow: inset 0 1px 0 rgba(255, 245, 199, 0.34), 0 0.24rem 0.42rem rgba(10, 13, 8, 0.18);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.daily-weather-tab-icon {
+  width: 1.64rem;
+  height: 1.64rem;
+  font-size: 0.72rem;
+}
+
+.daily-weather-tab-copy {
+  color: #d7c69b;
+  font-size: 0.54rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.daily-camp-drawer-chevron {
+  color: #ffd983;
+  font-size: 1.05rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.daily-camp-drawer-panel {
+  min-width: 0;
+  display: grid;
+  gap: 0.28rem;
+  padding: 0.5rem 0.62rem;
+  border: 1px solid rgba(230, 188, 107, 0.34);
+  border-right: 0;
+  border-radius: 8px 0 0 8px;
+  background:
+    linear-gradient(180deg, rgba(31, 42, 31, 0.78), rgba(22, 31, 25, 0.66));
+  box-shadow: 0 0.5rem 1.15rem rgba(10, 15, 10, 0.2);
+  backdrop-filter: blur(7px);
+  pointer-events: none;
+}
+
+.daily-camp-card.open .daily-camp-drawer-panel {
+  pointer-events: auto;
+}
+
+.daily-camp-card-title {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.daily-weather-icon {
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.9rem;
+}
+
+.daily-camp-card-title h2 {
+  margin: 0.28rem;
+  overflow-wrap: anywhere;
+}
+.daily-camp-card-title p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.daily-camp-mood,
+.daily-camp-activities,
+.daily-sound-recommendation {
+  margin: 0rem;
+  overflow-wrap: anywhere;
+}
+
+.daily-camp-card-title p {
+  color: #d4c299;
+  font-size: 0.58rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.daily-camp-card-title h2 {
+  color: #fff1c5;
+  font-size: 0.86rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.daily-camp-mood {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #f2dfb8;
+  font-size: 0.68rem;
+  font-weight: 750;
+  line-height: 1.28;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.daily-camp-activities,
+.daily-sound-recommendation {
+  color: #d8c89e;
+  font-size: 0.58rem;
+  font-weight: 800;
+  line-height: 1.22;
+}
+
+.daily-sound-recommendation {
+  color: #b9d7c0;
+}
+
+body.shop-open .daily-camp-card {
+  opacity: 0;
+  transform: translate3d(110%, -0.35rem, 0);
+  pointer-events: none;
+}
+
+body.ui-hidden .top-bar,
+body.ui-hidden .mode-controls,
+body.ui-hidden .floating-controls,
+body.ui-hidden .daily-camp-card,
+body.ui-hidden .cooler-full-hint,
+body.ui-hidden .toast-layer,
+body.ui-hidden .utility-controls {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Icon-only sound journal entry (no button chrome). */
+.sound-icon-button {
+  width: 40px;
+  height: 40px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(8, 12, 8, 0.55));
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+.sound-icon-button .sound-journal-glyph {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.sound-icon-button:hover {
+  transform: scale(1.06);
+  filter: brightness(1.1) drop-shadow(0 1px 2px rgba(8, 12, 8, 0.55));
+}
+
+.sound-icon-button:active {
+  transform: scale(0.94);
+}
+
+@media (prefers-reduced-motion: reduce) {
+.daily-camp-card {
+    transition: none;
+  }
+
+  }
+
+/* ---- Sound Journal ------------------------------------------------------- */
+.sound-journal-toggle .sound-journal-glyph {
+  width: 18px;
+  height: 18px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.sound-journal-layer {
+  position: absolute;
+  z-index: 118;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem 0.75rem 0.75rem;
+  background: rgba(10, 16, 12, 0.44);
+  backdrop-filter: blur(5px);
+  pointer-events: auto;
+}
+
+.sound-journal-panel {
+  width: min(100%, 390px);
+  max-height: min(80%, 580px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0.82rem;
+  border: 2px solid rgba(255, 209, 122, 0.66);
+  border-radius: 12px;
+  color: #fff1ca;
+  background: linear-gradient(180deg, rgba(43, 55, 36, 0.98), rgba(22, 31, 23, 0.99));
+  box-shadow:
+    0 0.72rem 1.7rem rgba(6, 10, 7, 0.44),
+    inset 0 1px 0 rgba(255, 238, 186, 0.12);
+}
+
+.sound-journal-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.sound-journal-header h2 {
+  color: #f5dfb3;
+  font-size: 1.24rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.sound-journal-close-button {
+  display: grid;
+  flex: 0 0 auto;
+}
+
+.sound-journal-intro {
+  margin: 0.42rem 0 0;
+  color: #d9c9a4;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.32;
+}
+
+.sound-journal-master {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.62rem;
+  padding: 0.42rem 0.5rem;
+  border: 1px solid rgba(230, 188, 107, 0.3);
+  border-radius: 9px;
+  background: rgba(18, 25, 18, 0.55);
+}
+
+.sound-master-toggle {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0.28rem 0.56rem;
+  border: 1px solid rgba(255, 209, 122, 0.5);
+  border-radius: 8px;
+  color: #fff4d3;
+  background: rgba(64, 84, 52, 0.7);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sound-master-toggle.muted {
+  color: #d7c8a6;
+  background: rgba(40, 46, 36, 0.7);
+  border-color: rgba(230, 188, 107, 0.28);
+}
+
+.sound-volume-label {
+  color: #d9b477;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.sound-volume-slider {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 4px;
+  accent-color: #ffd17a;
+  cursor: pointer;
+}
+
+.sound-journal-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.62rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.sound-journal-list::-webkit-scrollbar {
+  display: none;
+}
+
+.sound-journal-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.44rem 0.5rem;
+  border: 1px solid rgba(230, 188, 107, 0.32);
+  border-radius: 9px;
+  background: rgba(18, 25, 18, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 238, 186, 0.08);
+}
+
+.sound-journal-row.locked {
+  border-color: rgba(150, 150, 130, 0.22);
+  background: rgba(16, 20, 16, 0.5);
+  opacity: 0.82;
+}
+
+.sound-journal-icon {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(64, 84, 52, 0.55);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.sound-journal-row.locked .sound-journal-icon {
+  background: rgba(40, 44, 36, 0.55);
+}
+
+.sound-journal-copy {
+  min-width: 0;
+}
+
+.sound-journal-name {
+  margin: 0;
+  color: #fff4d3;
+  font-size: 0.86rem;
+  font-weight: 900;
+  line-height: 1.14;
+  overflow-wrap: anywhere;
+  text-transform: none;
+}
+
+.sound-journal-row.locked .sound-journal-name {
+  color: #cabf9f;
+}
+
+.sound-journal-desc {
+  margin: 0.12rem 0 0;
+  color: #d3c39c;
+  font-size: 0.68rem;
+  font-weight: 750;
+  line-height: 1.26;
+  overflow-wrap: anywhere;
+}
+
+.sound-journal-control {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+}
+
+.sound-journal-tag {
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.sound-journal-tag.found-tag {
+  color: #2c3a20;
+  background: #cfe0a4;
+}
+
+.sound-journal-tag.locked-tag {
+  color: #d7c8a6;
+  background: rgba(70, 74, 60, 0.6);
+}
+
+.sound-journal-toggle {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(230, 188, 107, 0.4);
+  border-radius: 999px;
+  background: rgba(40, 46, 36, 0.85);
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.sound-journal-toggle.on {
+  background: rgba(120, 168, 88, 0.9);
+  border-color: rgba(255, 209, 122, 0.75);
+}
+
+.sound-journal-knob {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: #f6efd8;
+  box-shadow: 0 1px 3px rgba(6, 10, 7, 0.4);
+  transition: left 0.16s ease;
+}
+
+.sound-journal-toggle.on .sound-journal-knob {
+  left: 23px;
+}
+
+.sound-journal-summary {
+  margin: 0.2rem 0 0.1rem;
+  color: #d9b477;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-align: center;
+  text-transform: uppercase;
+}
+

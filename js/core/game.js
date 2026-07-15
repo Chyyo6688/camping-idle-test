@@ -300,14 +300,21 @@ if (typeof window !== "undefined") {
       setDailyCampDrawerExpanded(false);
     }
   });
-  window.addEventListener("resize", function() {
+  const refreshViewportLayout = function() {
+    syncGameDisplayScale();
     syncSceneScale();
     positionOnboardingLayer();
     refreshTargetOutlines();
     updateSceneOcclusion();
-  });
+  };
+  window.addEventListener("resize", refreshViewportLayout);
+  window.addEventListener("orientationchange", refreshViewportLayout);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", refreshViewportLayout);
+  }
 }
 
+syncGameDisplayScale();
 syncSceneScale();
 resetSaveIfRequestedByUrl();
 loadGame();

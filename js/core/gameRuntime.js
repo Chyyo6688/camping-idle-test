@@ -100,6 +100,7 @@ const comfortStatus = comfortAmount.closest(".resource-pill");
 const warmthStatus = warmthSecondsAmount.closest(".resource-pill");
 const cozyGainLayer = document.getElementById("cozyGainLayer");
 const welcomeMessage = document.getElementById("welcomeMessage");
+const gameShell = document.querySelector(".game-shell");
 const gameViewport = document.querySelector(".game-viewport");
 const campScene = document.getElementById("campScene");
 const sceneBackground = document.getElementById("sceneBackground");
@@ -302,15 +303,37 @@ function setElementClassName(element, className) {
   }
 }
 
+function syncGameDisplayScale() {
+  if (!gameShell || !gameViewport) {
+    return;
+  }
+
+  const shellStyle = window.getComputedStyle(gameShell);
+  const safeAreaTop = Number.parseFloat(shellStyle.paddingTop) || 0;
+  const safeAreaRight = Number.parseFloat(shellStyle.paddingRight) || 0;
+  const safeAreaBottom = Number.parseFloat(shellStyle.paddingBottom) || 0;
+  const safeAreaLeft = Number.parseFloat(shellStyle.paddingLeft) || 0;
+  const safeAreaWidth = safeAreaLeft + safeAreaRight;
+  const safeAreaHeight = safeAreaTop + safeAreaBottom;
+  const visualWidth = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+  const visualHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  const availableWidth = Math.max(0, Math.min(gameShell.clientWidth, visualWidth) - safeAreaWidth);
+  const availableHeight = Math.max(0, Math.min(gameShell.clientHeight, visualHeight) - safeAreaHeight);
+  const scale = Math.min(availableWidth / 540, availableHeight / 960, 1);
+
+  setStyleProperty(gameShell, "--game-display-offset-x", (safeAreaLeft - safeAreaRight) / 2 + "px");
+  setStyleProperty(gameShell, "--game-display-offset-y", (safeAreaTop - safeAreaBottom) / 2 + "px");
+  setStyleProperty(gameViewport, "--game-display-scale", Number.isFinite(scale) && scale > 0 ? scale : 1);
+}
+
 function syncSceneScale() {
   if (!campScene || !sceneContent) {
     return;
   }
 
-  const sceneRect = campScene.getBoundingClientRect();
   const scale = Math.min(
-    sceneRect.width / BASE_SCENE_WIDTH,
-    sceneRect.height / BASE_SCENE_HEIGHT
+    campScene.clientWidth / BASE_SCENE_WIDTH,
+    campScene.clientHeight / BASE_SCENE_HEIGHT
   );
 
   setStyleProperty(sceneContent, "--scene-scale", Number.isFinite(scale) && scale > 0 ? scale : 1);

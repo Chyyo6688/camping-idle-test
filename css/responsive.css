@@ -1,0 +1,11 @@
+/* responsive.css — split from style.css; component rules keep their source order. */
+
+.game-shell {
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .scene-content {
+    transition: none;
+  }
+}
