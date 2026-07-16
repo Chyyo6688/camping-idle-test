@@ -66,6 +66,20 @@ const adventureStartButton = document.getElementById("adventureStartButton");
 const adventurePrepResetButton = document.getElementById("adventurePrepResetButton");
 const adventurePrepCloseButton = document.getElementById("adventurePrepCloseButton");
 const adventurePrepMapEyebrow = document.getElementById("adventurePrepMapEyebrow");
+const adventurePrepTitle = document.getElementById("adventurePrepTitle");
+const adventureRouteStep = document.getElementById("adventureRouteStep");
+const adventureBackpackStep = document.getElementById("adventureBackpackStep");
+const adventureTripCardPanel = document.getElementById("adventureTripCardPanel");
+const adventureTripCard = document.getElementById("adventureTripCard");
+const adventureTripBackButton = document.getElementById("adventureTripBackButton");
+const adventureRouteContinueButton = document.getElementById("adventureRouteContinueButton");
+const adventureHookRerollButton = document.getElementById("adventureHookRerollButton");
+const adventureHookSortButton = document.getElementById("adventureHookSortButton");
+const adventureTripRouteName = document.getElementById("adventureTripRouteName");
+const adventureTripSummary = document.getElementById("adventureTripSummary");
+const adventureTripResourceTags = document.getElementById("adventureTripResourceTags");
+const adventurePrepStaminaInfoButton = document.getElementById("adventurePrepStaminaInfoButton");
+const adventurePrepStaminaPopover = document.getElementById("adventurePrepStaminaPopover");
 const adventurePrepIllustration = document.getElementById("adventurePrepIllustration");
 const adventurePrepIllustrationCaption = document.getElementById("adventurePrepIllustrationCaption");
 const adventureRouteList = document.getElementById("adventureRouteList");
@@ -152,6 +166,9 @@ const adventurePrototypeState = {
   draftMapId: "deepMountain",
   draftRouteId: "creekValley",
   draftAdventureHook: null,
+  prepStep: "routes",
+  routeCarouselIndex: 0,
+  routeCarouselDrag: null,
   journalTab: "journeys",
   activeStorySortId: "",
   storySortOrder: [],
@@ -887,11 +904,11 @@ function getAdventureHookItemMatch(hook, backpack) {
   });
 }
 
-function chooseAdventureHook(mapId, routeId, progress, backpack, previousHookId) {
+function chooseAdventureHook(mapId, routeId, progress, backpack, previousHookId, excludedHookId) {
   const map = getAdventureMap(mapId);
   const hooks = getAdventureMapHooks(mapId);
   const hookEntries = Object.keys(hooks).filter(function(hookId) {
-    return isAdventureHookRouteEligible(mapId, hooks[hookId], routeId, progress);
+    return hookId !== excludedHookId && isAdventureHookRouteEligible(mapId, hooks[hookId], routeId, progress);
   }).map(function(hookId) {
     const hook = hooks[hookId];
     let weight = Number(hook.routeWeight) || 4;
@@ -930,6 +947,7 @@ function chooseAdventureHook(mapId, routeId, progress, backpack, previousHookId)
     if (previousHookId === hookId) weight *= 0.55;
     return { hook: hook, source: source, intro: introOverride, weight: Math.max(0.05, weight * (0.86 + Math.random() * 0.28)) };
   });
+  if (!hookEntries.length && excludedHookId) return chooseAdventureHook(mapId, routeId, progress, backpack, previousHookId, "");
   if (!hookEntries.length) return createFallbackAdventureHook(mapId, routeId);
   const selected = pickWeightedAdventureEntry(hookEntries);
   return createAdventureHookSnapshot(
@@ -954,6 +972,22 @@ function ensureDraftAdventureHook(forceNew) {
     progress,
     adventurePrototypeState.draftBackpack,
     forceNew && current ? current.id : ""
+  );
+  return adventurePrototypeState.draftAdventureHook;
+}
+
+function rerollDraftAdventureHook() {
+  const progress = ensureAdventureProgress();
+  const mapId = adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
+  const routeId = adventurePrototypeState.draftRouteId || getAdventureMapDefaultRouteId(mapId);
+  const current = sanitizeAdventureHookSnapshot(adventurePrototypeState.draftAdventureHook, mapId);
+  adventurePrototypeState.draftAdventureHook = chooseAdventureHook(
+    mapId,
+    routeId,
+    progress,
+    adventurePrototypeState.draftBackpack,
+    current ? current.id : "",
+    current ? current.id : ""
   );
   return adventurePrototypeState.draftAdventureHook;
 }
@@ -1888,9 +1922,162 @@ function chooseAdventureMapForPreparation(mapId) {
   if (!isAdventureMapUnlocked(mapId, progress)) return false;
   adventurePrototypeState.draftMapId = mapId;
   adventurePrototypeState.draftRouteId = getFirstUnlockedAdventureRouteId(progress, mapId);
+  adventurePrototypeState.routeCarouselIndex = Math.max(0, getAdventureRouteIds(mapId).indexOf(adventurePrototypeState.draftRouteId));
   adventurePrototypeState.draftAdventureHook = null;
-  showAdventurePreparation("已经选好“" + getAdventureMap(mapId).name + "”，再挑一条路线并整理背包。 ");
+  showAdventurePreparation("请选择一条路线。");
   return true;
+}
+
+function getAdventurePrepStep() {
+  return ["routes", "itinerary", "backpack"].indexOf(adventurePrototypeState.prepStep) !== -1
+    ? adventurePrototypeState.prepStep
+    : "routes";
+}
+
+function getAdventureRouteIds(mapId) {
+  return Object.keys(getAdventureMapRoutes(mapId));
+}
+
+function wrapAdventureIndex(index, length) {
+  if (!length) return 0;
+  return ((index % length) + length) % length;
+}
+
+function getAdventureCarouselOffset(index, activeIndex, length) {
+  if (!length) return 0;
+  let offset = index - activeIndex;
+  if (offset > length / 2) offset -= length;
+  if (offset < -length / 2) offset += length;
+  return offset;
+}
+
+function getAdventureRouteFaceTags(route, unlocked) {
+  if (!unlocked) return ["未解锁"];
+  return String(route && route.riskLabel ? route.riskLabel : "")
+    .split("·")
+    .map(function(tag) { return tag.trim(); })
+    .filter(Boolean)
+    .slice(0, 2);
+}
+
+function getAdventureRouteRewardTags(mapId, route) {
+  const eventWeights = route && route.eventWeights ? route.eventWeights : {};
+  const tags = sanitizeAdventureStringArray(route && route.resourceIds, 12).map(getAdventureIngredientName);
+  if ((eventWeights.animalTracks || eventWeights.riverbankTracks || eventWeights.frogChorus) && tags.indexOf("动物线索") === -1) tags.push("动物线索");
+  if ((eventWeights.washedOutCache || eventWeights.flashFloodDebris || eventWeights.floodedSupplyCrate) && tags.indexOf("漂流物") === -1) tags.push("漂流物");
+  if ((eventWeights.abandonedCabin || eventWeights.researchStation || eventWeights.lockedChest) && tags.indexOf("旧设施") === -1) tags.push("旧设施");
+  if ((eventWeights.whiteShadow || eventWeights.luminousPlants || eventWeights.symbolStone) && tags.indexOf("异常痕迹") === -1) tags.push("异常痕迹");
+  if (!tags.length) tags.push(getAdventureMap(mapId).name + "发现");
+  return Array.from(new Set(tags)).slice(0, 3);
+}
+
+function formatAdventureTripClueProgress(progressInfo) {
+  const found = progressInfo && Number(progressInfo.found) ? Number(progressInfo.found) : 0;
+  const total = progressInfo && Number(progressInfo.total) ? Number(progressInfo.total) : 0;
+  return "线索 " + found + " / " + total;
+}
+
+function getCurrentAdventureCarouselRouteId() {
+  const mapId = adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
+  const routeIds = getAdventureRouteIds(mapId);
+  return routeIds[wrapAdventureIndex(adventurePrototypeState.routeCarouselIndex, routeIds.length)] || getAdventureMapDefaultRouteId(mapId);
+}
+
+function selectAdventureDraftRoute(routeId, forceNewHook) {
+  const progress = ensureAdventureProgress();
+  const mapId = adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
+  const route = getAdventureMapRoutes(mapId)[routeId];
+  if (!route || !isAdventureRouteUnlocked(mapId, route, progress)) return false;
+  const changed = adventurePrototypeState.draftRouteId !== routeId;
+  adventurePrototypeState.draftRouteId = routeId;
+  if (changed || forceNewHook) ensureDraftAdventureHook(true);
+  applyAdventureRoutePresentation(mapId, routeId);
+  resetAdventureRouteAtmosphere();
+  return true;
+}
+
+function setAdventurePrepStep(step, message) {
+  adventurePrototypeState.prepStep = ["routes", "itinerary", "backpack"].indexOf(step) !== -1 ? step : "routes";
+  if (typeof message === "string") setAdventurePrepMessage(message, false);
+  if (adventurePrepPanel) adventurePrepPanel.scrollTop = 0;
+  renderAdventurePreparation();
+  restoreAdventureViewportOrigin();
+}
+
+function updateAdventurePrepFrame(progress) {
+  const step = getAdventurePrepStep();
+  const mapId = adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
+  const map = getAdventureMap(mapId);
+  if (adventurePrepTitle) adventurePrepTitle.textContent = step === "backpack" ? "整理背包" : map.name;
+  if (adventurePrepMapEyebrow) adventurePrepMapEyebrow.textContent = map.selection && map.selection.eyebrow ? map.selection.eyebrow : map.name;
+  if (adventurePrepCloseButton) {
+    const label = step === "backpack" ? "返回本次行程" : (step === "itinerary" ? "返回选择路线" : "返回选择地图");
+    adventurePrepCloseButton.setAttribute("aria-label", label);
+    adventurePrepCloseButton.title = label;
+  }
+  if (adventureRouteStep) {
+    adventureRouteStep.classList.toggle("hidden", step === "backpack");
+    adventureRouteStep.classList.toggle("is-route-selection", step === "routes");
+    adventureRouteStep.classList.toggle("is-itinerary", step === "itinerary");
+  }
+  if (adventureBackpackStep) adventureBackpackStep.classList.toggle("hidden", step !== "backpack");
+  if (adventureTripCardPanel) adventureTripCardPanel.classList.toggle("hidden", step !== "itinerary");
+  if (adventurePrototype) {
+    adventurePrototype.classList.toggle("is-prep-routes", step === "routes");
+    adventurePrototype.classList.toggle("is-prep-itinerary", step === "itinerary");
+    adventurePrototype.classList.toggle("is-prep-backpack", step === "backpack");
+  }
+  if (adventurePrepStaminaText) adventurePrepStaminaText.textContent = progress.stamina.value + " / " + ADVENTURE_STAMINA_MAX;
+}
+
+function closeAdventureStaminaPopover() {
+  if (adventurePrepStaminaPopover) adventurePrepStaminaPopover.classList.add("hidden");
+  if (adventurePrepStaminaInfoButton) adventurePrepStaminaInfoButton.setAttribute("aria-expanded", "false");
+}
+
+function positionAdventureStaminaPopover() {
+  if (!adventurePrepStaminaPopover || !adventurePrepStaminaInfoButton || !gameViewport ||
+    adventurePrepStaminaPopover.classList.contains("hidden")) return;
+
+  const viewportRect = gameViewport.getBoundingClientRect();
+  const buttonRect = adventurePrepStaminaInfoButton.getBoundingClientRect();
+  const scaleX = viewportRect.width / gameViewport.clientWidth;
+  const scaleY = viewportRect.height / gameViewport.clientHeight;
+
+  if (!Number.isFinite(scaleX) || scaleX <= 0 || !Number.isFinite(scaleY) || scaleY <= 0) return;
+
+  const fontSize = Number.parseFloat(window.getComputedStyle(adventurePrepStaminaPopover).fontSize) || 16;
+  const margin = fontSize;
+  const gap = fontSize * 0.6;
+  const buttonLeft = (buttonRect.left - viewportRect.left) / scaleX;
+  const buttonRight = (buttonRect.right - viewportRect.left) / scaleX;
+  const buttonTop = (buttonRect.top - viewportRect.top) / scaleY;
+  const buttonBottom = (buttonRect.bottom - viewportRect.top) / scaleY;
+
+  adventurePrepStaminaPopover.style.left = margin + "px";
+  adventurePrepStaminaPopover.style.top = margin + "px";
+  const popoverRect = adventurePrepStaminaPopover.getBoundingClientRect();
+  const popoverWidth = popoverRect.width / scaleX;
+  const popoverHeight = popoverRect.height / scaleY;
+  const maxLeft = Math.max(margin, gameViewport.clientWidth - popoverWidth - margin);
+  const left = clamp(buttonRight - popoverWidth, margin, maxLeft);
+  const belowTop = buttonBottom + gap;
+  const aboveTop = buttonTop - popoverHeight - gap;
+  const placeAbove = belowTop + popoverHeight > gameViewport.clientHeight - margin && aboveTop >= margin;
+  const top = clamp(placeAbove ? aboveTop : belowTop, margin, gameViewport.clientHeight - popoverHeight - margin);
+
+  adventurePrepStaminaPopover.style.left = left + "px";
+  adventurePrepStaminaPopover.style.top = top + "px";
+  adventurePrepStaminaPopover.classList.toggle("is-above", placeAbove);
+  adventurePrepStaminaPopover.style.setProperty("--stamina-anchor-x", clamp((buttonLeft + buttonRight) / 2 - left, margin, popoverWidth - margin) + "px");
+}
+
+function toggleAdventureStaminaPopover() {
+  if (!adventurePrepStaminaPopover || !adventurePrepStaminaInfoButton) return;
+  const willOpen = adventurePrepStaminaPopover.classList.contains("hidden");
+  adventurePrepStaminaPopover.classList.toggle("hidden", !willOpen);
+  adventurePrepStaminaInfoButton.setAttribute("aria-expanded", willOpen ? "true" : "false");
+  if (willOpen) requestAnimationFrame(positionAdventureStaminaPopover);
 }
 
 function renderAdventureHookPreview() {
@@ -1899,31 +2086,15 @@ function renderAdventureHookPreview() {
   const hook = ensureDraftAdventureHook(false);
   const clueProgress = getAdventureHookClueProgress(progress, mapId, hook.id);
   const storyState = getAdventureStoryState(progress, mapId + ":" + hook.id);
-  const archived = storyState.status === "archived";
   const ready = storyState.status === "ready";
   if (adventureHookPreview) adventureHookPreview.dataset.hookSource = hook.source;
-  if (adventureHookEyebrow) {
-    adventureHookEyebrow.textContent = hasVisitedAdventureMap(progress, mapId) || ["unfinishedClue", "mapState", "recentHistory"].indexOf(hook.source) !== -1
-      ? "最近挂心的事"
-      : "这次出发前听到的传闻";
-  }
-  if (adventureHookTitle) adventureHookTitle.textContent = hook.title + (archived ? " · 已查清" : (ready ? " · 待整理" : ""));
-  if (adventureHookClueMeta) adventureHookClueMeta.textContent = formatAdventureHookClueProgress(clueProgress);
+  if (adventureHookEyebrow) adventureHookEyebrow.textContent = "当前目标";
+  if (adventureHookTitle) adventureHookTitle.textContent = hook.title;
+  if (adventureHookClueMeta) adventureHookClueMeta.textContent = formatAdventureTripClueProgress(clueProgress);
   if (adventureHookIntro) adventureHookIntro.textContent = hook.intro;
-  if (adventureHookPreview) {
-    const existingButton = adventureHookPreview.querySelector(".adventure-hook-sort-button");
-    if (existingButton) existingButton.remove();
-    if (ready) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "adventure-mini-control adventure-hook-sort-button";
-      button.textContent = "整理线索";
-      button.addEventListener("click", function() { openAdventureClueSorter(mapId + ":" + hook.id); });
-      const titleLine = adventureHookTitle && adventureHookTitle.parentElement && adventureHookTitle.parentElement.classList.contains("adventure-hook-title-line")
-        ? adventureHookTitle.parentElement
-        : adventureHookPreview;
-      titleLine.appendChild(button);
-    }
+  if (adventureHookSortButton) {
+    adventureHookSortButton.classList.toggle("hidden", !ready);
+    adventureHookSortButton.onclick = ready ? function() { openAdventureClueSorter(mapId + ":" + hook.id); } : null;
   }
 }
 
@@ -2011,54 +2182,132 @@ function applyAdventureBackpackRecommendation(force) {
 function renderAdventureRecommendationStatus() {
   if (!adventureRecommendationText) return;
   const selectedCount = getAdventureCountTotal(adventurePrototypeState.draftBackpack);
-  adventureRecommendationText.textContent = "根据当前路线和挂心之事整理，可自由调整。";
+  adventureRecommendationText.textContent = "按当前路线和目标整理，可自由调整。";
+}
+
+function updateAdventureRouteCarouselTransforms(dragOffset) {
+  if (!adventureRouteList) return;
+  const mapId = adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
+  const routeIds = getAdventureRouteIds(mapId);
+  const activeIndex = wrapAdventureIndex(adventurePrototypeState.routeCarouselIndex, routeIds.length);
+  const drag = Number(dragOffset) || 0;
+  const width = adventureRouteList.getBoundingClientRect().width || 320;
+  const step = Math.min(width * 0.48, 178);
+  adventureRouteList.querySelectorAll(".route-choice").forEach(function(card) {
+    const index = Number(card.dataset.routeIndex) || 0;
+    const baseOffset = getAdventureCarouselOffset(index, activeIndex, routeIds.length);
+    const offset = baseOffset + drag;
+    const abs = Math.abs(offset);
+    const clamped = Math.min(abs, 2.2);
+    const scale = Math.max(0.72, 1 - clamped * 0.14);
+    const rotate = Math.max(-10, Math.min(10, offset * 7 + drag * 4));
+    const translateX = offset * step;
+    const translateY = clamped * 0.42;
+    card.style.setProperty("--route-x", translateX.toFixed(2) + "px");
+    card.style.setProperty("--route-y", translateY.toFixed(2) + "rem");
+    card.style.setProperty("--route-scale", scale.toFixed(3));
+    card.style.setProperty("--route-rotate", rotate.toFixed(2) + "deg");
+    card.style.zIndex = String(50 - Math.round(clamped * 10));
+    card.style.opacity = abs > 2.25 ? "0" : String(Math.max(0.18, 1 - clamped * 0.28).toFixed(2));
+    card.classList.toggle("is-current", index === activeIndex);
+    card.setAttribute("aria-current", index === activeIndex ? "true" : "false");
+  });
+}
+
+function setAdventureRouteCarouselIndex(index, shouldRender, message) {
+  const mapId = adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
+  const routeIds = getAdventureRouteIds(mapId);
+  adventurePrototypeState.routeCarouselIndex = wrapAdventureIndex(index, routeIds.length);
+  const routeId = getCurrentAdventureCarouselRouteId();
+  const progress = ensureAdventureProgress();
+  const route = getAdventureMapRoutes(mapId)[routeId];
+  if (route && isAdventureRouteUnlocked(mapId, route, progress)) {
+    selectAdventureDraftRoute(routeId, adventurePrototypeState.draftRouteId !== routeId);
+  } else {
+    applyAdventureRoutePresentation(mapId, routeId);
+    resetAdventureRouteAtmosphere();
+  }
+  if (typeof message === "string") setAdventurePrepMessage(message, false);
+  if (shouldRender) renderAdventurePreparation();
+  else updateAdventureRouteCarouselTransforms(0);
 }
 
 function renderAdventureRouteChoices(progress) {
   if (!adventureRouteList) return;
   adventureRouteList.innerHTML = "";
   const mapId = adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
+  const map = getAdventureMap(mapId);
   const routes = getAdventureMapRoutes(mapId);
-  if (!routes[adventurePrototypeState.draftRouteId] ||
-    !isAdventureRouteUnlocked(mapId, routes[adventurePrototypeState.draftRouteId], progress)) {
+  const routeIds = Object.keys(routes);
+  if (!routeIds.length) return;
+  if (!routes[adventurePrototypeState.draftRouteId] || !isAdventureRouteUnlocked(mapId, routes[adventurePrototypeState.draftRouteId], progress)) {
     adventurePrototypeState.draftRouteId = getFirstUnlockedAdventureRouteId(progress, mapId);
   }
-  Object.keys(routes).forEach(function(routeId) {
+  if (!Number.isFinite(Number(adventurePrototypeState.routeCarouselIndex)) || !routeIds[adventurePrototypeState.routeCarouselIndex]) {
+    adventurePrototypeState.routeCarouselIndex = Math.max(0, routeIds.indexOf(adventurePrototypeState.draftRouteId));
+  }
+  routeIds.forEach(function(routeId, index) {
     const route = routes[routeId];
     const unlocked = isAdventureRouteUnlocked(mapId, route, progress);
     const button = document.createElement("button");
+    const visual = document.createElement("span");
+    const copy = document.createElement("span");
     const title = document.createElement("strong");
-    const risk = document.createElement("em");
-    const description = document.createElement("span");
+    const tagList = document.createElement("span");
+    const presentation = route.presentation || {};
     button.type = "button";
     button.className = "adventure-choice-card route-choice";
-    button.classList.toggle("is-selected", adventurePrototypeState.draftRouteId === routeId);
     button.classList.toggle("is-locked", !unlocked);
-    button.disabled = !unlocked;
-    button.setAttribute("aria-pressed", adventurePrototypeState.draftRouteId === routeId ? "true" : "false");
+    button.dataset.routeId = routeId;
+    button.dataset.routeIndex = String(index);
+    button.setAttribute("aria-disabled", unlocked ? "false" : "true");
+    button.setAttribute("aria-label", route.name + (unlocked ? "，点击查看本次行程" : "，尚未解锁"));
+    visual.className = "route-choice-visual";
+    visual.style.backgroundImage = getAdventureCssImage(map.scene && map.scene.background ? map.scene.background : map.selection && map.selection.image);
+    visual.style.backgroundPosition = presentation.prepPosition || presentation.cameraPosition || "center";
+    copy.className = "route-choice-copy";
     title.textContent = route.name;
-    risk.textContent = unlocked ? route.riskLabel : "尚未解锁";
-    description.textContent = unlocked ? route.description : route.lockedHint;
-    button.appendChild(title);
-    button.appendChild(risk);
-    button.appendChild(description);
-    if (unlocked) {
-      button.addEventListener("click", function() {
-        adventurePrototypeState.draftRouteId = routeId;
-        ensureDraftAdventureHook(true);
-        applyAdventureBackpackRecommendation(false);
-        setAdventurePrepMessage("已选择“" + route.name + "”。", false);
-        renderAdventurePreparation();
-      });
-    }
+    tagList.className = "route-choice-tags";
+    getAdventureRouteFaceTags(route, unlocked).forEach(function(label) {
+      const tag = document.createElement("em");
+      tag.textContent = label;
+      tagList.appendChild(tag);
+    });
+    copy.appendChild(title);
+    copy.appendChild(tagList);
+    button.appendChild(visual);
+    button.appendChild(copy);
     adventureRouteList.appendChild(button);
   });
   if (adventureStrategyHint) {
-    const route = routes[adventurePrototypeState.draftRouteId];
-    adventureStrategyHint.textContent = route.preparationHint + " " + getAdventureRouteResourceSummary(mapId, adventurePrototypeState.draftRouteId);
+    adventureStrategyHint.textContent = "";
+    adventureStrategyHint.classList.add("hidden");
   }
-  applyAdventureRoutePresentation(mapId, adventurePrototypeState.draftRouteId);
+  updateAdventureRouteCarouselTransforms(0);
+  applyAdventureRoutePresentation(mapId, getCurrentAdventureCarouselRouteId());
   resetAdventureRouteAtmosphere();
+}
+
+function renderAdventureTripCard() {
+  const progress = ensureAdventureProgress();
+  const mapId = adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
+  const routes = getAdventureMapRoutes(mapId);
+  const route = routes[adventurePrototypeState.draftRouteId] || routes[getAdventureMapDefaultRouteId(mapId)];
+  if (!route) return;
+  if (adventureTripRouteName) adventureTripRouteName.textContent = route.name;
+  if (adventureTripSummary) adventureTripSummary.textContent = route.description || route.preparationHint || "沿当前路线前进。";
+  if (adventureTripResourceTags) {
+    adventureTripResourceTags.innerHTML = "";
+    getAdventureRouteRewardTags(mapId, route).forEach(function(label) {
+      const tag = document.createElement("span");
+      tag.textContent = label;
+      adventureTripResourceTags.appendChild(tag);
+    });
+  }
+  renderAdventureHookPreview();
+  if (adventureRouteContinueButton) {
+    adventureRouteContinueButton.disabled = !isAdventureRouteUnlocked(mapId, route, progress);
+  }
 }
 
 function renderAdventurePreparation() {
@@ -2073,9 +2322,7 @@ function renderAdventurePreparation() {
   }).filter(function(entry) { return entry.count > 0; });
   const backpackEntries = getAdventureBackpackDisplayEntries(adventurePrototypeState.draftBackpack);
   const staminaPercent = progress.stamina.value / ADVENTURE_STAMINA_MAX * 100;
-  if (adventurePrepStaminaText) {
-    adventurePrepStaminaText.textContent = progress.stamina.value + " / " + ADVENTURE_STAMINA_MAX;
-  }
+  updateAdventurePrepFrame(progress);
   if (adventurePrepStaminaFill) {
     adventurePrepStaminaFill.style.width = staminaPercent + "%";
   }
@@ -2086,12 +2333,12 @@ function renderAdventurePreparation() {
     adventureStaminaHint.textContent = getAdventureStaminaRecoveryText(progress) + (route.staminaCost ? " 此路线额外消耗 " + route.staminaCost + " 点。" : "");
   }
   if (adventureBackpackCapacity) {
-    adventureBackpackCapacity.textContent = "已携带 " + selectedCount + " / " + ADVENTURE_BACKPACK_CAPACITY;
+    adventureBackpackCapacity.textContent = selectedCount + " / " + ADVENTURE_BACKPACK_CAPACITY;
   }
   renderAdventureSourceList(adventureStorageList, storageEntries);
   renderAdventureList(adventureBackpackList, backpackEntries, "backpack", "背包还是空的。可以空手出发。 ");
   renderAdventureRouteChoices(progress);
-  renderAdventureHookPreview();
+  renderAdventureTripCard();
   renderAdventureRecommendationStatus();
   if (adventureStorageList && selectedCount >= ADVENTURE_BACKPACK_CAPACITY) {
     adventureStorageList.querySelectorAll("button").forEach(function(button) { button.disabled = true; });
@@ -2138,6 +2385,85 @@ function removeItemFromAdventureDraft(key) {
     setAdventurePrepMessage("已将 " + getAdventureItemDescriptor(key).name + " 放回 Storage。", false);
     renderAdventurePreparation();
   }
+}
+
+function getAdventureRouteCardFromEvent(event) {
+  return event && event.target && typeof event.target.closest === "function"
+    ? event.target.closest(".route-choice")
+    : null;
+}
+
+function handleAdventureRouteCardClick(event) {
+  const card = getAdventureRouteCardFromEvent(event);
+  if (!card || !adventureRouteList) return;
+  if (adventurePrototypeState.routeCarouselDrag && adventurePrototypeState.routeCarouselDrag.moved) return;
+  const index = Number(card.dataset.routeIndex) || 0;
+  const mapId = adventurePrototypeState.draftMapId || getDefaultAdventureMapId();
+  const routeIds = getAdventureRouteIds(mapId);
+  const activeIndex = wrapAdventureIndex(adventurePrototypeState.routeCarouselIndex, routeIds.length);
+  if (index !== activeIndex) {
+    setAdventureRouteCarouselIndex(index, true, "");
+    return;
+  }
+  const routeId = card.dataset.routeId || getCurrentAdventureCarouselRouteId();
+  const route = getAdventureMapRoutes(mapId)[routeId];
+  if (!route || !isAdventureRouteUnlocked(mapId, route, ensureAdventureProgress())) {
+    setAdventurePrepMessage(route && route.lockedHint ? route.lockedHint : "这条路线尚未解锁。", true);
+    return;
+  }
+  selectAdventureDraftRoute(routeId, adventurePrototypeState.draftRouteId !== routeId);
+  setAdventurePrepStep("itinerary", "已选择“" + route.name + "”。");
+}
+
+function beginAdventureRouteDrag(event) {
+  if (!adventureRouteList || getAdventurePrepStep() !== "routes") return;
+  adventurePrototypeState.routeCarouselDrag = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    deltaX: 0,
+    active: false,
+    moved: false
+  };
+  adventureRouteList.classList.add("is-dragging");
+}
+
+function moveAdventureRouteDrag(event) {
+  const drag = adventurePrototypeState.routeCarouselDrag;
+  if (!drag || drag.pointerId !== event.pointerId || !adventureRouteList) return;
+  const deltaX = event.clientX - drag.startX;
+  const deltaY = event.clientY - drag.startY;
+  drag.deltaX = deltaX;
+  if (!drag.active && Math.abs(deltaX) > 7 && Math.abs(deltaX) > Math.abs(deltaY) * 1.08) {
+    drag.active = true;
+    if (typeof adventureRouteList.setPointerCapture === "function") {
+      try { adventureRouteList.setPointerCapture(event.pointerId); } catch (error) {}
+    }
+  }
+  if (!drag.active) return;
+  drag.moved = Math.abs(deltaX) > 4;
+  event.preventDefault();
+  const width = adventureRouteList.getBoundingClientRect().width || 320;
+  const dragOffset = Math.max(-0.9, Math.min(0.9, deltaX / Math.max(120, width * 0.42)));
+  updateAdventureRouteCarouselTransforms(dragOffset);
+}
+
+function endAdventureRouteDrag(event) {
+  const drag = adventurePrototypeState.routeCarouselDrag;
+  if (!drag || drag.pointerId !== event.pointerId) return;
+  if (adventureRouteList) adventureRouteList.classList.remove("is-dragging");
+  const routeIds = getAdventureRouteIds(adventurePrototypeState.draftMapId || getDefaultAdventureMapId());
+  const width = adventureRouteList ? (adventureRouteList.getBoundingClientRect().width || 320) : 320;
+  const threshold = Math.max(42, width * 0.16);
+  if (drag.active && Math.abs(drag.deltaX) > threshold && routeIds.length > 1) {
+    const direction = drag.deltaX > 0 ? -1 : 1;
+    setAdventureRouteCarouselIndex(adventurePrototypeState.routeCarouselIndex + direction, true, "");
+  } else {
+    updateAdventureRouteCarouselTransforms(0);
+  }
+  window.setTimeout(function() {
+    if (adventurePrototypeState.routeCarouselDrag === drag) adventurePrototypeState.routeCarouselDrag = null;
+  }, 0);
 }
 
 function restoreAdventureViewportOrigin() {
@@ -4749,6 +5075,7 @@ function showAdventurePreparation(message) {
   adventurePrototypeState.busy = false;
   adventurePrototypeState.draftBackpack = {};
   adventurePrototypeState.draftBackpackTouched = false;
+  adventurePrototypeState.prepStep = "routes";
   const progress = ensureAdventureProgress();
   const maps = getAdventureMapRegistry();
   if (!maps[adventurePrototypeState.draftMapId] || !isAdventureMapUnlocked(adventurePrototypeState.draftMapId, progress)) {
@@ -4760,11 +5087,11 @@ function showAdventurePreparation(message) {
     !isAdventureRouteUnlocked(mapId, routes[adventurePrototypeState.draftRouteId], progress)) {
     adventurePrototypeState.draftRouteId = getFirstUnlockedAdventureRouteId(progress, mapId);
   }
+  adventurePrototypeState.routeCarouselIndex = Math.max(0, getAdventureRouteIds(mapId).indexOf(adventurePrototypeState.draftRouteId));
   ensureDraftAdventureHook(false);
-  applyAdventureBackpackRecommendation(false);
   setAdventureMode("preparing");
   if (adventurePrepPanel) adventurePrepPanel.scrollTop = 0;
-  setAdventurePrepMessage(message || "背包最多携带 5 件，途中发现的物品会另行收好。", false);
+  setAdventurePrepMessage(message || "请选择一条路线。", false);
   renderAdventurePreparation();
 }
 
@@ -4776,6 +5103,7 @@ function showAdventureMapSelection(message) {
   adventurePrototypeState.draftBackpack = {};
   adventurePrototypeState.draftBackpackTouched = false;
   adventurePrototypeState.draftAdventureHook = null;
+  adventurePrototypeState.prepStep = "routes";
   setAdventureMode("map-select");
   if (adventureMapMessage) adventureMapMessage.textContent = message || "今天想去哪里走走？";
   renderAdventureMapSelection();
@@ -4834,6 +5162,9 @@ function resetDeepMountainAdventureTestState() {
   adventurePrototypeState.draftMapId = getDefaultAdventureMapId();
   adventurePrototypeState.draftRouteId = getAdventureMapDefaultRouteId(adventurePrototypeState.draftMapId);
   adventurePrototypeState.draftAdventureHook = null;
+  adventurePrototypeState.prepStep = "routes";
+  adventurePrototypeState.routeCarouselIndex = 0;
+  adventurePrototypeState.routeCarouselDrag = null;
   adventurePrototypeState.recoveredTripSnapshot = null;
   adventurePrototypeState.seenEventIds = [];
   saveGame();
@@ -4934,10 +5265,54 @@ if (adventureJourneyTab) adventureJourneyTab.addEventListener("click", function(
 if (adventureStoryArchiveTab) adventureStoryArchiveTab.addEventListener("click", function() { showAdventureJournal("stories"); });
 if (adventureStartButton) adventureStartButton.addEventListener("click", startAdventureTrip);
 if (adventureMapCloseButton) adventureMapCloseButton.addEventListener("click", showAdventureCenter);
-if (adventurePrepCloseButton) adventurePrepCloseButton.addEventListener("click", function() { showAdventureMapSelection("换个方向看看。 "); });
+if (adventurePrepCloseButton) adventurePrepCloseButton.addEventListener("click", function() {
+  const step = getAdventurePrepStep();
+  if (step === "backpack") {
+    setAdventurePrepStep("itinerary", "已返回本次行程。");
+    return;
+  }
+  if (step === "itinerary") {
+    setAdventurePrepStep("routes", "可以重新选择路线。");
+    return;
+  }
+  showAdventureMapSelection("换个方向看看。 ");
+});
+if (adventureRouteList) {
+  adventureRouteList.addEventListener("pointerdown", beginAdventureRouteDrag);
+  adventureRouteList.addEventListener("pointermove", moveAdventureRouteDrag);
+  adventureRouteList.addEventListener("pointerup", endAdventureRouteDrag);
+  adventureRouteList.addEventListener("pointercancel", endAdventureRouteDrag);
+  adventureRouteList.addEventListener("click", handleAdventureRouteCardClick);
+}
+if (adventureTripBackButton) adventureTripBackButton.addEventListener("click", function() {
+  setAdventurePrepStep("routes", "可以重新选择路线。");
+});
+if (adventureRouteContinueButton) adventureRouteContinueButton.addEventListener("click", function() {
+  setAdventurePrepStep("backpack", "整理背包后再正式出发。");
+});
+if (adventureHookRerollButton) adventureHookRerollButton.addEventListener("click", function() {
+  const previous = adventurePrototypeState.draftAdventureHook && adventurePrototypeState.draftAdventureHook.title;
+  const next = rerollDraftAdventureHook();
+  setAdventurePrepMessage(next && next.title !== previous ? "当前目标已更换为“" + next.title + "”。" : "当前路线暂时没有别的目标可换。", false);
+  renderAdventurePreparation();
+});
+if (adventurePrepStaminaInfoButton) adventurePrepStaminaInfoButton.addEventListener("click", function(event) {
+  event.stopPropagation();
+  toggleAdventureStaminaPopover();
+});
+if (adventurePrepStaminaPopover && gameViewport) {
+  gameViewport.appendChild(adventurePrepStaminaPopover);
+  window.addEventListener("resize", positionAdventureStaminaPopover);
+  window.addEventListener("orientationchange", positionAdventureStaminaPopover);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", positionAdventureStaminaPopover);
+  if (adventurePrepPanel) adventurePrepPanel.addEventListener("scroll", positionAdventureStaminaPopover, { passive: true });
+}
+if (adventurePrepStaminaPopover) adventurePrepStaminaPopover.addEventListener("click", function(event) {
+  event.stopPropagation();
+});
 if (adventureRecommendationResetButton) adventureRecommendationResetButton.addEventListener("click", function() {
   applyAdventureBackpackRecommendation(true);
-  setAdventurePrepMessage("已按当前路线和挂心之事重新整理背包草稿。", false);
+  setAdventurePrepMessage("已按当前路线和目标重新整理背包草稿。", false);
   renderAdventurePreparation();
 });
 if (adventurePrepResetButton) adventurePrepResetButton.addEventListener("click", resetDeepMountainAdventureTestState);
@@ -4955,6 +5330,7 @@ if (adventureRouteMapMapButton) adventureRouteMapMapButton.addEventListener("cli
 if (adventureRouteMapLayer) adventureRouteMapLayer.addEventListener("click", function(event) {
   if (event.target === adventureRouteMapLayer) closeAdventureRouteMapReveal();
 });
+document.addEventListener("click", closeAdventureStaminaPopover);
 if (adventureClueSortCloseButton) adventureClueSortCloseButton.addEventListener("click", closeAdventureClueSorter);
 if (adventureClueSortHintButton) adventureClueSortHintButton.addEventListener("click", function() {
   const story = getAdventureStoryDefinition(adventurePrototypeState.activeStorySortId);

@@ -232,3 +232,33 @@ function getCurrentFlameImage() {
   const flameSet = Math.floor(Date.now() / 450) % 2 === 0 ? assetPaths.campfire.flame1 : assetPaths.campfire.flame2;
   return flameSet[gameState.campfireLevel];
 }
+
+function setImageSourceIfChanged(image, source) {
+  if (!image || !source) {
+    return;
+  }
+
+  const currentSource = image.currentSrc || image.src || "";
+  const nextSource = new URL(source, document.baseURI).href;
+
+  if (currentSource !== nextSource) {
+    image.src = source;
+  }
+}
+
+function preloadImageAsset(source) {
+  return new Promise(function(resolve, reject) {
+    const image = new Image();
+    image.onload = function() { resolve(source); };
+    image.onerror = function() { reject(new Error("Unable to load image: " + source)); };
+    image.src = source;
+  });
+}
+
+function preloadCampfireLevelAssets(level) {
+  return Promise.all([
+    assetPaths.campfire.base[level],
+    assetPaths.campfire.flame1[level],
+    assetPaths.campfire.flame2[level]
+  ].filter(Boolean).map(preloadImageAsset));
+}

@@ -399,6 +399,7 @@ body.shop-open .toast-layer {
 
 .camper-profile-panel.camper-card-panel {
   width: min(calc(100% - 14px), 500px);
+  max-height: calc(100% - 1rem);
   padding: 0.46rem;
   overflow: hidden;
 }
@@ -415,7 +416,8 @@ body.shop-open .toast-layer {
   grid-template-columns: minmax(0, 0.88fr) minmax(0, 1fr);
   gap: 0.5rem;
   min-height: 100px;
-  max-height: 300px;
+  height: min(300px, calc(100dvh - 2rem));
+  max-height: 100%;
 }
 
 .camper-card-portrait {
@@ -486,10 +488,26 @@ body.shop-open .toast-layer {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 0.42rem;
   padding: 0.5rem 0.36rem 0.16rem;
-  overflow-y: auto;
+  overflow: hidden;
   scrollbar-width: none;
+}
+
+.camper-card-scroll {
+  min-height: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.8rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 0.08rem;
+  scrollbar-width: none;
+}
+
+.camper-card-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 .camper-card-info::-webkit-scrollbar {
@@ -618,8 +636,28 @@ body.shop-open .toast-layer {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.42rem;
-  margin-top: auto;
-  padding-top: 0.28rem;
+  flex: 0 0 auto;
+  margin-top: 0;
+  padding: 0.34rem 0 0;
+  border-top: 1px solid rgba(230, 188, 107, 0.2);
+  background: rgba(25, 34, 25, 0.98);
+}
+
+@media (max-width: 520px) {
+  .camper-card .camper-card-name,
+  .camper-card .camper-card-personality {
+    font-size: 1rem;
+  }
+
+  .camper-card .camper-card-description,
+  .camper-card .camper-card-catchphrase {
+    font-size: 0.76rem;
+    line-height: 1.38;
+  }
+
+  .camper-card-scroll {
+    gap: 0.58rem;
+  }
 }
 
 .camper-card-actions .camper-profile-button {

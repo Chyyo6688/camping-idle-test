@@ -263,6 +263,32 @@ function applyOnboardingStepSetup(step) {
   }
 }
 
+function scheduleOnboardingLayout() {
+  if (onboardingLayoutFrame) {
+    cancelAnimationFrame(onboardingLayoutFrame);
+  }
+
+  onboardingLayoutFrame = requestAnimationFrame(function() {
+    onboardingLayoutFrame = 0;
+    positionOnboardingLayer();
+  });
+}
+
+function observeOnboardingLayout(target) {
+  if (onboardingLayoutResizeObserver) {
+    onboardingLayoutResizeObserver.disconnect();
+  }
+
+  if (typeof ResizeObserver !== "function") {
+    return;
+  }
+
+  onboardingLayoutResizeObserver = new ResizeObserver(scheduleOnboardingLayout);
+  [gameViewport, onboardingLayer, onboardingPanel, target].forEach(function(element) {
+    if (element) onboardingLayoutResizeObserver.observe(element);
+  });
+}
+
 function positionOnboardingLayer() {
   if (!onboardingActive || !onboardingLayer || !onboardingPanel || !onboardingPointer || !gameViewport) {
     return;
@@ -274,38 +300,48 @@ function positionOnboardingLayer() {
     return;
   }
 
-  const viewportRect = gameViewport.getBoundingClientRect();
+  const layerRect = onboardingLayer.getBoundingClientRect();
   const targetRect = target.getBoundingClientRect();
 
-  if (viewportRect.width <= 0 || viewportRect.height <= 0 || targetRect.width <= 0 || targetRect.height <= 0) {
+  if (layerRect.width <= 0 || layerRect.height <= 0 || targetRect.width <= 0 || targetRect.height <= 0) {
     return;
   }
 
-  const targetCenterX = targetRect.left - viewportRect.left + targetRect.width / 2;
-  const targetCenterY = targetRect.top - viewportRect.top + targetRect.height / 2;
-  const targetTop = targetRect.top - viewportRect.top;
-  const targetBottom = targetRect.bottom - viewportRect.top;
-  const margin = Math.max(8, Math.min(14, viewportRect.width * 0.035));
-  const gap = 18;
+  const scaleX = layerRect.width / onboardingLayer.clientWidth;
+  const scaleY = layerRect.height / onboardingLayer.clientHeight;
+  const layerWidth = onboardingLayer.clientWidth;
+  const layerHeight = onboardingLayer.clientHeight;
+
+  if (!Number.isFinite(scaleX) || scaleX <= 0 || !Number.isFinite(scaleY) || scaleY <= 0) {
+    return;
+  }
+
+  const targetCenterX = (targetRect.left + targetRect.width / 2 - layerRect.left) / scaleX;
+  const targetCenterY = (targetRect.top + targetRect.height / 2 - layerRect.top) / scaleY;
+  const targetTop = (targetRect.top - layerRect.top) / scaleY;
+  const targetBottom = (targetRect.bottom - layerRect.top) / scaleY;
+  const panelFontSize = Number.parseFloat(window.getComputedStyle(onboardingPanel).fontSize) || 16;
+  const margin = panelFontSize;
+  const gap = panelFontSize * 1.15;
 
   onboardingPanel.style.left = margin + "px";
   onboardingPanel.style.top = margin + "px";
   onboardingPanel.style.bottom = "auto";
 
   const panelRect = onboardingPanel.getBoundingClientRect();
-  const panelWidth = Math.min(panelRect.width, viewportRect.width - margin * 2);
-  const panelHeight = Math.min(panelRect.height, viewportRect.height - margin * 2);
-  const maxLeft = Math.max(margin, viewportRect.width - panelWidth - margin);
-  const maxTop = Math.max(margin, viewportRect.height - panelHeight - margin);
+  const panelWidth = Math.min(panelRect.width / scaleX, layerWidth - margin * 2);
+  const panelHeight = Math.min(panelRect.height / scaleY, layerHeight - margin * 2);
+  const maxLeft = Math.max(margin, layerWidth - panelWidth - margin);
+  const maxTop = Math.max(margin, layerHeight - panelHeight - margin);
   const left = clamp(targetCenterX - panelWidth / 2, margin, maxLeft);
   const belowTop = targetBottom + gap;
   const aboveTop = targetTop - panelHeight - gap;
-  const hasRoomBelow = belowTop + panelHeight <= viewportRect.height - margin;
+  const hasRoomBelow = belowTop + panelHeight <= layerHeight - margin;
   const hasRoomAbove = aboveTop >= margin;
   let top = belowTop;
   let pointsUp = true;
 
-  if ((!hasRoomBelow && hasRoomAbove) || targetCenterY > viewportRect.height * 0.58) {
+  if ((!hasRoomBelow && hasRoomAbove) || targetCenterY > layerHeight * 0.58) {
     top = aboveTop;
     pointsUp = false;
   }
@@ -318,14 +354,14 @@ function positionOnboardingLayer() {
   if (pointsUp) {
     onboardingPointer.classList.add("point-up");
     onboardingPointer.classList.remove("point-down");
-    onboardingPointer.style.top = clamp(top - 10, margin, viewportRect.height - margin) + "px";
+    onboardingPointer.style.top = clamp(targetBottom + panelFontSize * 0.36, margin, layerHeight - margin) + "px";
   } else {
     onboardingPointer.classList.add("point-down");
     onboardingPointer.classList.remove("point-up");
-    onboardingPointer.style.top = clamp(top + panelHeight + 10, margin, viewportRect.height - margin) + "px";
+    onboardingPointer.style.top = clamp(targetTop - panelFontSize * 0.36, margin, layerHeight - margin) + "px";
   }
 
-  onboardingPointer.style.left = clamp(targetCenterX, left + 16, left + panelWidth - 16) + "px";
+  onboardingPointer.style.left = clamp(targetCenterX, margin, layerWidth - margin) + "px";
 }
 
 function updateOnboardingView() {
@@ -342,6 +378,8 @@ function updateOnboardingView() {
     target.classList.add("onboarding-highlight");
     onboardingHighlightedElement = target;
   }
+
+  observeOnboardingLayout(target);
 
   if (step && step.id === "chair") {
     const chairCard = getOnboardingFirstGearCard();
@@ -382,6 +420,13 @@ function completeOnboarding(markSeen) {
   const completedStandaloneGuideId = activeStandaloneGuideId;
 
   onboardingActive = false;
+  if (onboardingLayoutResizeObserver) {
+    onboardingLayoutResizeObserver.disconnect();
+  }
+  if (onboardingLayoutFrame) {
+    cancelAnimationFrame(onboardingLayoutFrame);
+    onboardingLayoutFrame = 0;
+  }
   clearOnboardingHighlight();
 
   if (onboardingLayer) {

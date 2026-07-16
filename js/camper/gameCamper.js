@@ -1404,18 +1404,18 @@ function executeQueuedActivityAction(action) {
 
 function updateCamperAI() {
   if (camperProfileActive || !hasCamperProfile(gameState)) {
-    campfireFlameImage.src = getCurrentFlameImage();
+    setImageSourceIfChanged(campfireFlameImage, getCurrentFlameImage());
     return;
   }
 
   if (isBuildModeActive()) {
-    campfireFlameImage.src = getCurrentFlameImage();
+    setImageSourceIfChanged(campfireFlameImage, getCurrentFlameImage());
     return;
   }
 
   updateCamperPathMotion(Date.now());
   updateCamperSprite();
-  campfireFlameImage.src = getCurrentFlameImage();
+  setImageSourceIfChanged(campfireFlameImage, getCurrentFlameImage());
 
   if (Date.now() < camper.actionTimer) {
     return;

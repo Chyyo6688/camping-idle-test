@@ -142,7 +142,15 @@ function renderShopFromCatalog() {
 }
 
 function updateCampfireShopCard(item, card) {
-  card.image.src = getCampfireShopImage();
+  setImageSourceIfChanged(card.image, getCampfireShopImage());
+
+  if (campfireUpgradeInFlight) {
+    card.button.disabled = true;
+    card.button.classList.add("action-buy");
+    card.detailLabel.textContent = "Loading campfire assets";
+    card.actionLabel.textContent = "UPGRADING…";
+    return;
+  }
 
   if (gameState.campfireLevel >= 3) {
     card.button.disabled = true;
@@ -221,12 +229,12 @@ function updateGearShopCard(item) {
     return;
   }
 
-  card.image.src = withVersion(item.image);
-
   if (item.interactions && item.interactions.upgradeCampfire) {
     updateCampfireShopCard(item, card);
     return;
   }
+
+  setImageSourceIfChanged(card.image, withVersion(item.image));
 
   const isOwned = ownsGear(item.id);
   const isEquipped = isEquippableGear(item) && getEquippedGearId(item.category) === item.id;
@@ -315,14 +323,36 @@ function spendCozyPoints(cost) {
 }
 
 function upgradeCampfire() {
+  if (campfireUpgradeInFlight || gameState.campfireLevel >= 3) {
+    return;
+  }
+
+  const sourceLevel = gameState.campfireLevel;
+  const nextLevel = sourceLevel + 1;
   const cost = getCampfireUpgradeCost();
 
-  if (cost > 0 && spendCozyPoints(cost)) {
-    gameState.campfireLevel += 1;
+  if (cost <= 0 || gameState.cozyPoints < cost) {
+    return;
+  }
+
+  campfireUpgradeInFlight = true;
+  updateShopCards();
+
+  preloadCampfireLevelAssets(nextLevel).then(function() {
+    if (gameState.campfireLevel !== sourceLevel || !spendCozyPoints(cost)) {
+      return;
+    }
+
+    gameState.campfireLevel = nextLevel;
     setStatus("The campfire burns cleaner and warmer.");
     updateScreen();
     saveGame();
-  }
+  }).catch(function() {
+    setStatus("The campfire upgrade image could not be loaded. Please try again.");
+  }).finally(function() {
+    campfireUpgradeInFlight = false;
+    updateShopCards();
+  });
 }
 
 function equipGear(item) {

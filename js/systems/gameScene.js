@@ -2590,9 +2590,9 @@ function updateSceneEquipment() {
   campfire.className = "campfire asset-object level-" + gameState.campfireLevel;
   campfire.classList.toggle("lit", gameState.warmthSeconds > 0);
   configureCampfireActionTarget();
-  fireGlowImage.src = assetPaths.campfire.glow;
-  campfireBaseImage.src = assetPaths.campfire.base[gameState.campfireLevel];
-  campfireFlameImage.src = getCurrentFlameImage();
+  setImageSourceIfChanged(fireGlowImage, assetPaths.campfire.glow);
+  setImageSourceIfChanged(campfireBaseImage, assetPaths.campfire.base[gameState.campfireLevel]);
+  setImageSourceIfChanged(campfireFlameImage, getCurrentFlameImage());
   updateTargetOutline(campfire, campfireBaseImage);
   updateCampfireDepth();
 

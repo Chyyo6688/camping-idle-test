@@ -460,73 +460,94 @@
             </section>
 
             <section id="adventurePrepPanel" class="adventure-screen-panel adventure-prep-panel" aria-label="出发准备">
-              <header class="adventure-panel-header">
-                <div class="adventure-panel-title-row">
-                  <button id="adventurePrepCloseButton" class="adventure-panel-back" type="button" aria-label="返回选择地图" title="返回选择地图">
-                    <span aria-hidden="true">‹</span>
+              <header class="adventure-panel-header adventure-prep-header">
+                <button id="adventurePrepCloseButton" class="adventure-panel-back" type="button" aria-label="返回选择地图" title="返回选择地图">
+                  <span aria-hidden="true">‹</span>
+                </button>
+                <div class="adventure-prep-title">
+                  <p id="adventurePrepMapEyebrow" class="eyebrow">Deep Mountain</p>
+                  <h2 id="adventurePrepTitle">深山</h2>
+                </div>
+                <div class="adventure-stamina-chip-wrap">
+                  <button id="adventurePrepStaminaInfoButton" class="adventure-stamina-chip" type="button" aria-expanded="false" aria-describedby="adventurePrepStaminaPopover">
+                    <span id="adventurePrepStaminaText">100 / 100</span>
+                    <span aria-hidden="true">ⓘ</span>
                   </button>
-                  <div>
-                    <p id="adventurePrepMapEyebrow" class="eyebrow">Deep Mountain</p>
-                    <h2>出发准备</h2>
+                  <div id="adventurePrepStaminaPopover" class="adventure-stamina-popover hidden" role="tooltip">
+                    <p>每 12 分钟恢复 1 点体力</p>
+                    <p>本次出发消耗 25 点</p>
                   </div>
                 </div>
-                <button id="adventureStartButton" class="adventure-control adventure-control-primary adventure-panel-start" type="button">整装出发</button>
               </header>
 
-              <div id="adventurePrepIllustration" class="adventure-prep-illustration" aria-hidden="true">
-                <span id="adventurePrepIllustrationCaption">深山 · 单人路线</span>
-              </div>
-
-              <section class="adventure-choice-section" aria-label="路线选择">
-                <div class="adventure-section-heading">
-                  <strong>选择路线</strong>
-                  <span>只改变沿途更容易遇见什么</span>
-                </div>
-                <div id="adventureRouteList" class="adventure-choice-grid adventure-route-grid"></div>
-                <p id="adventureStrategyHint" class="adventure-strategy-hint"></p>
-              </section>
-
-              <aside id="adventureHookPreview" class="adventure-hook-preview" aria-live="polite">
-                <span id="adventureHookEyebrow">这次出发前听到的传闻</span>
-                <div class="adventure-hook-title-line">
-                  <strong id="adventureHookTitle">山路上的新动静</strong>
-                  <em id="adventureHookClueMeta">尚未发现</em>
-                </div>
-                <p id="adventureHookIntro">沿途也许会遇见一些没有预料到的事情。</p>
-              </aside>
-
-              <section class="adventure-stamina-card" aria-label="冒险体力">
-                <div class="adventure-section-heading">
-                  <strong>冒险体力</strong>
-                  <span id="adventurePrepStaminaText">100 / 100</span>
-                </div>
-                <div class="adventure-stamina-track"><span id="adventurePrepStaminaFill"></span></div>
-                <p id="adventureStaminaHint">每次出发消耗 25 点，体力会随时间缓慢恢复。</p>
-              </section>
-
-              <div class="adventure-loadout-grid">
-                <section class="adventure-inventory-column" aria-label="本次可携带物">
-                  <div class="adventure-section-heading">
-                    <strong>可携带物</strong>
-                    <span>点击放入冒险背包</span>
-                  </div>
-                  <div id="adventureStorageList" class="adventure-item-list"></div>
+              <div id="adventureRouteStep" class="adventure-prep-step adventure-route-step">
+                <section class="adventure-choice-section adventure-route-carousel-section" aria-label="路线选择">
+                  <div id="adventureRouteList" class="adventure-choice-grid adventure-route-grid" aria-live="polite"></div>
+                  <p id="adventureStrategyHint" class="adventure-strategy-hint hidden"></p>
                 </section>
 
-                <section class="adventure-inventory-column adventure-backpack-column" aria-label="本次冒险背包">
-                  <div class="adventure-section-heading">
-                    <strong>冒险背包</strong>
-                    <span id="adventureBackpackCapacity">已携带 0 / 5</span>
-                  </div>
-                  <div class="adventure-recommendation-bar">
-                    <span id="adventureRecommendationText">根据当前路线和挂心之事整理，可自由调整。</span>
-                    <button id="adventureRecommendationResetButton" class="adventure-mini-control" type="button">一键推荐</button>
-                  </div>
-                  <div id="adventureBackpackList" class="adventure-item-list"></div>
+                <section id="adventureTripCardPanel" class="adventure-trip-panel hidden" aria-label="本次行程">
+                  <article id="adventureTripCard" class="adventure-trip-card">
+                    <div class="adventure-trip-title-row">
+                      <div>
+                        <span>本次行程</span>
+                        <h3 id="adventureTripRouteName">溪谷路线</h3>
+                      </div>
+                      <button id="adventureTripBackButton" class="adventure-mini-control" type="button">返回路线</button>
+                    </div>
+                    <p id="adventureTripSummary" class="adventure-trip-summary">沿溪水和缓坡前进。</p>
+                    <div class="adventure-trip-block">
+                      <span>可获得物</span>
+                      <div id="adventureTripResourceTags" class="adventure-trip-tags"></div>
+                    </div>
+                    <aside id="adventureHookPreview" class="adventure-trip-goal" aria-live="polite">
+                      <span id="adventureHookEyebrow">当前目标</span>
+                      <div class="adventure-hook-title-line">
+                        <strong id="adventureHookTitle">山路上的新动静</strong>
+                        <button id="adventureHookRerollButton" class="adventure-dice-button" type="button" aria-label="随机当前目标" title="随机当前目标">
+                          <span aria-hidden="true">骰</span>
+                        </button>
+                      </div>
+                      <p id="adventureHookIntro">沿途也许会遇见一些没有预料到的事情。</p>
+                      <div class="adventure-trip-clue-row">
+                        <em id="adventureHookClueMeta">线索 0 / 0</em>
+                        <button id="adventureHookSortButton" class="adventure-mini-control hidden" type="button">整理线索</button>
+                      </div>
+                    </aside>
+                  </article>
+                  <button id="adventureRouteContinueButton" class="adventure-control adventure-control-primary adventure-route-continue" type="button">前往</button>
                 </section>
               </div>
 
-              <p id="adventurePrepMessage" class="adventure-prep-message" aria-live="polite">背包最多携带 5 件，途中发现的物品会另行收好。</p>
+              <div id="adventureBackpackStep" class="adventure-prep-step adventure-backpack-step hidden">
+                <div class="adventure-loadout-grid">
+                  <section class="adventure-inventory-column" aria-label="本次可携带物">
+                    <div class="adventure-section-heading">
+                      <strong>可携带物</strong>
+                      <span>点击加入</span>
+                    </div>
+                    <div id="adventureStorageList" class="adventure-item-list"></div>
+                  </section>
+
+                  <section class="adventure-inventory-column adventure-backpack-column" aria-label="当前背包">
+                    <div class="adventure-section-heading">
+                      <strong>当前背包</strong>
+                      <span id="adventureBackpackCapacity">0 / 5</span>
+                    </div>
+                    <div class="adventure-recommendation-bar">
+                      <span id="adventureRecommendationText">按当前路线和目标整理，可自由调整。</span>
+                      <button id="adventureRecommendationResetButton" class="adventure-mini-control" type="button">一键推荐</button>
+                    </div>
+                    <div id="adventureBackpackList" class="adventure-item-list"></div>
+                  </section>
+                </div>
+
+                <div class="adventure-final-actions">
+                  <button id="adventureStartButton" class="adventure-control adventure-control-primary adventure-panel-start" type="button">整装出发</button>
+                </div>
+              </div>
+
+              <p id="adventurePrepMessage" class="adventure-prep-message" aria-live="polite">请选择一条路线。</p>
             </section>
 
             <section id="adventureLogPanel" class="adventure-screen-panel adventure-log-panel" aria-label="本次冒险日志">
@@ -804,27 +825,29 @@
                   <button id="camperCardCloseButton" class="close-button camper-card-close" type="button" aria-label="Close camper card">
                     <img src="assets/ui/icon_close.png?v=3.6" alt="">
                   </button>
-                  <div class="camper-card-field">
-                    <p class="camper-card-label">昵称</p>
-                    <div class="camper-card-edit-row">
-                      <h3 id="camperResultName" class="camper-card-name"></h3>
-                      <input id="camperNameEditInput" class="camper-card-inline-input camper-card-name-input hidden" type="text" maxlength="18" autocomplete="off" />
-                      <button id="camperNameEditButton" class="camper-card-edit-button" type="button" aria-label="Edit nickname" title="Edit nickname">✎</button>
+                  <div class="camper-card-scroll">
+                    <div class="camper-card-field">
+                      <p class="camper-card-label">昵称</p>
+                      <div class="camper-card-edit-row">
+                        <h3 id="camperResultName" class="camper-card-name"></h3>
+                        <input id="camperNameEditInput" class="camper-card-inline-input camper-card-name-input hidden" type="text" maxlength="18" autocomplete="off" />
+                        <button id="camperNameEditButton" class="camper-card-edit-button" type="button" aria-label="Edit nickname" title="Edit nickname">✎</button>
+                      </div>
                     </div>
-                  </div>
 
-                  <div class="camper-card-field">
-                    <p class="camper-card-label">性格</p>
-                    <h4 id="camperResultTitle" class="camper-card-personality"></h4>
-                    <p id="camperResultDescription" class="camper-card-description"></p>
-                  </div>
+                    <div class="camper-card-field">
+                      <p class="camper-card-label">性格</p>
+                      <h4 id="camperResultTitle" class="camper-card-personality"></h4>
+                      <p id="camperResultDescription" class="camper-card-description"></p>
+                    </div>
 
-                  <div class="camper-card-field">
-                    <p class="camper-card-label">口头禅</p>
-                    <div class="camper-card-edit-row">
-                      <p id="camperCatchphraseText" class="camper-card-catchphrase"></p>
-                      <input id="camperCatchphraseEditInput" class="camper-card-inline-input hidden" type="text" maxlength="42" autocomplete="off" />
-                      <button id="camperCatchphraseEditButton" class="camper-card-edit-button" type="button" aria-label="Edit catchphrase" title="Edit catchphrase">✎</button>
+                    <div class="camper-card-field">
+                      <p class="camper-card-label">口头禅</p>
+                      <div class="camper-card-edit-row">
+                        <p id="camperCatchphraseText" class="camper-card-catchphrase"></p>
+                        <input id="camperCatchphraseEditInput" class="camper-card-inline-input hidden" type="text" maxlength="42" autocomplete="off" />
+                        <button id="camperCatchphraseEditButton" class="camper-card-edit-button" type="button" aria-label="Edit catchphrase" title="Edit catchphrase">✎</button>
+                      </div>
                     </div>
                   </div>
 

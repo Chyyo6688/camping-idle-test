@@ -41,7 +41,7 @@ body.divination-open .daily-camp-card {
 
 .divination-panel {
   width: min(100%, 430px);
-  max-height: min(92%, 690px);
+  max-height: min(92%, 730px);
   display: flex;
   flex-direction: column;
   padding: 0.8rem;

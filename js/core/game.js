@@ -309,8 +309,13 @@ if (typeof window !== "undefined") {
   };
   window.addEventListener("resize", refreshViewportLayout);
   window.addEventListener("orientationchange", refreshViewportLayout);
+  gameViewport.addEventListener("scroll", scheduleOnboardingLayout, { passive: true });
+  if (shopContent) {
+    shopContent.addEventListener("scroll", scheduleOnboardingLayout, { passive: true });
+  }
   if (window.visualViewport) {
     window.visualViewport.addEventListener("resize", refreshViewportLayout);
+    window.visualViewport.addEventListener("scroll", scheduleOnboardingLayout);
   }
 }
 
