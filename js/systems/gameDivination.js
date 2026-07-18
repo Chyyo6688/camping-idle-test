@@ -659,13 +659,18 @@ function renderModernIChingResult(result) {
   if (divinationTurtleSummary) {
     divinationTurtleSummary.textContent = result.summary || result.reality || "";
   }
+  if (divinationTurtleSelectedText) {
+    divinationTurtleSelectedText.textContent = result.selectedTextSummary || "";
+  }
   if (divinationTurtleInterpretation) {
     divinationTurtleInterpretation.textContent = result.interpretation || "";
   }
   renderOraclePhraseList(divinationTurtleGoodFor, result.goodFor);
   renderOraclePhraseList(divinationTurtleAvoid, result.avoid);
-  if (divinationTurtleConclusion) {
-    divinationTurtleConclusion.textContent = result.conclusion || result.campImpact || "";
+  if (divinationTurtleNotice && divinationTurtleNoticeList) {
+    const notices = Array.isArray(result.notices) ? result.notices.filter(Boolean) : [];
+    renderOraclePhraseList(divinationTurtleNoticeList, notices);
+    divinationTurtleNotice.classList.toggle("hidden", notices.length === 0);
   }
   if (divinationTurtleDetails) {
     divinationTurtleDetails.removeAttribute("open");
@@ -679,10 +684,16 @@ function renderModernIChingResult(result) {
     }).map(function(line) {
       return "第" + line.position + "爻（" + getTurtleLineLabel(line).split(" · ").slice(1).join(" · ") + "）";
     }).join("、");
-    divinationResultBasis.textContent = "动爻：" + (movingDetails || "无") + "。主占依据：" + result.readingBasis.summary;
+    divinationResultBasis.textContent = "本卦：" + result.primaryHexagram.name + "；变卦：" + result.changedHexagram.name +
+      "；动爻：" + (movingDetails || "无") + "。取辞依据：" + result.readingBasis.summary;
   }
   if (divinationResultJudgments) {
-    divinationResultJudgments.textContent = "本卦卦辞：" + result.primaryHexagram.judgment + " 变卦卦辞：" + result.changedHexagram.judgment;
+    const selectedTexts = result.judgmentAnalysis && Array.isArray(result.judgmentAnalysis.selectedTexts)
+      ? result.judgmentAnalysis.selectedTexts
+      : [];
+    divinationResultJudgments.textContent = "本次采用：" + (selectedTexts.length ? selectedTexts.map(function(item) {
+      return item.source + "「" + (item.text || item.interpretation || "辞文暂缺") + "」";
+    }).join("；") : "请查看取辞依据。");
   }
   if (divinationResultCastDetails) {
     divinationResultCastDetails.textContent = "六次铜钱：" + (result.lines || []).map(function(line) {

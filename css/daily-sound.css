@@ -84,7 +84,7 @@
   width: 1.8rem;
   height: 1.8rem;
   font-size: var(--font-md);
-  font-weight: var(--font-weight-2xl);
+  font-weight: var(--font-weight-lg);
 }
 
 .daily-weather-tab-copy {
@@ -166,10 +166,10 @@
 
 .daily-camp-mood {
   display: -webkit-box;
-  overflow: hidden;
+  overflow:auto;
   color: #f2dfb8;
-  font-size: var(--font-md);
-  font-weight: var(--font-weight-lg);
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-md);
   line-height: 1.28;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -178,8 +178,8 @@
 .daily-camp-activities,
 .daily-sound-recommendation {
   color: #d8c89e;
-  font-size: var(--font-sm);
-  font-weight: var(--font-weight-lg);
+  font-size: var(--font-xs);
+  font-weight: var(--font-weight-sm);
   line-height: 1.22;
 }
 
