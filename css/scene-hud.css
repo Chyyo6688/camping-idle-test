@@ -1013,7 +1013,7 @@ body.camper-in-tent .camper-attachment {
 }
 /*Help, Camper, 冒险，序号的字体大小*/
 .utility-button span {
-  font-size: var(--font-md);
+  font-size: var(--font-sm);
   font-weight: var(--font-weight-lg);
   line-height: 1;
 }
@@ -1120,7 +1120,7 @@ body.ui-hidden .ui-toggle-button {
 }
 /*Gather, Night按钮的字号大小*/
 .mode-button span {
-  font-size: var(--font-md);
+  font-size: var(--font-sm);
   font-weight: var(--font-weight-lg);
   line-height: 1;
 }
