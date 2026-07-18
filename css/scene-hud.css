@@ -64,8 +64,8 @@
   width: 100%;
   height: 24px;
   padding: 0 2px;
-  font-size: 8px;
-  font-weight: 700;
+  font-size: var(--font-xs);
+  font-weight: var(--font-weight-lg);
   letter-spacing: 0;
   white-space: nowrap;
   text-align: center;
@@ -92,8 +92,8 @@
   min-height: 11px;
   display: block;
   color: rgba(255, 255, 255, 0.9);
-  font-size: 8px;
-  font-weight: 800;
+  font-size: var(--font-xs);
+  font-weight: var(--font-weight-md);
   line-height: 1;
   text-align: center;
   text-shadow: 0 1px 2px rgba(8, 12, 8, 0.72);
@@ -313,8 +313,8 @@ body.night .string-lights-glow {
 .resource-label {
   display: block;
   color: #d4c299;
-  font-size: 0.62rem;
-  font-weight: 800;
+  font-size: var(--font-xs);
+  font-weight: var(--font-weight-md);
   letter-spacing: 0;
   line-height: 1.05;
 }
@@ -324,7 +324,8 @@ body.night .string-lights-glow {
   min-width: 0;
   overflow-wrap: anywhere;
   color: #fff3cf;
-  font-size: 1rem;
+  font-size: var(--font-lg);
+  font-weight:var(--font-weight-xl);
   line-height: 1.12;
 }
 
@@ -346,8 +347,8 @@ body.night .string-lights-glow {
   box-shadow:
     0 0.2rem 0.46rem rgba(10, 14, 9, 0.3),
     inset 0 1px 0 rgba(255, 238, 186, 0.24);
-  font-size: 0.72rem;
-  font-weight: 950;
+  font-size: var(--font-lg);
+  font-weight: var(--font-weight-lg);
   line-height: 1;
   cursor: pointer;
   transition: opacity 0.18s ease, transform 0.18s ease, filter 0.18s ease;
@@ -371,8 +372,8 @@ body.night .string-lights-glow {
   right: 8%;
   top: 12%;
   color: #ffd17a;
-  font-size: 0.85rem;
-  font-weight: 900;
+  font-size: var(--font-md);
+  font-weight: var(--font-weight-md);
   text-shadow: 0 1px 0 #60381f;
   animation: gainFloat 1s ease-out forwards;
 }
@@ -544,8 +545,8 @@ body.night .string-lights-glow {
   place-items: center;
   color: #fff;
   background: rgba(100, 0, 0, 0.56);
-  font-size: 10px;
-  font-weight: 900;
+  font-size: var(--font-md);
+  font-weight: var(--font-weight-md);
   line-height: 1;
   text-align: center;
   text-transform: uppercase;
@@ -663,8 +664,8 @@ body.ui-hidden:not(.build-mode) .target-outline-image {
   color: #111;
   background: rgba(255, 255, 255, 0.62);
   box-shadow: 0 0.12rem 0.28rem rgba(8, 12, 8, 0.24);
-  font-size: 0.74rem;
-  font-weight: 900;
+  font-size: var(--font-lg);
+  font-weight: var(--font-weight-lg);
   line-height: 1;
   pointer-events: none;
 }
@@ -875,8 +876,8 @@ body.camper-in-tent .camper-attachment {
   color: #f8e7bd;
   background: rgba(28, 34, 25, 0.72);
   box-shadow: 0 0.35rem 0.8rem rgba(9, 13, 8, 0.24);
-  font-size: 1.4rem;
-  font-weight: 900;
+  font-size: var(--font-xl);
+  font-weight: var(--font-weight-xl);
   line-height: 1.16;
   text-align: center;
   transform: translate(-50%, -100%);
@@ -929,8 +930,8 @@ body.camper-in-tent .camper-attachment {
   background: rgba(24, 30, 22, 0.58);
   box-shadow: 0 0.35rem 1rem rgba(12, 16, 10, 0.16);
   backdrop-filter: blur(6px);
-  font-size: 0.8rem;
-  font-weight: 800;
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-sm);
   line-height: 1.25;
   text-align: center;
   opacity: 0;
@@ -949,7 +950,8 @@ body.camper-in-tent .camper-attachment {
 
 .status-line {
   color: #dacba8;
-  font-size: 0.74rem;
+  font-size: var(--font-md);
+  font-weight: var(--font-weight-md);
 }
 
 .utility-controls {
@@ -1016,14 +1018,14 @@ body.camper-in-tent .camper-attachment {
   border-radius: 50%;
   color: #352918;
   background: #ffd17a;
-  font-size: 0.78rem;
-  font-weight: 900;
+  font-size: var(--font-md);
+  font-weight: var(--font-weight-md);
   line-height: 1;
 }
-
+/*Help, Camper, 冒险，序号的字体大小*/
 .utility-button span {
-  font-size: 0.68rem;
-  font-weight: 900;
+  font-size: var(--font-md);
+  font-weight: var(--font-weight-lg);
   line-height: 1;
 }
 
@@ -1055,7 +1057,8 @@ body.camper-in-tent .camper-attachment {
   height: 18px;
   display: inline-grid;
   place-items: center;
-  font-size: 0.95rem;
+  font-size: var(--font-md);
+  font-weight: var(--font-weight-md);
   line-height: 1;
 }
 
@@ -1126,16 +1129,17 @@ body.ui-hidden .ui-toggle-button {
   grid-row: 1 / span 2;
   object-fit: contain;
 }
-
+/*Gather, Night按钮的字号大小*/
 .mode-button span {
-  font-size: 0.7rem;
-  font-weight: 900;
+  font-size: var(--font-md);
+  font-weight: var(--font-weight-lg);
   line-height: 1;
 }
-
+/*Gather的ON/OFF*/
 .mode-button strong {
   color: #d3bf92;
-  font-size: 0.62rem;
+  font-size: var(--font-sm);
+  font-weight:var(--font-weight-md);
   line-height: 1;
 }
 
@@ -1195,10 +1199,10 @@ body.ui-hidden .ui-toggle-button {
   transform: translateY(4px);
   box-shadow: 0 0.2rem 0 rgba(33, 27, 18, 0.72);
 }
-
+/*Help, Camper, 冒险，Build, Shop按钮*/
 .floating-button span {
-  font-size: 0.78rem;
-  font-weight: 900;
+  font-size: var(--font-md);
+  font-weight: var(--font-weight-lg);
   line-height: 1;
 }
 
@@ -1221,8 +1225,8 @@ body.ui-hidden .ui-toggle-button {
 .drawer-header h1 {
   color: #f5dfb3;
   font-family: "Yaldevi Colombo", Yaldevi, sans-serif;
-  font-size: 22px;
-  font-weight: 700;
+  font-size: var(--font-2xl);
+  font-weight: var(--font-weight-xl);
   line-height: 1;
   text-transform: uppercase;
 }

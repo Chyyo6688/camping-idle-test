@@ -6,6 +6,8 @@ Privacy notes:
 - The tunnel is public to anyone who has the generated trycloudflare URL.
 - This script serves a temporary allowlisted snapshot instead of the repo root.
 - The snapshot contains only index.html, assets/, css/, js/, and tools/serve.js.
+- While the tunnel is running, index.html, assets/, css/, and js/ are mirrored
+  into the snapshot once per second so the public URL stays current.
 - The copied serve.js is bound to 127.0.0.1 before starting.
 #>
 
@@ -67,10 +69,81 @@ function Assert-SafeTempPath {
   return $fullPath
 }
 
-function Copy-PublicSnapshot {
+function Invoke-RobocopyMirror {
+  param(
+    [string]$Source,
+    [string]$Destination,
+    [string]$RobocopyPath
+  )
+
+  if (-not (Test-Path -LiteralPath $Destination)) {
+    New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+  }
+
+  & $RobocopyPath `
+    $Source `
+    $Destination `
+    /MIR `
+    /R:1 `
+    /W:1 `
+    /COPY:DAT `
+    /DCOPY:DAT `
+    /XJ `
+    /NFL `
+    /NDL `
+    /NJH `
+    /NJS `
+    /NP | Out-Null
+
+  $robocopyExitCode = $LASTEXITCODE
+  if ($robocopyExitCode -gt 7) {
+    throw "robocopy failed for '$Source' with exit code $robocopyExitCode."
+  }
+}
+
+function Sync-AllowlistedSnapshot {
   param(
     [string]$RepoRoot,
-    [string]$PublishRoot
+    [string]$PublishRoot,
+    [string]$RobocopyPath
+  )
+
+  $publishFullPath = Assert-SafeTempPath $PublishRoot
+  $indexSource = Join-Path $RepoRoot "index.html"
+  $indexDestination = Join-Path $publishFullPath "index.html"
+
+  if (Test-Path -LiteralPath $indexSource) {
+    $sourceInfo = Get-Item -LiteralPath $indexSource
+    $destinationInfo = Get-Item -LiteralPath $indexDestination -ErrorAction SilentlyContinue
+    if ($null -eq $destinationInfo -or
+      $sourceInfo.Length -ne $destinationInfo.Length -or
+      $sourceInfo.LastWriteTimeUtc -ne $destinationInfo.LastWriteTimeUtc) {
+      Copy-Item -LiteralPath $indexSource -Destination $indexDestination -Force
+    }
+  } elseif (Test-Path -LiteralPath $indexDestination) {
+    Remove-Item -LiteralPath $indexDestination -Force
+  }
+
+  foreach ($folderName in @("assets", "css", "js")) {
+    $sourceFolder = Join-Path $RepoRoot $folderName
+    $destinationFolder = Join-Path $publishFullPath $folderName
+
+    if (Test-Path -LiteralPath $sourceFolder) {
+      Invoke-RobocopyMirror `
+        -Source $sourceFolder `
+        -Destination $destinationFolder `
+        -RobocopyPath $RobocopyPath
+    } elseif (Test-Path -LiteralPath $destinationFolder) {
+      Remove-Item -LiteralPath $destinationFolder -Recurse -Force
+    }
+  }
+}
+
+function Initialize-PublicSnapshot {
+  param(
+    [string]$RepoRoot,
+    [string]$PublishRoot,
+    [string]$RobocopyPath
   )
 
   $publishFullPath = Assert-SafeTempPath $PublishRoot
@@ -81,19 +154,14 @@ function Copy-PublicSnapshot {
 
   New-Item -ItemType Directory -Path $publishFullPath | Out-Null
 
-  $indexPath = Join-Path $RepoRoot "index.html"
-  if (-not (Test-Path -LiteralPath $indexPath)) {
+  if (-not (Test-Path -LiteralPath (Join-Path $RepoRoot "index.html"))) {
     Stop-WithError "Missing index.html."
   }
 
-  Copy-Item -LiteralPath $indexPath -Destination (Join-Path $publishFullPath "index.html") -Force
-
-  foreach ($folderName in @("assets", "css", "js")) {
-    $sourceFolder = Join-Path $RepoRoot $folderName
-    if (Test-Path -LiteralPath $sourceFolder) {
-      Copy-Item -LiteralPath $sourceFolder -Destination (Join-Path $publishFullPath $folderName) -Recurse -Force
-    }
-  }
+  Sync-AllowlistedSnapshot `
+    -RepoRoot $RepoRoot `
+    -PublishRoot $publishFullPath `
+    -RobocopyPath $RobocopyPath
 
   $sourceServe = Join-Path $RepoRoot "tools\serve.js"
   if (-not (Test-Path -LiteralPath $sourceServe)) {
@@ -132,12 +200,45 @@ function Wait-ForLocalServer {
   Stop-WithError "Timed out waiting for $Url."
 }
 
+function Wait-ForQuickTunnelUrl {
+  param(
+    [System.Diagnostics.Process]$Process,
+    [string]$StandardOutputLog,
+    [string]$StandardErrorLog
+  )
+
+  for ($attempt = 0; $attempt -lt 180; $attempt += 1) {
+    $Process.Refresh()
+    if ($Process.HasExited) {
+      Stop-WithError "cloudflared exited before publishing a Quick Tunnel URL."
+    }
+
+    $logText = ""
+    if (Test-Path -LiteralPath $StandardOutputLog) {
+      $logText += Get-Content -LiteralPath $StandardOutputLog -Raw -ErrorAction SilentlyContinue
+    }
+    if (Test-Path -LiteralPath $StandardErrorLog) {
+      $logText += "`n" + (Get-Content -LiteralPath $StandardErrorLog -Raw -ErrorAction SilentlyContinue)
+    }
+
+    $urlMatch = [regex]::Match($logText, 'https://[a-zA-Z0-9-]+\.trycloudflare\.com')
+    if ($urlMatch.Success) {
+      return $urlMatch.Value
+    }
+
+    Start-Sleep -Seconds 1
+  }
+
+  Stop-WithError "Timed out waiting for the Quick Tunnel URL."
+}
+
 $scriptDir = Split-Path -Parent $PSCommandPath
 $repoRoot = (Resolve-Path (Join-Path $scriptDir "..")).Path
 $publishRoot = Join-Path ([System.IO.Path]::GetTempPath()) "camping-idle-quick-tunnel-public"
 $logRoot = Assert-SafeTempPath (Join-Path ([System.IO.Path]::GetTempPath()) "camping-idle-quick-tunnel-logs")
 $localUrl = "http://127.0.0.1:$Port/"
 $serverProcess = $null
+$cloudflaredProcess = $null
 
 $nodeCommand = Get-Command node -ErrorAction SilentlyContinue
 if ($null -eq $nodeCommand) {
@@ -153,15 +254,24 @@ if ($null -eq $cloudflaredCommand) {
   }
 }
 
+$robocopyCommand = Get-Command robocopy.exe -ErrorAction SilentlyContinue
+if ($null -eq $robocopyCommand) {
+  Stop-WithError "robocopy.exe was not found. This script requires robocopy for snapshot mirroring."
+}
+
 if (-not $CheckOnly -and (Test-LocalPortInUse $Port)) {
   Stop-WithError "Port $Port is already in use. Stop the existing process or pass a different -Port."
 }
 
-$publishFullPath = Copy-PublicSnapshot -RepoRoot $repoRoot -PublishRoot $publishRoot
+$publishFullPath = Initialize-PublicSnapshot `
+  -RepoRoot $repoRoot `
+  -PublishRoot $publishRoot `
+  -RobocopyPath $robocopyCommand.Source
 
 Write-Step "Prepared privacy-scoped public snapshot."
 Write-Step "Included only: index.html, assets/, css/, js/, tools/serve.js."
 Write-Step "Excluded repo metadata and private working files such as .git, .claude, .agents, project-info."
+Write-Step "During the tunnel, allowlisted game files will be mirrored every second."
 
 if ($CheckOnly) {
   Write-Step "CheckOnly complete. No server or tunnel was started."
@@ -178,7 +288,11 @@ try {
 
   $serverOut = Join-Path $logRoot "serve.stdout.log"
   $serverErr = Join-Path $logRoot "serve.stderr.log"
+  $cloudflaredOut = Join-Path $logRoot "cloudflared.stdout.log"
+  $cloudflaredErr = Join-Path $logRoot "cloudflared.stderr.log"
   $serveScript = Join-Path $publishFullPath "tools\serve.js"
+
+  Remove-Item -LiteralPath $serverOut, $serverErr, $cloudflaredOut, $cloudflaredErr -Force -ErrorAction SilentlyContinue
 
   Write-Step "Starting serve.js at $localUrl"
   $serverProcess = Start-Process `
@@ -193,11 +307,52 @@ try {
   Wait-ForLocalServer -Url $localUrl -Process $serverProcess
 
   Write-Warning "Cloudflare Quick Tunnel creates a public URL. Share it only with trusted testers."
-  Write-Warning "Close this window or press Ctrl+C when finished; the local server will be stopped."
+  Write-Warning "Close this window or press Ctrl+C when finished; child processes and the temporary snapshot will be cleaned up."
   Write-Step "Starting Cloudflare Quick Tunnel for $localUrl"
 
-  & $cloudflaredCommand.Source tunnel --url $localUrl
+  $cloudflaredProcess = Start-Process `
+    -FilePath $cloudflaredCommand.Source `
+    -ArgumentList @("tunnel", "--url", $localUrl) `
+    -WorkingDirectory $publishFullPath `
+    -WindowStyle Hidden `
+    -PassThru `
+    -RedirectStandardOutput $cloudflaredOut `
+    -RedirectStandardError $cloudflaredErr
+
+  $quickTunnelUrl = Wait-ForQuickTunnelUrl `
+    -Process $cloudflaredProcess `
+    -StandardOutputLog $cloudflaredOut `
+    -StandardErrorLog $cloudflaredErr
+  Write-Step "Quick Tunnel URL: $quickTunnelUrl"
+  Write-Step "Watching allowlisted files for changes. Refresh the browser after saving."
+
+  $lastSyncWarning = ""
+  while (-not $cloudflaredProcess.HasExited) {
+    try {
+      Sync-AllowlistedSnapshot `
+        -RepoRoot $repoRoot `
+        -PublishRoot $publishFullPath `
+        -RobocopyPath $robocopyCommand.Source
+      $lastSyncWarning = ""
+    } catch {
+      $syncWarning = $_.Exception.Message
+      if ($syncWarning -ne $lastSyncWarning) {
+        Write-Warning "Snapshot sync failed: $syncWarning"
+        $lastSyncWarning = $syncWarning
+      }
+    }
+
+    Start-Sleep -Seconds 1
+    $cloudflaredProcess.Refresh()
+  }
+
+  Stop-WithError "cloudflared exited unexpectedly with code $($cloudflaredProcess.ExitCode)."
 } finally {
+  if ($null -ne $cloudflaredProcess -and -not $cloudflaredProcess.HasExited) {
+    Write-Step "Stopping cloudflared."
+    Stop-Process -Id $cloudflaredProcess.Id -Force -ErrorAction SilentlyContinue
+  }
+
   if ($null -ne $serverProcess -and -not $serverProcess.HasExited) {
     Write-Step "Stopping serve.js."
     Stop-Process -Id $serverProcess.Id -Force -ErrorAction SilentlyContinue
