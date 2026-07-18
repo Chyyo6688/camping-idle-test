@@ -139,7 +139,7 @@ body.divination-open .daily-camp-card {
 .divination-method-button span {
   color: #fff1c8;
   font-size: var(--font-md);
-  font-weight: var(--font-weight-lg);
+  font-weight: var(--font-weight-md);
   line-height: 1.1;
 }
 

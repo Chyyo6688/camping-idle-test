@@ -26,10 +26,10 @@
   --font-family-latin: "Trebuchet MS", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   --font-family-cjk: "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC";
   --font-family-mixed: var(--font-family-latin), var(--font-family-cjk), sans-serif;
-  --font-xs: 0.625rem;
-  --font-sm: 0.75rem;
-  --font-md: 0.875rem;
-  --font-lg: 1rem;
+  --font-xs: 0.75rem;
+  --font-sm: 0.85rem;
+  --font-md: 1rem;
+  --font-lg: 1.15rem;
   --font-xl: 1.25rem;
   --font-2xl: 1.5rem;
   --font-weight-xs: 250;

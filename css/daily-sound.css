@@ -91,14 +91,14 @@
   color: #d7c69b;
   font-size: var(--font-sm);
   font-weight: var(--font-weight-lg);
-  line-height: 1;
+  line-height: 2;
 }
 
 .daily-camp-drawer-chevron {
   color: #ffd983;
-  font-size: var(--font-xl);
+  font-size: var(--font-2xl);
   font-weight: var(--font-weight-2xl);
-  line-height: 1;
+  line-height: 0.6;
 }
 
 .daily-camp-drawer-panel {

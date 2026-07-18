@@ -261,7 +261,7 @@
       comfort: 6,
       detail: "+6 Comfort",
       image: imagePath("vehicle", "compactCampSuv", "png"),
-      scene: scene({ x: 72, y: 75 }, 30, 19, {
+      scene: scene({ x: 72, y: 75 }, 30, 19,  { depthOffsetY: -40},{
         roofMount: { ratioX: 0.6, ratioY: 0.42, zIndex: 19 }, 
         awningMount: { ratioX: 0.55, ratioY: 0.13, zIndex: 19 }
       })
@@ -275,7 +275,7 @@
       comfort: 10,
       detail: "+10 Comfort",
       image: imagePath("vehicle", "creamCampVan", "png"),
-      scene: scene({ x: 72, y: 75 }, 30, 19, {
+      scene: scene({ x: 72, y: 75 }, 30, 19, {depthOffsetY: -40},{
         roofMount: { ratioX: 0.5, ratioY: 0.41, zIndex: 19 },
         awningMount: { ratioX: 0.5, ratioY: 0.2, zIndex: 19 }
       })
@@ -289,7 +289,7 @@
       comfort: 8,
       detail: "+8 Comfort",
       image: imagePath("vehicle", "campWagonCar", "png"),
-      scene: scene({ x: 72, y: 75 }, 30, 19, {
+      scene: scene({ x: 72, y: 75 }, 30, 19, {depthOffsetY: -40},{
         roofMount: { ratioX: 0.61, ratioY: 0.4, zIndex: 19 },
         awningMount: { ratioX: 0.5, ratioY: 0.16, zIndex: 19 }
       })
@@ -303,7 +303,7 @@
       comfort: 12,
       detail: "+12 Comfort",
       image: imagePath("vehicle", "campPickupTruck", "png"),
-      scene: scene({ x: 72, y: 75 }, 34, 19, {
+      scene: scene({ x: 72, y: 75 }, 34, 19, {depthOffsetY: -40},{
         roofMount: { ratioX: 0.55, ratioY: 0.35, zIndex: 19 },
         awningMount: { ratioX: 0.55, ratioY: 0.06, zIndex: 19 }
       })
@@ -317,7 +317,7 @@
       comfort: 7,
       detail: "+7 Comfort",
       image: imagePath("vehicle", "tinyCampVan", "png"),
-      scene: scene({ x: 72, y: 75 }, 30, 19, {
+      scene: scene({ x: 72, y: 75 }, 30, 19, {depthOffsetY: -40},{
         roofMount: { ratioX: 0.48, ratioY: 0.4, zIndex: 19 },
         awningMount: { ratioX: 0.55, ratioY: 0.2, zIndex: 19 }
       })
@@ -713,7 +713,7 @@
       detail: "+8 Comfort", 
       image: imagePath("light", "warmStringLights", "png"), 
       unlocks: { nightMode: true }, 
-      scene: scene({ x: 55, y: 63}, 22, 21, { aspectRatio: "160 / 60", layers: { glow: layerPath("light", "warmStringLights", "glow", "png"), base: imagePath("light", "warmStringLights", "png") } }) }),
+      scene: scene({ x: 55, y: 63}, 22, 21,  { depthOffsetY: 120 }, { aspectRatio: "160 / 60", layers: { glow: layerPath("light", "warmStringLights", "glow", "png"), base: imagePath("light", "warmStringLights", "png") } }) }),
     gear({ id: "hozukiLantern", 
       category: "light", 
       shopGroup: "light", 
@@ -851,7 +851,7 @@
       cost: 55, comfort: 2, 
       detail: "+2 Comfort", 
       image: imagePath("activity", "binoculars", "png"), 
-      scene: scene({ x: 65.5, y: 71.5 }, 5.6, 31) }),
+      scene: scene({ x: 65.5, y: 71.5 }, 5.6, 31, { depthOffsetY: 40 }) }),
     gear({ id: "cameraTripod", 
       category: "activity", 
       shopGroup: "activity", 

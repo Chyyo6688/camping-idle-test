@@ -1,7 +1,7 @@
 /* camper-shop.css — split from style.css; component rules keep their source order. */
 
 body.shop-open .scene-content {
-  --scene-shift-y: calc(-1 * var(--shop-sheet-height) + 135px);
+  --scene-shift-y: calc(-1 * var(--shop-sheet-height) + 220px);
 }
 
 body.shop-open .toast-layer {
@@ -358,7 +358,7 @@ body.shop-open .toast-layer {
 .camper-question-text {
   color: #fff3ce;
   font-size: var(--font-lg);
-  font-weight: var(--font-weight-2xl);
+  font-weight: var(--font-weight-lg);
 }
 
 .camper-question-options {
@@ -411,7 +411,7 @@ body.shop-open .toast-layer {
   grid-template-columns: minmax(0, 0.88fr) minmax(0, 1fr);
   gap: 0.5rem;
   min-height: 100px;
-  height: min(300px, calc(100dvh - 2rem));
+  height: 320px;
   max-height: 100%;
 }
 
@@ -827,7 +827,7 @@ body.shop-open .shop-drawer {
 .shop-section {
   min-width: 0;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr)); /*改商店卡片列数*/
   column-gap: 16px;
   row-gap: 16px;
   margin-bottom: 0.76rem;
@@ -836,7 +836,7 @@ body.shop-open .shop-drawer {
 }
 
 .shop-content.single-category .shop-section {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));/*改商店卡片列数*/
 }
 
 .shop-section.filtered-hidden {
@@ -1134,15 +1134,15 @@ body.shop-open .shop-drawer {
   position: absolute;
   left: -2px;
   top: -2px;
-  min-width: 1.85rem;
-  padding: 0.12rem 0.22rem 0.14rem;
+  min-width: 2.85rem;
+  padding: 0.2rem 0.3rem;
   border-radius: 9px 0 8px 0;
   color: #fff2c7;
   background:
     linear-gradient(180deg, rgba(164, 130, 74, 0.98), rgba(128, 101, 60, 0.98));
   box-shadow: 0 0.12rem 0 rgba(58, 39, 22, 0.5);
-  font-size: var(--font-md);
-  font-weight: var(--font-weight-md);
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-lg);
   line-height: 1;
   text-align: center;
   z-index: 2;
@@ -1212,9 +1212,10 @@ body.shop-open .shop-drawer {
   border-color: rgba(255, 209, 122, 0.68);
 }
 
-.item-art {
-  width: 76%;
-  height: 42px;
+.item-art { 
+  /*商店卡片里的图大小*/
+  width: 86%;
+  height: 64px;
   min-width: 0;
   min-height: 0;
   object-fit: contain;
@@ -1231,8 +1232,8 @@ body.shop-open .shop-drawer {
 
 .item-name {
   color: #f2dfb8;
-  font-size: 0.8rem;
-  font-weight: var(--font-weight-md);
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-lg);
   line-height: 1.1;
   overflow-wrap: anywhere;
 }

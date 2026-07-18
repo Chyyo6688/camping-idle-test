@@ -456,17 +456,6 @@ body.night .string-lights-glow {
   opacity: 1;
 }
 
-@media (hover: hover) and (pointer: fine) {
-.wood-item:not(.queued-action-target):hover {
-    --wood-scale: 1.06;
-    outline: none;
-  }
-
-  .wood-item:not(.queued-action-target):hover > .target-outline-image,
-  .interactive-action-target:not(.queued-action-target):hover > .target-outline-image {
-    opacity: 1;
-  }
-}
 
 .wood-item:active {
   --wood-scale: 0.98;
@@ -664,7 +653,7 @@ body.ui-hidden:not(.build-mode) .target-outline-image {
   color: #111;
   background: rgba(255, 255, 255, 0.62);
   box-shadow: 0 0.12rem 0.28rem rgba(8, 12, 8, 0.24);
-  font-size: var(--font-lg);
+  font-size: var(--font-md);
   font-weight: var(--font-weight-lg);
   line-height: 1;
   pointer-events: none;
@@ -876,7 +865,7 @@ body.camper-in-tent .camper-attachment {
   color: #f8e7bd;
   background: rgba(28, 34, 25, 0.72);
   box-shadow: 0 0.35rem 0.8rem rgba(9, 13, 8, 0.24);
-  font-size: var(--font-xl);
+  font-size: var(--font-2xl);
   font-weight: var(--font-weight-xl);
   line-height: 1.16;
   text-align: center;
@@ -930,7 +919,7 @@ body.camper-in-tent .camper-attachment {
   background: rgba(24, 30, 22, 0.58);
   box-shadow: 0 0.35rem 1rem rgba(12, 16, 10, 0.16);
   backdrop-filter: blur(6px);
-  font-size: var(--font-sm);
+  font-size: var(--font-xs);
   font-weight: var(--font-weight-sm);
   line-height: 1.25;
   text-align: center;
@@ -950,7 +939,7 @@ body.camper-in-tent .camper-attachment {
 
 .status-line {
   color: #dacba8;
-  font-size: var(--font-md);
+  font-size: var(--font-sm);
   font-weight: var(--font-weight-md);
 }
 
@@ -1138,7 +1127,7 @@ body.ui-hidden .ui-toggle-button {
 /*Gather的ON/OFF*/
 .mode-button strong {
   color: #d3bf92;
-  font-size: var(--font-sm);
+  font-size: var(--font-xs);
   font-weight:var(--font-weight-md);
   line-height: 1;
 }
