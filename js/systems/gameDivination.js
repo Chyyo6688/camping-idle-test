@@ -679,34 +679,36 @@ function renderModernIChingResult(result) {
   renderIChingResultLines(result);
 
   if (divinationResultBasis) {
+    const readingBasis = result.readingBasis || {};
+    function getSelectedTextName(item) {
+      const source = String(item && item.source || "所取辞文").replace(/·(?:主|辅)$/, "");
+      return [source, item && item.label].filter(Boolean).join("·");
+    }
     const movingDetails = (result.lines || []).filter(function(line) {
       return line && line.moving;
     }).map(function(line) {
-      return "第" + line.position + "爻（" + getTurtleLineLabel(line).split(" · ").slice(1).join(" · ") + "）";
+      return "第" + line.position + "爻";
     }).join("、");
+    const primaryTexts = Array.isArray(readingBasis.primaryTexts) ? readingBasis.primaryTexts : [];
+    const secondaryTexts = Array.isArray(readingBasis.secondaryTexts) ? readingBasis.secondaryTexts : [];
+    const primaryNames = primaryTexts.map(getSelectedTextName).join("、") || "主辞";
+    const secondaryNames = secondaryTexts.map(getSelectedTextName).join("、");
+    const selectedRelation = secondaryNames
+      ? "主辞：" + primaryNames + "；辅辞：" + secondaryNames + "。"
+      : "主辞：" + primaryNames + "；无辅辞。";
     divinationResultBasis.textContent = "本卦：" + result.primaryHexagram.name + "；变卦：" + result.changedHexagram.name +
-      "；动爻：" + (movingDetails || "无") + "。取辞依据：" + result.readingBasis.summary;
+      "；动爻位置：" + (movingDetails || "无") + "。" + selectedRelation + "取辞原因：" + readingBasis.summary;
   }
   if (divinationResultJudgments) {
-    const selectedTexts = result.judgmentAnalysis && Array.isArray(result.judgmentAnalysis.selectedTexts)
-      ? result.judgmentAnalysis.selectedTexts
+    const selectedTexts = result.readingBasis
+      ? (result.readingBasis.primaryTexts || []).concat(result.readingBasis.secondaryTexts || [])
       : [];
-    divinationResultJudgments.textContent = "本次采用：" + (selectedTexts.length ? selectedTexts.map(function(item) {
-      return item.source + "「" + (item.text || item.interpretation || "辞文暂缺") + "」";
-    }).join("；") : "请查看取辞依据。");
-  }
-  if (divinationResultCastDetails) {
-    divinationResultCastDetails.textContent = "六次铜钱：" + (result.lines || []).map(function(line) {
-      return "第" + line.position + "爻 " + line.total + "（" + getTurtleLineLabel(line).split(" · ").slice(1).join(" · ") + "）";
+    divinationResultJudgments.textContent = selectedTexts.map(function(item) {
+      const role = item.role === "primary" ? "主辞" : "辅辞";
+      const source = String(item.source || "所取辞文").replace(/·(?:主|辅)$/, "");
+      const name = [source, item.label].filter(Boolean).join("·");
+      return role + "（" + name + "）：「" + item.text + "」";
     }).join("；");
-  }
-  if (divinationResultLineDetails) {
-    divinationResultLineDetails.textContent = "爻位细目：" + (result.readingBasis.items || []).map(function(item) {
-      return [item.source, item.label, item.keyword, item.text].filter(Boolean).join(" · ");
-    }).join("；");
-  }
-  if (divinationResultDetailReading) {
-    divinationResultDetailReading.textContent = result.detailInterpretation || "";
   }
 }
 

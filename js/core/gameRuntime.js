@@ -254,15 +254,15 @@ const divinationTurtlePrimaryName = document.getElementById("divinationTurtlePri
 const divinationTurtleMovingCount = document.getElementById("divinationTurtleMovingCount");
 const divinationTurtleKeywords = document.getElementById("divinationTurtleKeywords");
 const divinationTurtleSummary = document.getElementById("divinationTurtleSummary");
+const divinationTurtleSelectedText = document.getElementById("divinationTurtleSelectedText");
 const divinationTurtleInterpretation = document.getElementById("divinationTurtleInterpretation");
 const divinationTurtleGoodFor = document.getElementById("divinationTurtleGoodFor");
 const divinationTurtleAvoid = document.getElementById("divinationTurtleAvoid");
+const divinationTurtleNotice = document.getElementById("divinationTurtleNotice");
+const divinationTurtleNoticeList = document.getElementById("divinationTurtleNoticeList");
 const divinationTurtleConclusion = document.getElementById("divinationTurtleConclusion");
 const divinationTurtleDetails = document.getElementById("divinationTurtleDetails");
 const divinationResultJudgments = document.getElementById("divinationResultJudgments");
-const divinationResultCastDetails = document.getElementById("divinationResultCastDetails");
-const divinationResultLineDetails = document.getElementById("divinationResultLineDetails");
-const divinationResultDetailReading = document.getElementById("divinationResultDetailReading");
 
 function setStyleValue(element, property, value) {
   if (!element) {

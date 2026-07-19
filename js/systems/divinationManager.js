@@ -1,5 +1,5 @@
 (function () {
-  const TURTLE_PRESENTATION_VERSION = 3;
+  const TURTLE_PRESENTATION_VERSION = 8;
 
   function getCatalog() {
     if (typeof window !== "undefined" && window.CAMP_DIVINATION_CATALOG) {
@@ -657,52 +657,136 @@
 
   function verdictPolarity(verdicts) {
     if (verdicts.some(function(item) { return ["bad", "advanceBad", "mustNot"].indexOf(item) !== -1; })) return "adverse";
-    if (verdicts.some(function(item) { return ["danger", "doNotAct", "difficulty", "regret", "unfavorable"].indexOf(item) !== -1; })) return "cautious";
-    if (verdicts.some(function(item) { return ["supremeGood", "greatGood", "good", "correctGood", "nothingUnfavorable", "favorable", "regretGone"].indexOf(item) !== -1; })) return "favorable";
+    if (verdicts.some(function(item) { return ["danger", "doNotAct", "difficulty", "regret", "unfavorable", "noBlame", "correctGood", "regretGone"].indexOf(item) !== -1; })) return "conditional";
+    if (verdicts.some(function(item) { return ["supremeGood", "greatGood", "good", "nothingUnfavorable", "favorable"].indexOf(item) !== -1; })) return "favorable";
     return "neutral";
   }
 
-  function assessSelectedTexts(basis) {
+  function assessSelectedTexts(basis, transition) {
     const primaryTexts = basis.primaryTexts || [];
     const secondaryTexts = basis.secondaryTexts || [];
     const primaryVerdicts = collectField(primaryTexts, "verdicts");
     const secondaryVerdicts = collectField(secondaryTexts, "verdicts");
     const allTexts = primaryTexts.concat(secondaryTexts);
     const verdicts = uniqueValues(primaryVerdicts.concat(secondaryVerdicts));
-    const conditions = collectField(allTexts, "conditions");
+    const primaryConditions = collectField(primaryTexts, "conditions");
+    const secondaryConditions = collectField(secondaryTexts, "conditions");
+    const conditions = uniqueValues(primaryConditions.concat(secondaryConditions));
     const primaryPolarity = verdictPolarity(primaryVerdicts);
     const secondaryPolarity = verdictPolarity(secondaryVerdicts);
     const has = function(values, candidates) { return values.some(function(item) { return candidates.indexOf(item) !== -1; }); };
-    let grade = "平";
+    const semanticText = function(items) {
+      return items.map(function(item) {
+        return [item && item.text, item && item.interpretation].concat(item && item.situationTags || []).filter(Boolean).join("|");
+      }).join("|");
+    };
+    const primarySemantic = semanticText(primaryTexts);
+    const secondarySemantic = semanticText(secondaryTexts);
+    const primaryRawText = primaryTexts.map(function(item) { return item && item.text || ""; }).join("|");
+    const secondaryRawText = secondaryTexts.map(function(item) { return item && item.text || ""; }).join("|");
+    const primaryHasSevereAdverse = has(primaryVerdicts, ["bad", "advanceBad"]);
+    const primaryHasRestriction = has(primaryVerdicts, ["mustNot", "doNotAct"]);
+    const primaryHasExplicitDanger = has(primaryVerdicts, ["danger"]);
+    const primaryHasOrdinaryCaution = has(primaryVerdicts, ["difficulty", "regret", "unfavorable"]);
+    const primaryHasConditionalOutcome = has(primaryVerdicts, ["correctGood", "noBlame", "regretGone"]) || primaryConditions.length > 0;
+    const primaryHasClearGood = has(primaryVerdicts, ["supremeGood", "greatGood", "good", "nothingUnfavorable", "correctGood"]);
+    const primaryHasPositive = primaryHasClearGood || has(primaryVerdicts, ["favorable"]);
+    const primaryHasGreatPositive = has(primaryVerdicts, ["supremeGood", "greatGood"]);
+    const primaryHasNoBlame = has(primaryVerdicts, ["noBlame"]);
+    const primaryHasRegretGone = has(primaryVerdicts, ["regretGone"]);
+    const primaryHasBlockingSituation =
+      /困顿|受困|资源有限|危险|风险|闭塞|阻碍|艰难|未完成|尚未|不安|冲突|失信|不信|难获|羞辱|吝|灾|受伤|失去|窘迫|无实/.test(primarySemantic);
+    const primaryHasCurrentAdversity = primaryHasSevereAdverse || primaryHasRestriction || primaryHasExplicitDanger ||
+      primaryHasOrdinaryCaution || primaryHasBlockingSituation;
+    const primaryNeedsCorrectness = has(primaryVerdicts, ["correctGood"]) || /贞吉|守正|中正|正道/.test(primarySemantic) ||
+      (/贞/.test(primaryRawText) && (primaryHasPositive || has(primaryVerdicts, ["noBlame"])));
+    const timingCondition = /己日乃孚|等待|时机|成熟|未到|尚未|条件未/.test(primarySemantic + "|" + secondarySemantic + "|" + conditions.join("|"));
+    const secondaryHasAdverse = has(secondaryVerdicts, ["bad", "advanceBad", "mustNot", "doNotAct", "danger", "difficulty", "unfavorable"]);
+    const secondaryHasPositive = has(secondaryVerdicts, ["supremeGood", "greatGood", "good", "nothingUnfavorable", "favorable", "correctGood", "noBlame", "regretGone"]);
+    const changed = transition && transition.changed;
+    const primaryHexagram = transition && transition.primary;
+    const transitionText = changed && primaryHexagram && changed.id !== primaryHexagram.id
+      ? [changed.imageMeaning].concat(changed.keywords || []).filter(Boolean).join("|")
+      : "";
+    const transitionHasRisk = /危险|风险|未完成|闭塞|困顿|冲突|失序|受阻|过盛/.test(transitionText);
+    const transitionHasRelief = /转机|复苏|完成|安定|和合|解脱|上升|更新|归位|通达/.test(transitionText);
+    let overallGrade = "平";
 
-    if (has(primaryVerdicts, ["bad", "advanceBad", "mustNot"])) grade = "凶";
-    else if (has(primaryVerdicts, ["danger", "doNotAct", "difficulty", "unfavorable"])) grade = "慎";
-    else if (has(primaryVerdicts, ["supremeGood", "greatGood"]) && primaryPolarity === "favorable") grade = "大吉";
-    else if (has(primaryVerdicts, ["good", "correctGood", "nothingUnfavorable", "favorable"])) grade = "吉";
-    else if (has(primaryVerdicts, ["noBlame"]) && has(primaryVerdicts, ["danger"])) grade = "慎";
-    else if (has(primaryVerdicts, ["regretGone"])) grade = "吉";
-    else if (has(primaryVerdicts, ["regret"])) grade = "慎";
-
-    if (grade === "大吉" && secondaryPolarity === "adverse") grade = "吉";
-    else if (grade === "吉" && secondaryPolarity === "adverse") grade = "慎";
-    else if (grade === "平" && secondaryPolarity === "adverse") grade = "慎";
+    // 主辞描述当前等级；条件、辅辞和变卦主要说明怎样发展，不再自动把结果压成“慎”。
+    if (primaryHasSevereAdverse) overallGrade = "凶";
+    else if (primaryHasRestriction || primaryHasExplicitDanger) overallGrade = "慎";
+    else if (primaryHasGreatPositive && !primaryHasOrdinaryCaution && !primaryHasBlockingSituation) overallGrade = "大吉";
+    else if (has(primaryVerdicts, ["correctGood"]) && !primaryHasOrdinaryCaution) overallGrade = "吉";
+    else if (has(primaryVerdicts, ["good", "nothingUnfavorable"]) && !primaryHasOrdinaryCaution && !primaryHasBlockingSituation) overallGrade = "吉";
+    else if (primaryHasRegretGone) {
+      overallGrade = primaryHasPositive && !primaryHasOrdinaryCaution && !primaryHasBlockingSituation ? "吉" : "平";
+    } else if (primaryHasClearGood) {
+      // 明确吉辞与现实阻力并存时按“平”看待；不是因为有条件而判“慎”。
+      overallGrade = "平";
+    } else if (primaryHasOrdinaryCaution || primaryHasBlockingSituation) {
+      overallGrade = primaryHasNoBlame || primaryHasPositive ? "平" : "慎";
+    } else if (primaryHasNoBlame || primaryHasPositive || primaryHasConditionalOutcome) {
+      overallGrade = "平";
+    }
 
     const missing = allTexts.some(function(item) { return item && item.dataStatus === "missingOriginal"; });
     if (missing) conditions.push("本次未取得完整辞文，结果仅作中性提示。");
 
-    const trend = secondaryTexts.length === 0 ? "single" : primaryPolarity + "To" + secondaryPolarity;
+    let trend = "局势尚待明朗";
+    if (has(primaryVerdicts, ["bad", "advanceBad"])) trend = "主动推进易凶";
+    else if (primaryHasRestriction) trend = "暂缓可避咎";
+    else if (has(primaryVerdicts, ["danger"]) && has(primaryVerdicts, ["noBlame"])) trend = "谨慎处理可避咎";
+    else if (primaryHasExplicitDanger) trend = "风险未解，宜先稳住";
+    else if (primaryHasRegretGone) trend = "调整后转好";
+    else if (primaryHasBlockingSituation && primaryNeedsCorrectness && timingCondition && secondaryHasPositive) trend = "守正待时可转吉";
+    else if (has(primaryVerdicts, ["correctGood"])) trend = "守正可成";
+    else if (primaryHasCurrentAdversity && secondaryHasPositive) {
+      if (has(secondaryVerdicts, ["regretGone"])) trend = "当前受阻，调整后转好";
+      else if (/己日乃孚|等待|时机|成熟/.test(secondaryRawText + "|" + secondarySemantic)) trend = "当前受阻，待时有转机";
+      else trend = "当前受阻，后续有转机";
+    } else if (primaryNeedsCorrectness && primaryHasPositive) trend = "守正可成";
+    else if (primaryHasNoBlame) trend = "处理得当可免咎";
+    else if (timingCondition) trend = "等待时机转好";
+    else if (secondaryHasAdverse) trend = "后势转难，宜及时收束";
+    else if (transitionHasRelief) trend = "后续有转机";
+    else if (transitionHasRisk) trend = "后势仍需谨慎";
+    else if (overallGrade === "大吉" || overallGrade === "吉") trend = "顺势可成";
+
+    const trendCode = secondaryTexts.length === 0 ? "single" : primaryPolarity + "To" + secondaryPolarity;
     const reasoningParts = [];
-    if (primaryVerdicts.length) reasoningParts.push("主要辞文见“" + primaryVerdicts.map(function(item) { return verdictLabels[item] || item; }).join("、") + "”");
-    else reasoningParts.push("主要辞文没有明确的简单吉凶判断词");
-    if (secondaryVerdicts.length) reasoningParts.push("辅助辞文见“" + secondaryVerdicts.map(function(item) { return verdictLabels[item] || item; }).join("、") + "”");
-    if (conditions.length) reasoningParts.push("须保留辞文所附条件与警告");
+    if (primaryVerdicts.length) reasoningParts.push("主辞判断为“" + primaryVerdicts.map(function(item) { return verdictLabels[item] || item; }).join("、") + "”");
+    if (primaryHasCurrentAdversity) reasoningParts.push("主辞所示当前处境仍有阻力或风险");
+    if (primaryHasConditionalOutcome) reasoningParts.push("有利或免咎依赖明确条件");
+    if (secondaryVerdicts.length) reasoningParts.push("辅辞仅修正后续趋势为“" + trend + "”");
+    if (transitionHasRisk) reasoningParts.push("变化方向仍含未解风险");
 
     return {
-      grade: grade,
-      selectedTexts: allTexts.map(function(item) { return { source: item.source, role: item.role, text: item.text, interpretation: item.interpretation }; }),
+      overallGrade: overallGrade,
+      grade: overallGrade,
+      selectedTexts: allTexts.map(function(item) {
+        return {
+          source: item.source,
+          role: item.role,
+          text: item.text,
+          interpretation: item.interpretation,
+          verdicts: (item.verdicts || []).slice(),
+          conditions: (item.conditions || []).slice(),
+          situationTags: (item.situationTags || []).slice(),
+          favorableActions: (item.favorableActions || []).slice(),
+          unfavorableActions: (item.unfavorableActions || []).slice(),
+          label: item.label || "",
+          position: item.position || 0,
+          hexagramName: item.hexagramName || ""
+        };
+      }),
       verdicts: verdicts,
+      primaryVerdicts: primaryVerdicts,
+      secondaryVerdicts: secondaryVerdicts,
       conditions: uniqueValues(conditions),
+      primaryConditions: primaryConditions,
+      secondaryConditions: secondaryConditions,
       trend: trend,
+      trendCode: trendCode,
       reasoning: reasoningParts.join("；") + "。",
       situationTags: collectField(allTexts, "situationTags"),
       favorableActions: collectField(allTexts, "favorableActions"),
@@ -828,6 +912,192 @@
     return matched ? matched[1] : "";
   }
 
+  function cleanDisplaySentence(text) {
+    return String(text || "")
+      .replace(/\s+/g, "")
+      .replace(/(?:本卦|变卦|主辞|辅辞|\d+\s*个动爻|动爻使用)[：:]?/g, "")
+      .replace(/^[，；。：]+|[，；。：]+$/g, "");
+  }
+
+  function compactDisplayFragment(text, maxLength) {
+    const cleaned = cleanDisplaySentence(text);
+    if (cleaned.length <= maxLength) return cleaned;
+    let boundary = -1;
+    ["；", "，", "、", "："].forEach(function(mark) {
+      const index = cleaned.lastIndexOf(mark, maxLength);
+      if (index > boundary) boundary = index;
+    });
+    if (boundary >= Math.min(12, Math.floor(maxLength * 0.55))) {
+      return cleaned.slice(0, boundary);
+    }
+    return cleaned.slice(0, maxLength);
+  }
+
+  function getNoticeTheme(text) {
+    if (/风险|危险|警惕|无咎|免于过失|过失|灾|厉|咎/.test(text)) return "risk";
+    if (/守正|中正|正道|合宜|本分|贞|诚信|中道|守持.*条件|吉在最终结果/.test(text)) return "correctness";
+    if (/时机|等待|成熟|尚未|未到|条件未/.test(text)) return "timing";
+    if (/推进|强进|行动|征凶|勿用|不可|停止|收束|控制/.test(text)) return "action";
+    if (/调整|悔亡|悔意|转好/.test(text)) return "adjustment";
+    return "other";
+  }
+
+  function buildMaterialNotices(analysis) {
+    const candidates = [];
+    const selectedTexts = analysis.selectedTexts || [];
+    function hasVerdict(verdicts, verdict) { return (verdicts || []).indexOf(verdict) !== -1; }
+    function addCandidate(text, theme, priority, role, order) {
+      if (!text) return;
+      candidates.push({
+        text: String(text).replace(/[。；]+$/, "") + "。",
+        theme: theme,
+        score: priority + (role === "primary" ? 8 : 0),
+        order: order
+      });
+    }
+
+    selectedTexts.forEach(function(item, itemIndex) {
+      const verdicts = item.verdicts || [];
+      const rawText = String(item.text || "");
+      const meaning = [rawText, item.interpretation].concat(item.situationTags || []).filter(Boolean).join("|");
+      const role = item.role || "secondary";
+      const order = itemIndex * 20;
+
+      if (/有言不信/.test(rawText)) addCandidate("此时言语未必能取信于人，空口解释作用有限", "trust", 150, role, order);
+      if (/己日乃孚/.test(rawText)) addCandidate("改变需等时机成熟，过早推动难获认同", "timing", 145, role, order + 1);
+      if (/征凶/.test(rawText) || hasVerdict(verdicts, "advanceBad")) addCandidate("主动推进会扩大风险", "advance", 140, role, order + 2);
+      if (/勿用/.test(rawText) || hasVerdict(verdicts, "doNotAct")) addCandidate("时机未到，不宜行动", "doNotAct", 135, role, order + 3);
+      if (/不可/.test(rawText) || hasVerdict(verdicts, "mustNot")) addCandidate("此事有明确限制，不可强行实施", "mustNot", 135, role, order + 4);
+      if ((/厉/.test(rawText) || hasVerdict(verdicts, "danger")) && (/无咎/.test(rawText) || hasVerdict(verdicts, "noBlame"))) {
+        addCandidate("当前有风险，谨慎处理才可免咎", "risk", 135, role, order + 5);
+      }
+      if (/贞吉/.test(rawText) || hasVerdict(verdicts, "correctGood")) addCandidate("有利的前提是守正", "correctness", 130, role, order + 6);
+      if (/悔亡/.test(rawText) || hasVerdict(verdicts, "regretGone")) addCandidate("需要先作调整，问题才会逐步消退", "adjustment", 125, role, order + 7);
+      if (hasVerdict(verdicts, "bad") && !hasVerdict(verdicts, "advanceBad")) addCandidate("当前结果明确不利，应先止损而非强求", "bad", 125, role, order + 8);
+      if (hasVerdict(verdicts, "difficulty")) addCandidate("条件局促，勉强推进容易留下遗憾", "difficulty", 120, role, order + 9);
+      if (hasVerdict(verdicts, "regret")) addCandidate("当前做法已有偏差，继续下去会加深悔意", "regret", 120, role, order + 10);
+      if (hasVerdict(verdicts, "unfavorable")) addCandidate("当前方向存在不利，不宜照原计划推进", "unfavorable", 120, role, order + 11);
+      if (hasVerdict(verdicts, "danger") && !hasVerdict(verdicts, "noBlame")) addCandidate("当前有明确风险，行动前须先化解危险", "risk", 115, role, order + 12);
+      if (hasVerdict(verdicts, "noBlame") && !hasVerdict(verdicts, "danger")) addCandidate("只有妥善处理，才能免于过失；当前并非自然有利", "risk", 110, role, order + 13);
+      if ((/贞/.test(rawText) || /守正|中正|正道/.test(meaning)) && !hasVerdict(verdicts, "correctGood")) {
+        addCandidate("有利或免咎的前提是守正", "correctness", 105, role, order + 14);
+      }
+
+      (item.conditions || []).forEach(function(condition, conditionIndex) {
+        const conditionText = String(condition || "").trim();
+        if (!conditionText) return;
+        const theme = getNoticeTheme(conditionText);
+        let displayText = conditionText;
+        if (theme === "timing") displayText = "需等待条件或时机成熟，再作推进";
+        else if (theme === "correctness" && /守正|贞|中正|正道/.test(conditionText)) displayText = "有利的前提是守正";
+        else if (theme === "adjustment") displayText = "需要先作调整，问题才会逐步消退";
+        else if (theme === "risk" && hasVerdict(verdicts, "danger") && hasVerdict(verdicts, "noBlame")) displayText = "当前有风险，谨慎处理才可免咎";
+        addCandidate(displayText, theme === "other" ? "otherCondition:" + conditionIndex : theme, 70, role, order + 15 + conditionIndex);
+      });
+    });
+
+    candidates.sort(function(left, right) {
+      if (right.score !== left.score) return right.score - left.score;
+      return left.order - right.order;
+    });
+    return candidates.reduce(function(result, candidate) {
+      const duplicateTheme = result.some(function(item) { return item.theme === candidate.theme; });
+      const duplicateText = result.some(function(item) { return item.text === candidate.text; });
+      if (!duplicateTheme && !duplicateText && result.length < 2) result.push(candidate);
+      return result;
+    }, []).map(function(item) { return item.text; });
+  }
+
+  function buildCompactSummary(options) {
+    const core = cleanDisplaySentence(options.coreConflict || options.primaryMeaning);
+    const clauses = core.split(/[；。]+/).map(cleanDisplaySentence).filter(Boolean);
+    let situationSource = clauses[0] || cleanDisplaySentence(options.primaryMeaning);
+    if (situationSource.length < 16 && options.primaryMeaning && cleanDisplaySentence(options.primaryMeaning).indexOf(situationSource) === -1) {
+      situationSource = situationSource + "；整体上" + cleanDisplaySentence(options.primaryMeaning);
+    }
+    const semanticContext = [options.selectedMeaning, (options.situationTags || []).join("|")].join("|");
+    const usableGood = (options.goodFor || []).find(function(item) { return item && !/辞文|具体矛盾/.test(item); });
+    const usableAvoid = (options.avoid || []).find(function(item) { return item && !/辞文|具体矛盾/.test(item); });
+    let reminder = "";
+    if (/差异|分歧|相背|求小同/.test(semanticContext)) {
+      reminder = /诚信|真诚|取信/.test(semanticContext) && /止损|停止|收束/.test(semanticContext)
+        ? "关键是保持诚信并及时止损，避免让分歧继续扩大"
+        : "关键是求小同并控制分歧，避免强求一致";
+    } else if (/暂得安处|得到住处|暂时.*立足|尚非归宿/.test(semanticContext)) {
+      reminder = "关键是分清短暂落脚与长期归宿";
+    } else if (options.notices && options.notices.length) {
+      reminder = cleanDisplaySentence(options.notices[0]);
+      const trendConcept = {
+        "守正可转吉": /守正|正道/,
+        "调整后转稳": /调整|悔意|消退/,
+        "等待时机转好": /等待|时机|成熟/,
+        "谨慎处理可避咎": /风险|谨慎|免咎/,
+        "处理得当可免咎": /妥善|处理|免咎/,
+        "暂缓可避咎": /暂缓|勿用|不宜行动/,
+        "主动推进有损": /主动推进|扩大风险|明确不利/
+      }[options.fortuneTrend];
+      if (options.fortuneTrend && (!trendConcept || !trendConcept.test(reminder))) {
+        reminder = options.fortuneTrend + "；" + reminder;
+      }
+    } else if (clauses.length > 1) {
+      reminder = "还要留意" + clauses[1].replace(/^需/, "");
+    } else if (options.situationFocus) {
+      reminder = "关键是" + options.situationFocus;
+    } else if (usableGood) {
+      reminder = "宜" + cleanDisplaySentence(usableGood);
+      if (usableAvoid) reminder += "，避免" + cleanDisplaySentence(usableAvoid);
+    } else if (usableAvoid) {
+      reminder = "需要避免" + cleanDisplaySentence(usableAvoid);
+    } else {
+      reminder = "后续宜把重心放在" + String(options.changedKeyword || "稳妥应对") + "上";
+    }
+    function reminderEssence(text) {
+      return cleanDisplaySentence(text).replace(/^(?:关键是|还要留意|宜|需要避免|后续宜|在[^，]{2,12}中，?)/, "").replace(/需要|必须|应当|仍可|只要|也须/g, "");
+    }
+    function coveredBySituation(text) {
+      const essence = reminderEssence(text);
+      const normalizedSituation = cleanDisplaySentence(situationSource).replace(/需要|必须|应当|仍可|只要|也须/g, "");
+      return essence.length >= 3 && normalizedSituation.indexOf(essence) !== -1;
+    }
+    if (coveredBySituation(reminder)) {
+      const alternatives = [
+        options.situationFocus ? "关键是" + options.situationFocus : "",
+        usableAvoid ? "需要避免" + cleanDisplaySentence(usableAvoid) : "",
+        usableGood ? "宜" + cleanDisplaySentence(usableGood) : "",
+        "后续宜把重心放在" + String(options.changedKeyword || "稳妥应对") + "上"
+      ].filter(Boolean);
+      reminder = alternatives.find(function(item) { return !coveredBySituation(item); }) || reminder;
+    }
+    const firstSentence = (/^(?:眼下|当前)/.test(situationSource) ? "" : "眼下") + compactDisplayFragment(situationSource, 28);
+    let secondSentence = compactDisplayFragment(reminder, 28);
+    if ((firstSentence + "。" + secondSentence + "。").length < 40) {
+      const avoidText = usableAvoid;
+      const goodText = usableGood;
+      if (avoidText && secondSentence.indexOf(cleanDisplaySentence(avoidText)) === -1) {
+        secondSentence = compactDisplayFragment(reminder + "，避免" + cleanDisplaySentence(avoidText), 28);
+      } else if (goodText && secondSentence.indexOf(cleanDisplaySentence(goodText)) === -1) {
+        secondSentence = compactDisplayFragment(reminder + "，宜" + cleanDisplaySentence(goodText), 28);
+      }
+    }
+    if ((firstSentence + "。" + secondSentence + "。").length < 40 && options.topicPrefix) {
+      secondSentence = compactDisplayFragment(options.topicPrefix + secondSentence, 28);
+    }
+    if ((firstSentence + "。" + secondSentence + "。").length < 40) {
+      secondSentence = compactDisplayFragment(secondSentence + "，后续重心在" + String(options.changedKeyword || "稳妥应对"), 28);
+    }
+    if ((firstSentence + "。" + secondSentence + "。").length < 40) {
+      const reminderContext = [reminder].concat(options.notices || []).join("|");
+      let shortTail = "再作决定";
+      if (/局促|条件不足|受限/.test(reminderContext)) shortTail = "勿强推";
+      else if (/时机|等待|成熟/.test(reminderContext)) shortTail = "勿抢先";
+      else if (/风险|危险|不利/.test(reminderContext)) shortTail = "先止险";
+      else if (/守正|边界/.test(reminderContext)) shortTail = "勿越界";
+      else if (/调整|悔意/.test(reminderContext)) shortTail = "先调整";
+      secondSentence = compactDisplayFragment(secondSentence + "，" + shortTail, 28);
+    }
+    return firstSentence + "。" + secondSentence + "。";
+  }
+
   function getTopicGuidance(questionId, primary, changed, basis, analysis) {
     const language = topicActionLanguage[questionId] || topicActionLanguage.overall;
     const intents = actionIntents(analysis);
@@ -890,27 +1160,86 @@
     if (!specificAvoid.length && !topicAvoid.length) add(specificAvoid, "忽略辞文已经指出的限制：" + coreConflict);
     const goodFor = uniqueValues(specificGood.concat(topicGood)).slice(0, 3);
     const avoid = uniqueValues(specificAvoid.concat(topicAvoid)).slice(0, 3);
-    const primarySituation = "本卦「" + primary.name + "」呈现的总体处境是：" + primary.imageMeaning;
+    const primaryMeaning = String(primary.imageMeaning || "").replace(/[。；]+$/, "");
     const trend = primary.id === changed.id
       ? "卦势没有转成另一卦，重点仍在「" + primary.keywords[0] + "」这一层逐步落实。"
       : "卦势由「" + primary.name + "」转向「" + changed.name + "」，关注点也会从「" + primary.keywords[0] + "」逐渐转向「" + changed.keywords[0] + "」。";
     const situationFocus = getTopicSituationFocus(questionId, analysis.situationTags);
-    const materialConditions = uniqueValues(analysis.conditions || []).slice(0, 2);
-    const conditionText = materialConditions.length ? "辞文所附的条件或警示是：" + materialConditions.join("；") + " " : "";
-    const focusText = situationFocus ? "需要面对的是“" + situationFocus + "”；" : "";
-    const interpretation = "本次所取辞文表示：" + (selectedMeaning || primary.imageMeaning) + " " + trend + " " + conditionText +
-      "放在“" + topicLabel + "”上，" + focusText + "核心矛盾是：" + coreConflict + "。";
-    const selectedTextSummary = (basis.primaryTexts || []).concat(basis.secondaryTexts || []).map(function(item) {
-      const label = item.label ? item.label + " " : "";
-      return item.source + "：" + label + "「" + item.text + "」";
+    const notices = buildMaterialNotices(analysis);
+    const summary = buildCompactSummary({
+      coreConflict: coreConflict,
+      primaryMeaning: primaryMeaning,
+      selectedMeaning: selectedMeaning,
+      situationTags: analysis.situationTags,
+      notices: notices,
+      situationFocus: situationFocus,
+      goodFor: goodFor,
+      avoid: avoid,
+      fortuneTrend: analysis.trend,
+      topicPrefix: {
+        overall: "就今天的整体安排而言，",
+        relationship: "就当前关系与沟通而言，",
+        money: "就当前财务安排而言，",
+        bodyMind: "就当前身心调适而言，"
+      }[questionId] || "",
+      changedKeyword: changed.keywords[0]
+    });
+
+    const basisSelectedItems = basis
+      ? (basis.primaryTexts || []).concat(basis.secondaryTexts || [])
+      : [];
+    const selectedItems = basisSelectedItems.length ? basisSelectedItems : analysis.selectedTexts || [];
+    function selectedItemTitle(item) {
+      const source = String(item.source || "所取辞文").replace(/·(?:主|辅)$/, "");
+      return [source, item.label].filter(Boolean).join("·");
+    }
+    const primaryItems = selectedItems.filter(function(item) { return item.role === "primary"; });
+    const secondaryItems = selectedItems.filter(function(item) { return item.role !== "primary"; });
+    const primaryNames = primaryItems.map(selectedItemTitle).join("、") || "主辞";
+    const secondaryNames = secondaryItems.map(selectedItemTitle).join("、");
+    const selectionRelation = secondaryNames
+      ? "本次以" + primaryNames + "为主，以" + secondaryNames + "为辅；辅辞用于补充和校正主辞的方向。"
+      : "本次只取" + primaryNames + "作为判断中心。";
+    const meaningDetails = selectedItems.map(function(item) {
+      const role = item.role === "primary" ? "主辞" : "辅辞";
+      const meaning = String(item.interpretation || item.text || "").replace(/[。；]+$/, "");
+      return role + "“" + selectedItemTitle(item) + "”意为：" + meaning;
+    }).join("；");
+    const primarySelectedRaw = primaryItems.map(function(item) { return item.text || ""; }).join("|");
+    const conditionalExplanations = [];
+    if ((analysis.primaryVerdicts || []).indexOf("noBlame") !== -1) {
+      conditionalExplanations.push(/贞/.test(primarySelectedRaw)
+        ? "主辞所说的有利与无咎，以守正并妥善处理为前提，不表示当前已经顺遂。"
+        : "主辞的无咎表示处理得当可以避免过失，不等于当前为吉。");
+    } else if ((analysis.primaryVerdicts || []).indexOf("correctGood") !== -1) {
+      conditionalExplanations.push("主辞明确为吉，但有利建立在守正这一前提上。");
+    }
+    if ((analysis.secondaryVerdicts || []).indexOf("regretGone") !== -1) {
+      conditionalExplanations.push("辅辞的悔亡表示调整后才会转好，不能覆盖主辞所示的当前处境。");
+    }
+    const conditionalExplanation = conditionalExplanations.join("");
+    const conditionText = notices.length
+      ? "这些判断须连同辞文所附的条件或警示理解：" + notices.map(function(item) {
+        return String(item).replace(/[。；]+$/, "");
+      }).join("；") + "。"
+      : "";
+    const focusText = situationFocus
+      ? "因此在“" + topicLabel + "”中，判断重点具体落在" + situationFocus + "。"
+      : "因此在“" + topicLabel + "”中，应直接以所取辞文指出的处境决定进退。";
+    const interpretation = "本卦「" + primary.name + "」以“" + primaryMeaning + "”作为局面背景。" +
+      (basis && basis.summary ? basis.summary : "依本次动爻数量取辞。") + selectionRelation + meaningDetails + "。" + trend +
+      conditionalExplanation + "综合当前处境和主辅关系，本次趋势为“" + analysis.trend + "”。" + conditionText + focusText;
+    const selectedTextSummary = selectedItems.map(function(item) {
+      const role = item.role === "primary" ? "主辞" : "辅辞";
+      return role + "（" + selectedItemTitle(item) + "）：「" + item.text + "」";
     }).join("；");
     return {
-      summary: primarySituation,
+      summary: summary,
       selectedTextSummary: selectedTextSummary,
       interpretation: interpretation,
       goodFor: goodFor,
       avoid: avoid,
-      notices: uniqueValues(analysis.conditions || []).slice(0, 3),
+      notices: notices,
       trend: trend
     };
   }
@@ -967,20 +1296,15 @@
     }
 
     const basis = createReadingBasis(primary, changed, lines);
-    const judgmentAnalysis = assessSelectedTexts(basis);
-    const fortune = judgmentAnalysis.grade;
+    const judgmentAnalysis = assessSelectedTexts(basis, { primary: primary, changed: changed });
+    const fortune = judgmentAnalysis.overallGrade;
     const oracleKeywords = getOracleKeywords(primary, changed, basis);
     const guidance = getTopicGuidance(questionId, primary, changed, basis, judgmentAnalysis);
-    const movementReading = getMovementReading(basis);
     const basisText = basis.items.map(function(item) {
       const label = item.label ? item.label + "·" : "";
       const keyword = item.keyword ? item.keyword + "：" : "";
       return item.source + " " + label + keyword + item.text;
     }).join(" ");
-    const selectedMeanings = basis.items.map(function(item) {
-      return item.interpretation ? item.source + "释义：" + item.interpretation : "";
-    }).filter(Boolean).join(" ");
-    const detailInterpretation = primary.imageMeaning + " " + selectedMeanings + " " + movementReading + " " + guidance.trend;
     const effects = getTurtleEffects(primary, changed, question, basis);
 
     return {
@@ -992,6 +1316,9 @@
       title: primary.symbol + " " + primary.name,
       subtitle: "本卦 " + primary.name + " · " + basis.movingCount + " 个动爻 · 变卦 " + changed.name,
       fortune: fortune,
+      overallGrade: fortune,
+      fortuneTrend: judgmentAnalysis.trend,
+      trend: judgmentAnalysis.trend,
       turtleResultId: primary.id + "-" + changed.id + "-" + lines.filter(function(line) { return line.moving; }).map(function(line) { return line.position; }).join("."),
       lines: lines,
       coinTosses: lines.map(function(line) {
@@ -1019,7 +1346,6 @@
       avoid: guidance.avoid,
       reality: guidance.summary,
       advice: basis.summary + " " + basisText,
-      detailInterpretation: detailInterpretation,
       campImpact: guidance.notices.join("；"),
       effects: effects
     };
