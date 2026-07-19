@@ -954,8 +954,18 @@ body.shop-open .shop-drawer {
   cursor: pointer;
 }
 
+.inventory-item-action-hint {
+  display: inline-flex;
+  margin-top: 0.24rem;
+  color: #f2d28a;
+  font-size: var(--font-xs);
+  font-weight: var(--font-weight-md);
+  line-height: 1;
+}
+
 .inventory-item-actionable:hover,
-.inventory-item-actionable:focus-visible {
+.inventory-item-actionable:focus-visible,
+.inventory-item-actionable.is-menu-open {
   border-color: rgba(255, 223, 139, 0.62);
   background: rgba(34, 45, 28, 0.76);
   outline: none;
@@ -1020,7 +1030,7 @@ body.shop-open .shop-drawer {
 }
 
 .inventory-fish-menu {
-  width: 136px;
+  width: 148px;
   position: absolute;
   z-index: 4;
   display: grid;
@@ -1034,6 +1044,42 @@ body.shop-open .shop-drawer {
     inset 0 1px 0 rgba(255, 238, 186, 0.12);
 }
 
+.inventory-fish-menu::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  position: absolute;
+  left: var(--fish-menu-anchor-x, 24px);
+  top: -6px;
+  border-left: 1px solid rgba(255, 223, 139, 0.56);
+  border-top: 1px solid rgba(255, 223, 139, 0.56);
+  background: rgba(27, 34, 24, 0.98);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.inventory-fish-menu.is-above-anchor::before {
+  top: auto;
+  bottom: -6px;
+  transform: translateX(-50%) rotate(225deg);
+}
+
+.inventory-fish-menu-heading {
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.22rem 0.42rem 0.34rem;
+  border-bottom: 1px solid rgba(255, 223, 139, 0.22);
+}
+
+.inventory-fish-menu-heading strong {
+  color: #fff3cf;
+  font-size: var(--font-sm);
+}
+
+.inventory-fish-menu-heading small {
+  color: #cdbd98;
+  font-size: var(--font-xs);
+}
+
 .inventory-fish-menu-item {
   min-height: 30px;
   padding: 0.28rem 0.48rem;
@@ -1043,9 +1089,20 @@ body.shop-open .shop-drawer {
   background: transparent;
   font-size: var(--font-md);
   font-weight: var(--font-weight-md);
+  display: grid;
+  gap: 0.1rem;
   line-height: 1.1;
   text-align: left;
   cursor: pointer;
+}
+
+.inventory-fish-menu-item strong {
+  font-size: var(--font-md);
+}
+
+.inventory-fish-menu-item small {
+  color: #cdbd98;
+  font-size: var(--font-xs);
 }
 
 .inventory-fish-menu-item:hover,
@@ -1053,6 +1110,11 @@ body.shop-open .shop-drawer {
   color: #2d2518;
   background: #f2d28a;
   outline: none;
+}
+
+.inventory-fish-menu-item:hover small,
+.inventory-fish-menu-item:focus-visible small {
+  color: #5c4a2d;
 }
 
 .koi-release-cinematic {

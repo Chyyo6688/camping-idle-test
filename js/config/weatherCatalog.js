@@ -98,8 +98,7 @@
           fish: -0.35
         },
         soundRecommendations: [
-          { id: "rain_soft_loop", label: "轻雨声", future: true },
-          { id: "tent_rain_loop", label: "帐篷雨声", future: true },
+          { id: "rain_soft_loop", label: "雨声（随帐篷内外切换）" },
           { id: "cooking_sizzle_loop", label: "锅里滋滋声" }
         ]
       },

@@ -96,6 +96,14 @@ let soundSystemStarted = false;
 // plays continuously WHILE THE FIRE IS BURNING, unless the player turns it off
 // in the Sound Journal. It is not a temporary activity loop.
 const FIRE_LINKED_LOOP = "campfire_crackle_loop";
+const RAIN_LINKED_LOOP = "rain_soft_loop";
+const RAIN_TENT_LOOP = "tent_rain_loop";
+const RAIN_WEATHER_LOOPS = [RAIN_LINKED_LOOP, RAIN_TENT_LOOP];
+const RAIN_CROSSFADE_SECONDS = 0.55;
+let rainAmbientTargetLoopId = "";
+let rainAmbientStartingLoopId = "";
+let rainAmbientTransitionToken = 0;
+let rainAmbientPreloadRequested = false;
 
 function isCampfireBurning() {
   return gameState.warmthSeconds > 0;
@@ -121,6 +129,101 @@ function syncCampfireAmbient() {
   }
 }
 
+function isRainWeatherActive() {
+  const weather = typeof getCurrentWeatherDefinition === "function" ? getCurrentWeatherDefinition() : null;
+  return Boolean(weather && weather.id === "lightRain");
+}
+
+function isCamperInsideTentForSound() {
+  return typeof camper !== "undefined" && camper && camper.pose === "tentRest";
+}
+
+function getDesiredRainAmbientLoopId() {
+  if (!soundSystemStarted || !isRainWeatherActive() || !isAmbientEnabled(RAIN_LINKED_LOOP)) {
+    return "";
+  }
+
+  return isCamperInsideTentForSound() ? RAIN_TENT_LOOP : RAIN_LINKED_LOOP;
+}
+
+function stopRainWeatherLoops(manager, fadeSeconds) {
+  RAIN_WEATHER_LOOPS.forEach(function(id) {
+    manager.stopLoop(id, { fadeSeconds: fadeSeconds });
+  });
+}
+
+// Rain is one weather-linked ambience with two acoustic variants. Start the
+// new space first, then fade the old one out only after the new buffer is ready.
+function syncWeatherAmbient() {
+  const manager = getSoundManager();
+
+  if (!manager) {
+    return;
+  }
+
+  if (!soundSystemStarted) {
+    if (!isRainWeatherActive()) {
+      stopRainWeatherLoops(manager, 0.25);
+    }
+    return;
+  }
+
+  if (isRainWeatherActive() && !isSoundDiscovered(RAIN_LINKED_LOOP)) {
+    discoverSound(RAIN_LINKED_LOOP);
+  }
+
+  if (isRainWeatherActive() && !rainAmbientPreloadRequested) {
+    rainAmbientPreloadRequested = true;
+    RAIN_WEATHER_LOOPS.forEach(function(id) {
+      manager.preload(id);
+    });
+  }
+
+  const desiredLoopId = getDesiredRainAmbientLoopId();
+  const desiredIsReady = desiredLoopId && (
+    rainAmbientStartingLoopId === desiredLoopId || manager.isLoopPlaying(desiredLoopId)
+  );
+  const hasRainLoop = RAIN_WEATHER_LOOPS.some(function(id) {
+    return manager.isLoopPlaying(id);
+  });
+
+  if (desiredLoopId === rainAmbientTargetLoopId && (desiredIsReady || (!desiredLoopId && !hasRainLoop))) {
+    return;
+  }
+
+  rainAmbientTargetLoopId = desiredLoopId;
+  rainAmbientTransitionToken += 1;
+  const transitionToken = rainAmbientTransitionToken;
+
+  if (!desiredLoopId) {
+    rainAmbientStartingLoopId = "";
+    stopRainWeatherLoops(manager, RAIN_CROSSFADE_SECONDS);
+    return;
+  }
+
+  rainAmbientStartingLoopId = desiredLoopId;
+  manager.startLoop(desiredLoopId, { fadeSeconds: RAIN_CROSSFADE_SECONDS }).then(function(started) {
+    if (transitionToken !== rainAmbientTransitionToken || desiredLoopId !== rainAmbientTargetLoopId) {
+      if (desiredLoopId !== rainAmbientTargetLoopId) {
+        manager.stopLoop(desiredLoopId, { fadeSeconds: 0.2 });
+      }
+      return;
+    }
+
+    rainAmbientStartingLoopId = "";
+
+    if (!started) {
+      return;
+    }
+
+    RAIN_WEATHER_LOOPS.forEach(function(id) {
+      if (id !== desiredLoopId) {
+        manager.stopLoop(id, { fadeSeconds: RAIN_CROSSFADE_SECONDS });
+      }
+    });
+  });
+}
+
 function getSoundManager() {
   return typeof window !== "undefined" ? window.soundManager : null;
 }
@@ -132,7 +235,9 @@ function getSoundTriggers() {
 
 function getSoundCatalogSounds() {
   const catalog = typeof window !== "undefined" ? window.SOUND_JOURNAL_CATALOG : null;
-  return catalog && Array.isArray(catalog.sounds) ? catalog.sounds : [];
+  return catalog && Array.isArray(catalog.sounds) ? catalog.sounds.filter(function(entry) {
+    return entry && !entry.journalHidden;
+  }) : [];
 }
 
 function getSoundJournalState() {
@@ -212,8 +317,9 @@ function startSoundSystem() {
     }
 
     getSoundJournalState().enabledAmbient.forEach(function(id) {
-      if (id === FIRE_LINKED_LOOP) {
-        return; // fire-linked: handled by syncCampfireAmbient (needs burning fire)
+      const entry = getSoundCatalogEntry(id);
+      if (id === FIRE_LINKED_LOOP || (entry && entry.weatherLinked)) {
+        return; // condition-linked loops are synchronized below
       }
       if (isLoopSoundId(id) && isSoundDiscovered(id)) {
         manager.startLoop(id);
@@ -221,6 +327,7 @@ function startSoundSystem() {
     });
 
     syncCampfireAmbient();
+    syncWeatherAmbient();
     return true;
   });
 }
@@ -240,9 +347,9 @@ function discoverSound(id) {
 
   journal.discovered.push(id);
 
-  // The campfire loop defaults to on when first discovered so it plays
-  // automatically while the fire is burning (player can still turn it off).
-  if (id === FIRE_LINKED_LOOP && journal.enabledAmbient.indexOf(id) === -1) {
+  // Condition-linked ambience defaults on when first discovered; the player
+  // can still turn it off in the Sound Journal.
+  if ((id === FIRE_LINKED_LOOP || id === RAIN_LINKED_LOOP) && journal.enabledAmbient.indexOf(id) === -1) {
     journal.enabledAmbient.push(id);
   }
 
@@ -356,6 +463,12 @@ function setAmbientEnabled(id, enabled) {
     // campfire only plays while the fire burns, even when toggled on
     startSoundSystem().then(syncCampfireAmbient);
     syncCampfireAmbient();
+  } else if (id === RAIN_LINKED_LOOP) {
+    if (enabled) {
+      startSoundSystem().then(syncWeatherAmbient);
+    } else {
+      syncWeatherAmbient();
+    }
   } else if (enabled) {
     startSoundSystem().then(function() {
       if (manager) {

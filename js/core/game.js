@@ -17,6 +17,7 @@ function gameTick() {
   }
 
   syncCampfireAmbient();
+  syncWeatherAmbient();
   updateScreen();
   saveGame();
 }
@@ -59,6 +60,12 @@ if (inventoryFishMenu) {
   inventoryFishMenu.addEventListener("click", function(event) {
     event.stopPropagation();
   });
+}
+if (inventoryPanel) {
+  const inventorySections = inventoryPanel.querySelector(".inventory-sections");
+  if (inventorySections) {
+    inventorySections.addEventListener("scroll", syncOpenFishActionMenuAnchor, { passive: true });
+  }
 }
 if (koiReleaseCinematic) {
   koiReleaseCinematic.addEventListener("click", closeKoiReleaseCinematic);

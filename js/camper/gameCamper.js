@@ -883,7 +883,7 @@ function startMovingTo(target, actionAfterArrival, options) {
   const interactionTargetId = moveOptions.interactionTargetId || getInteractionTargetId(target) || "";
   const movePath = getCamperMovePath(target, { ignoreObstacleId: ignoreObstacleId });
 
-  if (!movePath || movePath.points.length < 2) {
+  if (!movePath || movePath.points.length < 2 || (moveOptions.requireReachedTarget && !movePath.reachedTarget)) {
     camper.pathPoints = [];
     camper.pathSegmentLengths = [];
     camper.pathLength = 0;
@@ -1014,6 +1014,7 @@ function updateCamperView() {
 
   document.body.classList.toggle("camper-in-tent", camper.pose === "tentRest" && hasNightUnlock());
   updateSceneOcclusion();
+  syncWeatherAmbient();
 }
 
 function getRandomCamperThought(action) {
@@ -1293,7 +1294,13 @@ function startActivity(activityId, preferredTargetId) {
     return false;
   }
 
-  return startMovingTo(target, activity.id);
+  const started = startMovingTo(target, activity.id, { requireReachedTarget: activityId === "fish" });
+
+  if (!started && activityId === "fish") {
+    showCamperThought("去湖边的路被挡住了。", 3600);
+  }
+
+  return started;
 }
 
 function getRandomWanderPoint() {

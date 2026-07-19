@@ -1281,6 +1281,13 @@ function createInventoryEmptyRow(message) {
 function closeFishActionMenu() {
   activeInventoryFishMenuId = "";
 
+  if (typeof document !== "undefined") {
+    document.querySelectorAll(".inventory-item-actionable.is-menu-open").forEach(function(row) {
+      row.classList.remove("is-menu-open");
+      row.setAttribute("aria-expanded", "false");
+    });
+  }
+
   if (!inventoryFishMenu) {
     return;
   }
@@ -1290,6 +1297,16 @@ function closeFishActionMenu() {
   inventoryFishMenu.innerHTML = "";
 }
 
+function getFishActionMenuAnchor(fishId) {
+  if (!inventoryFishList || !fishId) {
+    return null;
+  }
+
+  return Array.from(inventoryFishList.querySelectorAll(".inventory-item-actionable")).find(function(row) {
+    return row.dataset.fishId === fishId;
+  }) || null;
+}
+
 function positionFishActionMenu(anchor) {
   if (!inventoryFishMenu || !inventoryPanel || !anchor) {
     return;
@@ -1297,21 +1314,52 @@ function positionFishActionMenu(anchor) {
 
   const panelRect = inventoryPanel.getBoundingClientRect();
   const anchorRect = anchor.getBoundingClientRect();
-  const menuWidth = 136;
-  const menuHeight = 122;
+  const menuRect = inventoryFishMenu.getBoundingClientRect();
+  const menuWidth = menuRect.width || 148;
+  const menuHeight = menuRect.height || 154;
   const left = clamp(anchorRect.right - panelRect.left - menuWidth, 8, Math.max(8, panelRect.width - menuWidth - 8));
-  const top = clamp(anchorRect.top - panelRect.top + 8, 8, Math.max(8, panelRect.height - menuHeight - 8));
+  const belowTop = anchorRect.bottom - panelRect.top + 8;
+  const aboveTop = anchorRect.top - panelRect.top - menuHeight - 8;
+  const placeAbove = belowTop + menuHeight > panelRect.height - 8 && aboveTop >= 8;
+  const top = clamp(placeAbove ? aboveTop : belowTop, 8, Math.max(8, panelRect.height - menuHeight - 8));
+  const anchorPointX = anchorRect.right - panelRect.left - Math.min(26, anchorRect.width / 2);
+  const anchorX = clamp(anchorPointX - left, 14, menuWidth - 14);
 
   inventoryFishMenu.style.left = left + "px";
   inventoryFishMenu.style.top = top + "px";
+  inventoryFishMenu.style.setProperty("--fish-menu-anchor-x", anchorX + "px");
+  inventoryFishMenu.classList.toggle("is-above-anchor", placeAbove);
 }
 
-function createFishActionMenuButton(label, action) {
+function syncOpenFishActionMenuAnchor() {
+  if (!activeInventoryFishMenuId || !inventoryFishMenu || inventoryFishMenu.classList.contains("hidden")) {
+    return;
+  }
+
+  const anchor = getFishActionMenuAnchor(activeInventoryFishMenuId);
+
+  if (!anchor) {
+    closeFishActionMenu();
+    return;
+  }
+
+  anchor.classList.add("is-menu-open");
+  anchor.setAttribute("aria-expanded", "true");
+  positionFishActionMenu(anchor);
+}
+
+function createFishActionMenuButton(label, hint, action) {
   const button = document.createElement("button");
+  const labelElement = document.createElement("strong");
+  const hintElement = document.createElement("small");
   button.type = "button";
   button.className = "inventory-fish-menu-item";
   button.setAttribute("role", "menuitem");
-  button.textContent = label;
+  button.setAttribute("aria-label", label + "，" + hint);
+  labelElement.textContent = label;
+  hintElement.textContent = hint;
+  button.appendChild(labelElement);
+  button.appendChild(hintElement);
   button.addEventListener("click", function(event) {
     event.preventDefault();
     event.stopPropagation();
@@ -1327,20 +1375,33 @@ function openFishActionMenu(fishId, anchor) {
     return;
   }
 
+  closeFishActionMenu();
   activeInventoryFishMenuId = fishId;
   inventoryFishMenu.innerHTML = "";
-  inventoryFishMenu.appendChild(createFishActionMenuButton("放生", function() {
+  const menuHeading = document.createElement("div");
+  const menuFishName = document.createElement("strong");
+  const menuPrompt = document.createElement("small");
+  menuHeading.className = "inventory-fish-menu-heading";
+  menuFishName.textContent = fish.displayName;
+  menuPrompt.textContent = "点击选择操作";
+  menuHeading.appendChild(menuFishName);
+  menuHeading.appendChild(menuPrompt);
+  inventoryFishMenu.appendChild(menuHeading);
+  inventoryFishMenu.appendChild(createFishActionMenuButton("放生", "放回湖里", function() {
     releaseFishFromInventory(fishId);
   }));
-  inventoryFishMenu.appendChild(createFishActionMenuButton("烹饪", function() {
+  inventoryFishMenu.appendChild(createFishActionMenuButton("烹饪", "选择菜谱", function() {
     cookFishFromInventory(fishId, { source: "menu" });
     closeFishActionMenu();
   }));
-  inventoryFishMenu.appendChild(createFishActionMenuButton("交易", function() {
+  inventoryFishMenu.appendChild(createFishActionMenuButton("交易", "换取补给", function() {
     tradeFishFromInventory(fishId);
   }));
+  inventoryFishMenu.setAttribute("aria-label", fish.displayName + "操作菜单");
   inventoryFishMenu.classList.remove("hidden");
   inventoryFishMenu.setAttribute("aria-hidden", "false");
+  anchor.classList.add("is-menu-open");
+  anchor.setAttribute("aria-expanded", "true");
   positionFishActionMenu(anchor);
 
   const firstButton = inventoryFishMenu.querySelector("button");
@@ -1468,11 +1529,17 @@ function createInventoryItemRow(item, count, type) {
   row.appendChild(countBadge);
 
   if (type === "fish") {
+    const actionHint = document.createElement("span");
     row.classList.add("inventory-item-actionable");
+    row.dataset.fishId = item.id;
     row.tabIndex = 0;
     row.setAttribute("role", "button");
     row.setAttribute("aria-haspopup", "menu");
+    row.setAttribute("aria-expanded", "false");
     row.setAttribute("aria-label", item.displayName + "，数量 " + count + "。打开操作菜单。");
+    actionHint.className = "inventory-item-action-hint";
+    actionHint.textContent = "点击操作";
+    copy.appendChild(actionHint);
     row.addEventListener("click", function(event) {
       event.preventDefault();
       event.stopPropagation();
@@ -1541,6 +1608,8 @@ function renderInventoryPanel() {
       " · Recipes " + cooking.unlockedRecipes.length + "/" + Object.keys(cookingRecipeCatalog).length +
       " · Auto today " + getAutoCookedToday() + "/" + dailyAutoCookingLimit;
   }
+
+  syncOpenFishActionMenuAnchor();
 }
 
 function openInventoryPanel() {

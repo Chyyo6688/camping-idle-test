@@ -32,7 +32,9 @@
   const bufferPromises = {};       // id -> Promise<AudioBuffer>
   const activeLoops = {};          // id -> { source, gain }   (Web Audio loops)
   const htmlLoops = {};            // id -> HTMLAudioElement    (fallback loops)
-  const pendingLoops = {};         // loops asked for before the context was ready
+  const pendingLoops = {};         // id -> options, requested before the context was ready
+  const requestedLoops = {};       // id -> true while playback is still desired
+  const loopStartPromises = {};    // id -> in-flight cached-buffer start request
 
   function isSupported() {
     return typeof window !== "undefined" &&
@@ -217,8 +219,11 @@
 
   function flushPendingLoops() {
     Object.keys(pendingLoops).forEach(function (id) {
+      const options = pendingLoops[id];
       delete pendingLoops[id];
-      SoundManager.startLoop(id);
+      if (requestedLoops[id]) {
+        SoundManager.startLoop(id, options);
+      }
     });
   }
 
@@ -294,28 +299,79 @@ function loadBuffer(id) {
     } catch (e) {}
   }
 
-  function startLoopHtml(id) {
-    if (htmlLoops[id]) {
+  function getLoopFadeSeconds(options, fallbackSeconds) {
+    const seconds = options && Number(options.fadeSeconds);
+    return Number.isFinite(seconds) ? Math.max(0, seconds) : fallbackSeconds;
+  }
+
+  function applyHtmlLoopVolume(audio) {
+    if (!audio) {
       return;
+    }
+
+    const ratio = typeof audio._soundVolumeRatio === "number" ? audio._soundVolumeRatio : 1;
+    try {
+      audio.volume = clamp01(effectiveVolume() * ratio);
+    } catch (e) {}
+  }
+
+  function fadeHtmlLoop(audio, targetRatio, durationSeconds, onComplete) {
+    if (!audio) {
+      return;
+    }
+
+    if (audio._soundFadeTimer) {
+      clearInterval(audio._soundFadeTimer);
+      audio._soundFadeTimer = null;
+    }
+
+    const startRatio = typeof audio._soundVolumeRatio === "number" ? audio._soundVolumeRatio : 1;
+    const durationMs = Math.max(0, durationSeconds * 1000);
+
+    if (durationMs === 0) {
+      audio._soundVolumeRatio = targetRatio;
+      applyHtmlLoopVolume(audio);
+      if (onComplete) onComplete();
+      return;
+    }
+
+    const startedAt = Date.now();
+    audio._soundFadeTimer = setInterval(function () {
+      const progress = Math.min(1, (Date.now() - startedAt) / durationMs);
+      audio._soundVolumeRatio = startRatio + (targetRatio - startRatio) * progress;
+      applyHtmlLoopVolume(audio);
+
+      if (progress >= 1) {
+        clearInterval(audio._soundFadeTimer);
+        audio._soundFadeTimer = null;
+        if (onComplete) onComplete();
+      }
+    }, 40);
+  }
+
+  function startLoopHtml(id, fadeSeconds) {
+    if (htmlLoops[id]) {
+      return true;
     }
   
     const entry = catalogById[id];
     const files = getEntryFiles(entry);
   
     if (!entry || !files.length || typeof Audio === "undefined") {
-      return;
+      return false;
     }
   
     try {
       const audio = new Audio();
-      audio.volume = clamp01(effectiveVolume());
+      audio._soundVolumeRatio = fadeSeconds > 0 ? 0 : 1;
+      applyHtmlLoopVolume(audio);
       htmlLoops[id] = audio;
   
       if (entry.randomizeLoop && files.length > 1) {
         let currentFile = "";
   
         const playNext = function () {
-          if (!htmlLoops[id]) {
+          if (htmlLoops[id] !== audio) {
             return;
           }
   
@@ -341,21 +397,28 @@ function loadBuffer(id) {
           playback.catch(function () {});
         }
       }
+      fadeHtmlLoop(audio, 1, fadeSeconds);
+      return true;
     } catch (e) {
       delete htmlLoops[id];
+      return false;
     }
   }
 
-  function stopLoopHtml(id) {
+  function stopLoopHtml(id, fadeSeconds) {
     const audio = htmlLoops[id];
     if (!audio) {
-      return;
+      return false;
     }
     delete htmlLoops[id];
-    try {
-      audio.pause();
-      audio.src = "";
-    } catch (e) {}
+    fadeHtmlLoop(audio, 0, fadeSeconds, function () {
+      try {
+        audio.pause();
+        audio.removeAttribute("src");
+        audio.load();
+      } catch (e) {}
+    });
+    return true;
   }
 
   // ---- one-shots -----------------------------------------------------------
@@ -411,18 +474,18 @@ function loadBuffer(id) {
   SoundManager.isLoopPlaying = function (id) {
     return Boolean(activeLoops[id] || htmlLoops[id]);
   };
-  function startRandomizedLoop(id) {
+  function startRandomizedLoop(id, fadeSeconds) {
     const entry = catalogById[id];
     const files = getEntryFiles(entry);
     const ctx = ensureContext();
   
     if (!entry || !files.length || !ctx) {
-      return;
+      return false;
     }
   
     const nodeGain = ctx.createGain();
     nodeGain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    nodeGain.gain.exponentialRampToValueAtTime(1, ctx.currentTime + 0.35);
+    nodeGain.gain.exponentialRampToValueAtTime(1, ctx.currentTime + Math.max(0.01, fadeSeconds));
     nodeGain.connect(masterGain);
   
     activeLoops[id] = {
@@ -444,7 +507,7 @@ function loadBuffer(id) {
       loadBufferForFile(id, file).then(function (buffer) {
         const currentLoop = activeLoops[id];
   
-        if (!currentLoop || ctx.state !== "running") {
+        if (!currentLoop || !requestedLoops[id] || ctx.state !== "running") {
           return;
         }
   
@@ -471,46 +534,55 @@ function loadBuffer(id) {
           nodeGain.disconnect();
         } catch (e) {}
   
-        webAudioBroken = true;
-        noteFallback("random-loop-load-failed");
-        startLoopHtml(id);
+        if (requestedLoops[id]) {
+          webAudioBroken = true;
+          noteFallback("random-loop-load-failed");
+          startLoopHtml(id, fadeSeconds);
+        }
       });
     }
   
     playNext();
+    return true;
   }
-  SoundManager.startLoop = function (id) {
+  SoundManager.startLoop = function (id, options) {
+    const loopOptions = options || {};
+    const fadeSeconds = getLoopFadeSeconds(loopOptions, 0.35);
+    requestedLoops[id] = true;
+
     if (activeLoops[id] || htmlLoops[id]) {
-      return; // already playing, never restart (keeps layers uninterrupted)
+      return Promise.resolve(true); // already playing, never restart
+    }
+
+    if (loopStartPromises[id]) {
+      return loopStartPromises[id];
     }
 
     if (shouldUseHtmlFallback()) {
-      startLoopHtml(id);
-      return;
+      return Promise.resolve(startLoopHtml(id, fadeSeconds));
     }
 
     const ctx = ensureContext();
     if (!ctx) {
-      startLoopHtml(id);
-      return;
+      return Promise.resolve(startLoopHtml(id, fadeSeconds));
     }
     if (ctx.state !== "running") {
-      pendingLoops[id] = true; // start once resume() runs
+      pendingLoops[id] = { fadeSeconds: fadeSeconds }; // start once resume() runs
       if (typeof ctx.resume === "function") {
         ctx.resume().catch(function () {});
       }
-      return;
+      return Promise.resolve(false);
     }
     const entry = catalogById[id];
     const files = getEntryFiles(entry);
     
     if (entry && entry.randomizeLoop && files.length > 1) {
-      startRandomizedLoop(id);
-      return;
+      return Promise.resolve(startRandomizedLoop(id, fadeSeconds));
     }
-    loadBuffer(id).then(function (buffer) {
-      if (activeLoops[id] || ctx.state !== "running") {
-        return;
+
+    const startPromise = loadBuffer(id).then(function (buffer) {
+      if (!requestedLoops[id] || activeLoops[id] || ctx.state !== "running") {
+        return false;
       }
       const source = ctx.createBufferSource();
       source.buffer = buffer;
@@ -518,30 +590,41 @@ function loadBuffer(id) {
       const nodeGain = ctx.createGain();
       // brief fade-in so toggling on is gentle, not a pop
       nodeGain.gain.setValueAtTime(0.0001, ctx.currentTime);
-      nodeGain.gain.exponentialRampToValueAtTime(1, ctx.currentTime + 0.35);
+      nodeGain.gain.exponentialRampToValueAtTime(1, ctx.currentTime + Math.max(0.01, fadeSeconds));
       source.connect(nodeGain);
       nodeGain.connect(masterGain);
       source.start(0);
       activeLoops[id] = { source: source, gain: nodeGain };
+      return true;
     }).catch(function () {
+      if (!requestedLoops[id]) {
+        return false;
+      }
       // fetch/decode failed (likely file://): fall back for good.
       webAudioBroken = true;
       noteFallback("loop-load-failed");
-      startLoopHtml(id);
+      return startLoopHtml(id, fadeSeconds);
+    }).then(function (started) {
+      delete loopStartPromises[id];
+      return started;
     });
+
+    loopStartPromises[id] = startPromise;
+    return startPromise;
   };
 
-  SoundManager.stopLoop = function (id) {
+  SoundManager.stopLoop = function (id, options) {
+    const fadeSeconds = getLoopFadeSeconds(options || {}, 0.25);
+    delete requestedLoops[id];
     delete pendingLoops[id];
 
     if (htmlLoops[id]) {
-      stopLoopHtml(id);
-      return;
+      return stopLoopHtml(id, fadeSeconds);
     }
 
     const loop = activeLoops[id];
     if (!loop) {
-      return;
+      return false;
     }
     delete activeLoops[id];
     const ctx = audioContext;
@@ -550,10 +633,10 @@ function loadBuffer(id) {
         const now = ctx.currentTime;
         loop.gain.gain.cancelScheduledValues(now);
         loop.gain.gain.setValueAtTime(Math.max(0.0001, loop.gain.gain.value), now);
-        loop.gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+        loop.gain.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(0.01, fadeSeconds));
       
         if (loop.source) {
-          loop.source.stop(now + 0.3);
+          loop.source.stop(now + fadeSeconds + 0.05);
         }
       } else if (loop.source) {
         loop.source.stop();
@@ -568,7 +651,8 @@ function loadBuffer(id) {
           loop.gain.disconnect();
         }
       } catch (e) {}
-    }, 400);
+    }, Math.max(150, fadeSeconds * 1000 + 120));
+    return true;
   };
 
   SoundManager.stopAllLoops = function () {
@@ -576,10 +660,13 @@ function loadBuffer(id) {
       SoundManager.stopLoop(id);
     });
     Object.keys(htmlLoops).forEach(function (id) {
-      stopLoopHtml(id);
+      stopLoopHtml(id, 0.25);
     });
     Object.keys(pendingLoops).forEach(function (id) {
       delete pendingLoops[id];
+    });
+    Object.keys(requestedLoops).forEach(function (id) {
+      delete requestedLoops[id];
     });
   };
 
@@ -603,7 +690,7 @@ function loadBuffer(id) {
     }
     // keep any fallback loops in sync too
     Object.keys(htmlLoops).forEach(function (id) {
-      try { htmlLoops[id].volume = clamp01(effectiveVolume()); } catch (e) {}
+      applyHtmlLoopVolume(htmlLoops[id]);
     });
   }
 

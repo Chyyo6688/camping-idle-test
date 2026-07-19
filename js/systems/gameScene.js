@@ -2268,7 +2268,7 @@ function getGearInteractionDepthY(item) {
     return null;
   }
 
-  const depthY = getSceneDepthY(item, getDisplayedGearLayoutOverride(item));
+  const depthY = getSceneDisplayDepthY(item, getDisplayedGearLayoutOverride(item));
   return Number.isFinite(depthY) ? depthY : null;
 }
 

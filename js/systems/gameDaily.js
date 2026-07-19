@@ -373,6 +373,7 @@ function updateDailyCampCard() {
 function refreshWeatherPresentation() {
   updateWeatherLayer();
   updateDailyCampCard();
+  syncWeatherAmbient();
 }
 
 function setTestWeather(weatherId) {

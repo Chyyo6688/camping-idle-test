@@ -78,48 +78,48 @@ const mealCatalog = {
     id: "simpleGrilledFish",
     displayName: "烤湖鱼",
     detail: "营地料理",
-    image: "assets/inventory/meals/grilled_fish.png"
+    image: "assets/inventory/meals/grilled_lake_fish.png"
   },
   wildMushroomFishSoup: {
     id: "wildMushroomFishSoup",
     displayName: "山野菌鱼汤",
     detail: "深山菜谱",
-    image: "assets/inventory/meals/grilled_fish.png"
+    image: "assets/inventory/meals/wild_mushroom_fish_soup.png"
   },
   pineNutGrilledFish: {
     id: "pineNutGrilledFish",
     displayName: "松仁烤鱼",
     detail: "深山菜谱",
-    image: "assets/inventory/meals/grilled_fish.png"
+    image: "assets/inventory/meals/pine_nut_grilled_fish.png"
   },
   rainforestSourFishSoup: {
     id: "rainforestSourFishSoup",
     displayName: "雨林酸汤鱼",
     detail: "雾雨林菜谱",
-    image: "assets/inventory/meals/grilled_fish.png"
+    image: "assets/inventory/meals/rainforest_sour_fish_soup.png"
   },
   aromaticLeafGrilledFish: {
     id: "aromaticLeafGrilledFish",
     displayName: "香叶烤鱼",
     detail: "雾雨林菜谱",
-    image: "assets/inventory/meals/grilled_fish.png"
+    image: "assets/inventory/meals/aromatic_leaf_grilled_fish.png"
   },
   wildGingerMushroomSoup: {
     id: "wildGingerMushroomSoup",
     displayName: "野姜菌汤",
     detail: "雾雨林菜谱",
-    image: "assets/inventory/meals/grilled_fish.png"
+    image: "assets/inventory/meals/wild_ginger_mushroom_soup.png"
   }
 };
 
 const ingredientCatalog = {
-  wildMushroom: { id: "wildMushroom", displayName: "山野菌", detail: "深山原料", image: "assets/inventory/meals/grilled_fish.png", preserveLastForAuto: true },
-  wildOnion: { id: "wildOnion", displayName: "野葱", detail: "深山原料", image: "assets/inventory/meals/grilled_fish.png", preserveLastForAuto: true },
-  pineNut: { id: "pineNut", displayName: "松子", detail: "深山原料", image: "assets/inventory/meals/grilled_fish.png", preserveLastForAuto: true },
-  rainGinger: { id: "rainGinger", displayName: "雨姜", detail: "雾雨林原料", image: "assets/inventory/meals/grilled_fish.png", preserveLastForAuto: true },
-  sourBerry: { id: "sourBerry", displayName: "酸浆果", detail: "雾雨林原料", image: "assets/inventory/meals/grilled_fish.png", preserveLastForAuto: true },
-  aromaticLeaf: { id: "aromaticLeaf", displayName: "香叶", detail: "雾雨林原料", image: "assets/inventory/meals/grilled_fish.png", preserveLastForAuto: true },
-  rainforestMushroom: { id: "rainforestMushroom", displayName: "雨林菌", detail: "雾雨林原料", image: "assets/inventory/meals/grilled_fish.png", preserveLastForAuto: true }
+  wildMushroom: { id: "wildMushroom", displayName: "山野菌", detail: "深山原料", image: "assets/inventory/ingredients/wild_mushroom.png", preserveLastForAuto: true },
+  wildOnion: { id: "wildOnion", displayName: "野葱", detail: "深山原料", image: "assets/inventory/ingredients/wild_onion.png", preserveLastForAuto: true },
+  pineNut: { id: "pineNut", displayName: "松子", detail: "深山原料", image: "assets/inventory/ingredients/pine_nut.png", preserveLastForAuto: true },
+  rainGinger: { id: "rainGinger", displayName: "雨姜", detail: "雾雨林原料", image: "assets/inventory/ingredients/rain_ginger.png", preserveLastForAuto: true },
+  sourBerry: { id: "sourBerry", displayName: "酸浆果", detail: "雾雨林原料", image: "assets/inventory/ingredients/sour_berry.png", preserveLastForAuto: true },
+  aromaticLeaf: { id: "aromaticLeaf", displayName: "香叶", detail: "雾雨林原料", image: "assets/inventory/ingredients/aromatic_leaf.png", preserveLastForAuto: true },
+  rainforestMushroom: { id: "rainforestMushroom", displayName: "雨林菌", detail: "雾雨林原料", image: "assets/inventory/ingredients/rainforest_mushroom.png", preserveLastForAuto: true }
 };
 
 const cookingRecipeCatalog = {

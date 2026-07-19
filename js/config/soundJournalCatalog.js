@@ -15,8 +15,28 @@
 //   category    grouping label for the journal ("ambient" / "effect")
 (function () {
   const catalog = {
-    version: 1,
+    version: 2,
     sounds: [
+      {
+        id: "rain_soft_loop",
+        type: "loop",
+        name: "雨天环境音",
+        description: "雨落在营地里；进入帐篷后会自动切换为篷布上的雨声。",
+        file: "assets/sounds/rain_weather.mp3",
+        lockedHint: "遇到小雨天气时会听见。",
+        category: "ambient",
+        weatherLinked: true
+      },
+      {
+        id: "tent_rain_loop",
+        type: "loop",
+        name: "帐篷内听雨",
+        description: "雨点落在帐篷外层，声音更近也更沉。",
+        file: "assets/sounds/rain_in_tent.mp3",
+        category: "ambient",
+        weatherLinked: true,
+        journalHidden: true
+      },
       {
         id: "lake_water_loop",
         type: "loop",

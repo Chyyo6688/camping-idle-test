@@ -755,12 +755,20 @@ body.night .campfire.lit .fire-glow-img {
   width: 72%;
   height: 84%;
   opacity: 0;
+  visibility: hidden;
   transform-origin: 50% 80%;
   animation: flamePulse 0.76s ease-in-out infinite alternate;
 }
 
 .campfire.lit .campfire-flame-img {
   opacity: 1;
+  visibility: visible;
+}
+
+.campfire:not(.lit) .fire-glow-img,
+.campfire:not(.lit) .campfire-flame-img {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .campfire.level-3 .campfire-flame-img {

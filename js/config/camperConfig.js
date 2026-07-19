@@ -296,30 +296,30 @@ const CAMPER_PROFILE_QUESTION_CATEGORIES = [
     label: "面对未知与风险",
     questions: [
       {
-        text: "营地旁突然出现一条地图上没有的小路，你会？",
+        text: "在营地旁边发现一条地图上没有的小路，你会？",
         options: [
-          { text: "先停一会儿，听风和脚步声再决定", personalityScores: { slowMood: 3, lampKeeper: 1 }, traitModifiers: { observation: 3, courage: -1 } },
-          { text: "看地图、天气和回程时间，划出安全范围", personalityScores: { carefulArranger: 3, sitFirst: 1 }, traitModifiers: { rationality: 3, preparedness: 2 } },
-          { text: "先站远一点看光线和地形，记住最好看的方向", personalityScores: { prettyFrame: 3, vanishSoftly: 1 }, traitModifiers: { observation: 4, curiosity: 1 } },
-          { text: "走进去看看，回来再把发现讲给大家", personalityScores: { forestWanderer: 3, campfireChatter: 1 }, traitModifiers: { courage: 4, curiosity: 3 } }
+          { text: "不急着走，先在路口站一会儿再说", personalityScores: { slowMood: 3, lampKeeper: 1 }, traitModifiers: { observation: 3, courage: -1 } },
+          { text: "掏出地图对一对，算好来回的时间再决定", personalityScores: { carefulArranger: 3, sitFirst: 1 }, traitModifiers: { rationality: 3, preparedness: 2 } },
+          { text: "先不进去，退远一点找找哪个角度最好看", personalityScores: { prettyFrame: 3, vanishSoftly: 1 }, traitModifiers: { observation: 4, curiosity: 1 } },
+          { text: "直接走进去看看，回来再跟大家讲", personalityScores: { forestWanderer: 3, campfireChatter: 1 }, traitModifiers: { courage: 4, curiosity: 3 } }
         ]
       },
       {
-        text: "半夜帐篷外传来没听过的窸窣声，你第一反应是？",
+        text: "半夜，帐篷外传来一阵没听过的窸窣声，你的第一反应是？",
         options: [
-          { text: "先不惊动它，安静听一会儿声音会不会离开", personalityScores: { slowMood: 3, lampKeeper: 1 }, traitModifiers: { observation: 3, rationality: 1 } },
-          { text: "确认灯、出口和同伴位置，再判断是什么", personalityScores: { carefulArranger: 3, sitFirst: 1 }, traitModifiers: { preparedness: 3, responsibility: 2 } },
-          { text: "掀开一条缝，看月光里到底晃过了什么", personalityScores: { prettyFrame: 3, vanishSoftly: 1 }, traitModifiers: { observation: 4, courage: 1 } },
-          { text: "拿好手电出去看一眼，顺便找找脚印", personalityScores: { forestWanderer: 3, campfireChatter: 1 }, traitModifiers: { courage: 4, curiosity: 3 } }
+          { text: "屏住呼吸听一会儿，说不定它自己就走了", personalityScores: { slowMood: 3, lampKeeper: 1 }, traitModifiers: { observation: 3, rationality: 1 } },
+          { text: "先确认灯在哪、出口在哪，同伴都在不在", personalityScores: { carefulArranger: 3, sitFirst: 1 }, traitModifiers: { preparedness: 3, responsibility: 2 } },
+          { text: "掀开一条缝，看看月光底下到底是什么在晃", personalityScores: { prettyFrame: 3, vanishSoftly: 1 }, traitModifiers: { observation: 4, courage: 1 } },
+          { text: "拿上手电出去瞧瞧，顺便找找有没有脚印", personalityScores: { forestWanderer: 3, campfireChatter: 1 }, traitModifiers: { courage: 4, curiosity: 3 } }
         ]
       },
       {
-        text: "原定路线突然封闭，手机也没有信号，你会？",
+        text: "计划好的路线临时封了，手机又没信号，你会？",
         options: [
-          { text: "接受今天慢一点，先等环境给出更多线索", personalityScores: { slowMood: 3, lampKeeper: 1 }, traitModifiers: { rationality: 2, comfortSeeking: 2 } },
-          { text: "清点水和时间，按最稳妥的备选路线行动", personalityScores: { carefulArranger: 3, sitFirst: 1 }, traitModifiers: { preparedness: 4, responsibility: 3 } },
-          { text: "留在安全处观察地貌，找一个清楚的参照点", personalityScores: { prettyFrame: 3, vanishSoftly: 1 }, traitModifiers: { observation: 4, rationality: 2 } },
-          { text: "沿着明显地标探一小段，边走边留下回程记号", personalityScores: { forestWanderer: 3, campfireChatter: 1 }, traitModifiers: { courage: 3, curiosity: 3 } }
+          { text: "那就不赶了，先原地歇着，等等看情况", personalityScores: { slowMood: 3, lampKeeper: 1 }, traitModifiers: { rationality: 2, comfortSeeking: 2 } },
+          { text: "清点一下水和时间，改走最稳妥的备用路线", personalityScores: { carefulArranger: 3, sitFirst: 1 }, traitModifiers: { preparedness: 4, responsibility: 3 } },
+          { text: "待在安全的地方看看四周，先找个认得出的地标", personalityScores: { prettyFrame: 3, vanishSoftly: 1 }, traitModifiers: { observation: 4, rationality: 2 } },
+          { text: "沿着显眼的地标往前探一小段，边走边留记号", personalityScores: { forestWanderer: 3, campfireChatter: 1 }, traitModifiers: { courage: 3, curiosity: 3 } }
         ]
       }
     ]
@@ -329,30 +329,30 @@ const CAMPER_PROFILE_QUESTION_CATEGORIES = [
     label: "社交与团队反应",
     questions: [
       {
-        text: "一群人走岔了路，气氛开始有点紧张，你会？",
+        text: "一群人走岔了路，气氛有点僵，你会？",
         options: [
-          { text: "先确认每个人都在，用灯和几句话让大家安心", personalityScores: { lampKeeper: 3, campfireChatter: 1 }, traitModifiers: { responsibility: 4, sociability: 2 } },
-          { text: "提议坐下来喝口水，再一起想下一步", personalityScores: { sitFirst: 3, picnicFirst: 1 }, traitModifiers: { rationality: 2, comfortSeeking: 3 } },
-          { text: "安静接下清点装备的任务，让争论先停一停", personalityScores: { vanishSoftly: 3, gearHoarder: 1 }, traitModifiers: { sociability: -2, responsibility: 3 } },
-          { text: "让大家轮流说线索，把混乱聊成一个方案", personalityScores: { campfireChatter: 3, carefulArranger: 1 }, traitModifiers: { sociability: 4, rationality: 2 } }
+          { text: "先数数人齐不齐，把灯打亮，说两句让大家定定神", personalityScores: { lampKeeper: 3, campfireChatter: 1 }, traitModifiers: { responsibility: 4, sociability: 2 } },
+          { text: "招呼大家坐下来喝口水，缓一缓再商量", personalityScores: { sitFirst: 3, picnicFirst: 1 }, traitModifiers: { rationality: 2, comfortSeeking: 3 } },
+          { text: "不掺和争论，默默把装备清点了", personalityScores: { vanishSoftly: 3, gearHoarder: 1 }, traitModifiers: { sociability: -2, responsibility: 3 } },
+          { text: "让大家轮着说线索，边聊边把方案凑出来", personalityScores: { campfireChatter: 3, carefulArranger: 1 }, traitModifiers: { sociability: 4, rationality: 2 } }
         ]
       },
       {
-        text: "有个不太熟的人第一次坐到篝火边，你会？",
+        text: "一个不太熟的人头一回坐到篝火边，你会？",
         options: [
-          { text: "把灯和毯子往那边挪一点，让对方不用开口求助", personalityScores: { lampKeeper: 3, campfireChatter: 1 }, traitModifiers: { responsibility: 3, observation: 2 } },
-          { text: "拍拍旁边的座位，先让大家都坐舒服", personalityScores: { sitFirst: 3, picnicFirst: 1 }, traitModifiers: { sociability: 2, comfortSeeking: 4 } },
-          { text: "友好地点点头，给对方留出不说话也自在的空间", personalityScores: { vanishSoftly: 3, gearHoarder: 1 }, traitModifiers: { observation: 2, sociability: -1 } },
-          { text: "从一个轻松的小故事开始，把人自然地拉进话题", personalityScores: { campfireChatter: 3, carefulArranger: 1 }, traitModifiers: { sociability: 4, courage: 2 } }
+          { text: "把灯和毯子往那边挪挪，省得对方不好意思开口", personalityScores: { lampKeeper: 3, campfireChatter: 1 }, traitModifiers: { responsibility: 3, observation: 2 } },
+          { text: "拍拍旁边的空位：来，这儿坐", personalityScores: { sitFirst: 3, picnicFirst: 1 }, traitModifiers: { sociability: 2, comfortSeeking: 4 } },
+          { text: "点头打个招呼，不硬找话，让人自在待着", personalityScores: { vanishSoftly: 3, gearHoarder: 1 }, traitModifiers: { observation: 2, sociability: -1 } },
+          { text: "先讲个轻松的小事，聊着聊着人就熟了", personalityScores: { campfireChatter: 3, carefulArranger: 1 }, traitModifiers: { sociability: 4, courage: 2 } }
         ]
       },
       {
-        text: "队友对下一步安排意见完全不同，你通常会？",
+        text: "队友对下一步怎么走各说各的，你通常会？",
         options: [
-          { text: "先照顾最不安的人，再帮大家找共同点", personalityScores: { lampKeeper: 3, campfireChatter: 1 }, traitModifiers: { responsibility: 4, observation: 2 } },
-          { text: "建议暂停五分钟，坐稳以后再作决定", personalityScores: { sitFirst: 3, picnicFirst: 1 }, traitModifiers: { rationality: 2, comfortSeeking: 3 } },
-          { text: "暂时退出争论，独自把可行选项整理出来", personalityScores: { vanishSoftly: 3, gearHoarder: 1 }, traitModifiers: { sociability: -2, rationality: 3 } },
-          { text: "主持一轮短讨论，让每个人都说清最在意的事", personalityScores: { campfireChatter: 3, carefulArranger: 1 }, traitModifiers: { sociability: 4, responsibility: 2 } }
+          { text: "先安抚最着急的那个，再帮大家找找共同点", personalityScores: { lampKeeper: 3, campfireChatter: 1 }, traitModifiers: { responsibility: 4, observation: 2 } },
+          { text: "提议先停五分钟，都坐下来再谈", personalityScores: { sitFirst: 3, picnicFirst: 1 }, traitModifiers: { rationality: 2, comfortSeeking: 3 } },
+          { text: "先退出争论，自己把能走的几条路捋一捋", personalityScores: { vanishSoftly: 3, gearHoarder: 1 }, traitModifiers: { sociability: -2, rationality: 3 } },
+          { text: "干脆主持一轮，让每个人把最在意的说完", personalityScores: { campfireChatter: 3, carefulArranger: 1 }, traitModifiers: { sociability: 4, responsibility: 2 } }
         ]
       }
     ]
@@ -362,30 +362,30 @@ const CAMPER_PROFILE_QUESTION_CATEGORIES = [
     label: "物资、计划与秩序",
     questions: [
       {
-        text: "出发前收拾公共物资，你最自然会做什么？",
+        text: "出发前收拾公用物资，你最可能在做什么？",
         options: [
-          { text: "多装几件备用工具，也给大家塞点零食", personalityScores: { gearHoarder: 3, picnicFirst: 1 }, traitModifiers: { preparedness: 4, comfortSeeking: 2 } },
-          { text: "列清单、分袋，再特意留一点机动空间", personalityScores: { carefulArranger: 3, slowMood: 1 }, traitModifiers: { preparedness: 3, rationality: 4 } },
-          { text: "边收边确认谁拿什么，保证所有人都听明白", personalityScores: { campfireChatter: 3, sitFirst: 1 }, traitModifiers: { sociability: 3, responsibility: 3 } },
-          { text: "先定热饮和吃饭计划，其他东西围着它来装", personalityScores: { picnicFirst: 3, vanishSoftly: 1 }, traitModifiers: { comfortSeeking: 4, preparedness: 2 } }
+          { text: "多塞几件备用工具，再给大家捎点零食", personalityScores: { gearHoarder: 3, picnicFirst: 1 }, traitModifiers: { preparedness: 4, comfortSeeking: 2 } },
+          { text: "列清单、分袋装，还不忘留点富余空间", personalityScores: { carefulArranger: 3, slowMood: 1 }, traitModifiers: { preparedness: 3, rationality: 4 } },
+          { text: "一边收一边对：这个谁拿？那个归谁？", personalityScores: { campfireChatter: 3, sitFirst: 1 }, traitModifiers: { sociability: 3, responsibility: 3 } },
+          { text: "先把吃的喝的定下来，其他东西围着装", personalityScores: { picnicFirst: 3, vanishSoftly: 1 }, traitModifiers: { comfortSeeking: 4, preparedness: 2 } }
         ]
       },
       {
-        text: "今晚只剩不多的干柴，大家还想做很多事，你会？",
+        text: "今晚干柴不多了，大家想干的事却不少，你会？",
         options: [
-          { text: "拿出之前留的备用燃料，顺便翻翻还有什么能用", personalityScores: { gearHoarder: 3, picnicFirst: 1 }, traitModifiers: { preparedness: 4, curiosity: 1 } },
-          { text: "算好每项消耗，排出最稳妥的使用顺序", personalityScores: { carefulArranger: 3, slowMood: 1 }, traitModifiers: { rationality: 4, responsibility: 3 } },
-          { text: "把大家叫到一起，很快谈妥轮班和优先级", personalityScores: { campfireChatter: 3, sitFirst: 1 }, traitModifiers: { sociability: 4, responsibility: 2 } },
-          { text: "先保证一顿热乎的，剩下的火慢慢用", personalityScores: { picnicFirst: 3, vanishSoftly: 1 }, traitModifiers: { comfortSeeking: 4, responsibility: 1 } }
+          { text: "翻出之前攒下的备用燃料，再看看还有什么能顶上", personalityScores: { gearHoarder: 3, picnicFirst: 1 }, traitModifiers: { preparedness: 4, curiosity: 1 } },
+          { text: "算算每件事要烧多少柴，排个最省的顺序", personalityScores: { carefulArranger: 3, slowMood: 1 }, traitModifiers: { rationality: 4, responsibility: 3 } },
+          { text: "把人喊到一块儿，几句话把轮班和先后定下来", personalityScores: { campfireChatter: 3, sitFirst: 1 }, traitModifiers: { sociability: 4, responsibility: 2 } },
+          { text: "先保住一顿热乎饭，剩下的火省着用", personalityScores: { picnicFirst: 3, vanishSoftly: 1 }, traitModifiers: { comfortSeeking: 4, responsibility: 1 } }
         ]
       },
       {
-        text: "准备离开营地时，哪一步最像你？",
+        text: "收拾东西准备拔营，哪个动作最像你？",
         options: [
-          { text: "逐件摸一遍装备，连可能被忘掉的小工具也带走", personalityScores: { gearHoarder: 3, picnicFirst: 1 }, traitModifiers: { preparedness: 4, observation: 2 } },
-          { text: "按区域检查并勾清单，最后再走一遍动线", personalityScores: { carefulArranger: 3, slowMood: 1 }, traitModifiers: { rationality: 4, responsibility: 4 } },
-          { text: "大声报项目，让每个人回应自己负责的部分", personalityScores: { campfireChatter: 3, sitFirst: 1 }, traitModifiers: { sociability: 3, responsibility: 3 } },
-          { text: "收好保温杯和路上吃的，确保回程不会饿", personalityScores: { picnicFirst: 3, vanishSoftly: 1 }, traitModifiers: { comfortSeeking: 4, preparedness: 3 } }
+          { text: "装备挨个过一遍手，连小零碎都不放过", personalityScores: { gearHoarder: 3, picnicFirst: 1 }, traitModifiers: { preparedness: 4, observation: 2 } },
+          { text: "分区检查、对着清单打勾，最后再整体走一圈", personalityScores: { carefulArranger: 3, slowMood: 1 }, traitModifiers: { rationality: 4, responsibility: 4 } },
+          { text: "大声报名目，谁负责的谁应一声", personalityScores: { campfireChatter: 3, sitFirst: 1 }, traitModifiers: { sociability: 3, responsibility: 3 } },
+          { text: "先收好保温杯和路上的吃食，回程可不能饿着", personalityScores: { picnicFirst: 3, vanishSoftly: 1 }, traitModifiers: { comfortSeeking: 4, preparedness: 3 } }
         ]
       }
     ]
@@ -395,30 +395,30 @@ const CAMPER_PROFILE_QUESTION_CATEGORIES = [
     label: "休息、情绪与舒适",
     questions: [
       {
-        text: "忙了一整天终于停下来，你最想怎么恢复？",
+        text: "忙了一整天总算停下来，你想怎么歇？",
         options: [
-          { text: "慢慢看天色变化，让脑袋自己降速", personalityScores: { slowMood: 3, prettyFrame: 1 }, traitModifiers: { observation: 3, comfortSeeking: 3 } },
-          { text: "先找到最稳最舒服的位置，好好坐一会儿", personalityScores: { sitFirst: 3, lampKeeper: 1 }, traitModifiers: { comfortSeeking: 4, rationality: 1 } },
-          { text: "悄悄离开人群，在安静里充一小会儿电", personalityScores: { vanishSoftly: 3, forestWanderer: 1 }, traitModifiers: { sociability: -3, observation: 2 } },
-          { text: "拿出热饮和小点心，把休息变成一顿迷你野餐", personalityScores: { picnicFirst: 3, gearHoarder: 1 }, traitModifiers: { comfortSeeking: 4, preparedness: 1 } }
+          { text: "什么也不干，看天色一点点变", personalityScores: { slowMood: 3, prettyFrame: 1 }, traitModifiers: { observation: 3, comfortSeeking: 3 } },
+          { text: "找个最舒坦的位置坐下，就不挪窝了", personalityScores: { sitFirst: 3, lampKeeper: 1 }, traitModifiers: { comfortSeeking: 4, rationality: 1 } },
+          { text: "悄悄躲开人群，自己安静待一会儿", personalityScores: { vanishSoftly: 3, forestWanderer: 1 }, traitModifiers: { sociability: -3, observation: 2 } },
+          { text: "泡杯热的，摸出点心，边吃边歇", personalityScores: { picnicFirst: 3, gearHoarder: 1 }, traitModifiers: { comfortSeeking: 4, preparedness: 1 } }
         ]
       },
       {
-        text: "原本的休闲时间突然下起雨，你会？",
+        text: "正歇着呢，突然下起雨来，你会？",
         options: [
-          { text: "听着雨声发呆，顺便看水珠怎么挂在叶子上", personalityScores: { slowMood: 3, prettyFrame: 1 }, traitModifiers: { observation: 4, comfortSeeking: 2 } },
-          { text: "把椅子移到最干燥的角落，安稳坐好", personalityScores: { sitFirst: 3, lampKeeper: 1 }, traitModifiers: { preparedness: 2, comfortSeeking: 4 } },
-          { text: "躲到雨声最轻的地方，暂时谁也不用招呼", personalityScores: { vanishSoftly: 3, forestWanderer: 1 }, traitModifiers: { sociability: -3, comfortSeeking: 3 } },
-          { text: "架起小锅热东西吃，让雨天有自己的菜单", personalityScores: { picnicFirst: 3, gearHoarder: 1 }, traitModifiers: { comfortSeeking: 4, preparedness: 2 } }
+          { text: "听着雨声发呆，看水珠一颗颗挂在叶子上", personalityScores: { slowMood: 3, prettyFrame: 1 }, traitModifiers: { observation: 4, comfortSeeking: 2 } },
+          { text: "把椅子挪到淋不着的角落，接着坐", personalityScores: { sitFirst: 3, lampKeeper: 1 }, traitModifiers: { preparedness: 2, comfortSeeking: 4 } },
+          { text: "躲到雨声最小的地方，正好谁也不用应付", personalityScores: { vanishSoftly: 3, forestWanderer: 1 }, traitModifiers: { sociability: -3, comfortSeeking: 3 } },
+          { text: "支个小锅热点吃的，雨天就该吃热乎的", personalityScores: { picnicFirst: 3, gearHoarder: 1 }, traitModifiers: { comfortSeeking: 4, preparedness: 2 } }
         ]
       },
       {
-        text: "情绪有点低的时候，哪种照顾方式最适合你？",
+        text: "心情有点低落的时候，怎么待着最舒服？",
         options: [
-          { text: "不催自己，慢慢注意身边一两件好看的小事", personalityScores: { slowMood: 3, prettyFrame: 1 }, traitModifiers: { observation: 3, rationality: 1 } },
-          { text: "找个可靠的位置坐下，先让身体觉得安全", personalityScores: { sitFirst: 3, lampKeeper: 1 }, traitModifiers: { comfortSeeking: 4, responsibility: 1 } },
-          { text: "一个人安静待着，想走走就沿着树边走一段", personalityScores: { vanishSoftly: 3, forestWanderer: 1 }, traitModifiers: { sociability: -3, curiosity: 1 } },
-          { text: "准备熟悉的饮料和食物，用小仪式把心情接住", personalityScores: { picnicFirst: 3, gearHoarder: 1 }, traitModifiers: { comfortSeeking: 4, preparedness: 2 } }
+          { text: "不催自己，慢慢看看身边顺眼的小东西", personalityScores: { slowMood: 3, prettyFrame: 1 }, traitModifiers: { observation: 3, rationality: 1 } },
+          { text: "找个踏实的地方坐下，先让身体松下来", personalityScores: { sitFirst: 3, lampKeeper: 1 }, traitModifiers: { comfortSeeking: 4, responsibility: 1 } },
+          { text: "一个人待着，想动了就沿着树边走一段", personalityScores: { vanishSoftly: 3, forestWanderer: 1 }, traitModifiers: { sociability: -3, curiosity: 1 } },
+          { text: "弄点熟悉的吃的喝的，肚子暖了心情就好一半", personalityScores: { picnicFirst: 3, gearHoarder: 1 }, traitModifiers: { comfortSeeking: 4, preparedness: 2 } }
         ]
       }
     ]
@@ -428,30 +428,30 @@ const CAMPER_PROFILE_QUESTION_CATEGORIES = [
     label: "环境、审美与探索",
     questions: [
       {
-        text: "第一次走进一片新的林间空地，你最先注意什么？",
+        text: "头一回走进一片新的林间空地，你最先注意什么？",
         options: [
-          { text: "哪里天黑后需要一盏温柔又不刺眼的灯", personalityScores: { lampKeeper: 3, slowMood: 1 }, traitModifiers: { observation: 3, responsibility: 2 } },
-          { text: "地面是否平整，哪些装备能在这里派上用场", personalityScores: { gearHoarder: 3, carefulArranger: 1 }, traitModifiers: { preparedness: 3, rationality: 2 } },
-          { text: "光从哪边落下，站在哪里能看到最完整的画面", personalityScores: { prettyFrame: 3, forestWanderer: 1 }, traitModifiers: { observation: 4, curiosity: 2 } },
-          { text: "空地后面通向哪里，最近的小路是哪一条", personalityScores: { forestWanderer: 3, prettyFrame: 1 }, traitModifiers: { curiosity: 4, courage: 3 } }
+          { text: "天黑以后哪儿会暗，该在哪儿点一盏灯", personalityScores: { lampKeeper: 3, slowMood: 1 }, traitModifiers: { observation: 3, responsibility: 2 } },
+          { text: "地面平不平，手头的装备哪些能派上用场", personalityScores: { gearHoarder: 3, carefulArranger: 1 }, traitModifiers: { preparedness: 3, rationality: 2 } },
+          { text: "光从哪边来，站在哪儿能把景色看全", personalityScores: { prettyFrame: 3, forestWanderer: 1 }, traitModifiers: { observation: 4, curiosity: 2 } },
+          { text: "空地后面通向哪儿，最近的小路是哪条", personalityScores: { forestWanderer: 3, prettyFrame: 1 }, traitModifiers: { curiosity: 4, courage: 3 } }
         ]
       },
       {
-        text: "湖面在傍晚变了颜色，你会怎么靠近它？",
+        text: "傍晚的湖面变了颜色，你会？",
         options: [
-          { text: "看倒影一点点亮起来，等到该开灯的时候", personalityScores: { lampKeeper: 3, slowMood: 1 }, traitModifiers: { observation: 4, responsibility: 1 } },
-          { text: "顺便看看岸边有没有适合扎营或放装备的位置", personalityScores: { gearHoarder: 3, carefulArranger: 1 }, traitModifiers: { preparedness: 3, observation: 2 } },
-          { text: "找出颜色最好看的那一格，安静记住它", personalityScores: { prettyFrame: 3, forestWanderer: 1 }, traitModifiers: { observation: 4, curiosity: 1 } },
-          { text: "沿着岸线继续走，看看颜色会在何处消失", personalityScores: { forestWanderer: 3, prettyFrame: 1 }, traitModifiers: { curiosity: 4, courage: 2 } }
+          { text: "看着倒影一点点亮起来，估摸着差不多该点灯了", personalityScores: { lampKeeper: 3, slowMood: 1 }, traitModifiers: { observation: 4, responsibility: 1 } },
+          { text: "顺便瞧瞧岸边哪儿适合扎营、放装备", personalityScores: { gearHoarder: 3, carefulArranger: 1 }, traitModifiers: { preparedness: 3, observation: 2 } },
+          { text: "找到颜色最好看的那片水面，多看几眼记下来", personalityScores: { prettyFrame: 3, forestWanderer: 1 }, traitModifiers: { observation: 4, curiosity: 1 } },
+          { text: "沿着岸边接着走，看这颜色能延伸到哪儿", personalityScores: { forestWanderer: 3, prettyFrame: 1 }, traitModifiers: { curiosity: 4, courage: 2 } }
         ]
       },
       {
-        text: "只能给今天加一个短短的营地支线，你选？",
+        text: "今天只剩一点时间，还能加一个小节目，你选？",
         options: [
-          { text: "黄昏去找萤火虫，回来前确认每个人都有光", personalityScores: { lampKeeper: 3, slowMood: 1 }, traitModifiers: { responsibility: 3, observation: 3 } },
-          { text: "研究一种新装备，看看它在不同地形怎么摆", personalityScores: { gearHoarder: 3, carefulArranger: 1 }, traitModifiers: { preparedness: 3, curiosity: 3 } },
-          { text: "爬到日出视野最好的地方，等一张完美画面", personalityScores: { prettyFrame: 3, forestWanderer: 1 }, traitModifiers: { observation: 4, courage: 2 } },
-          { text: "跟着一条没有路牌的小径走到下一个转弯", personalityScores: { forestWanderer: 3, prettyFrame: 1 }, traitModifiers: { courage: 4, curiosity: 4 } }
+          { text: "黄昏去找萤火虫，回来前把大家的灯都点亮", personalityScores: { lampKeeper: 3, slowMood: 1 }, traitModifiers: { responsibility: 3, observation: 3 } },
+          { text: "捣鼓一件新装备，试试放在哪儿最顺手", personalityScores: { gearHoarder: 3, carefulArranger: 1 }, traitModifiers: { preparedness: 3, curiosity: 3 } },
+          { text: "爬到视野最好的地方，守一张好看的画面", personalityScores: { prettyFrame: 3, forestWanderer: 1 }, traitModifiers: { observation: 4, courage: 2 } },
+          { text: "挑条没有路牌的小径，一直走到下一个转弯", personalityScores: { forestWanderer: 3, prettyFrame: 1 }, traitModifiers: { courage: 4, curiosity: 4 } }
         ]
       }
     ]
