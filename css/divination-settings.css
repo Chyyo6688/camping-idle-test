@@ -529,7 +529,7 @@ body.divination-open .daily-camp-card {
 /*卦牌里的卦名*/
 .iching-hexagram-card > strong {
   color: #fff0c4;
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 400;
   line-height: 1;
   text-align: right;
@@ -539,27 +539,29 @@ body.divination-open .daily-camp-card {
 
 .iching-hexagram-lines {
   display: grid;
-  gap: 0.23rem;
+  gap: 0rem;
 }
 
 .iching-hexagram-lines .turtle-line-row {
   grid-template-columns: minmax(38px, 72%) 12px;
   justify-content: center;
-  gap: 0.24rem;
+  gap: 0rem;
 }
 
 .iching-hexagram-lines .turtle-line {
   width: 100%;
-  height: 7px;
+  height: 6px;
 }
 
 .iching-hexagram-lines .turtle-line.moving::after {
-  right: -13px;
+  right: -25px;
   font-size: 0.62rem;
 }
 
 .iching-hexagram-lines .turtle-line-row small {
   text-align: right;
+  font-size: 0.65rem;
+  font-weight: var(--font-weight-xs);
 }
 
 .iching-change-arrow {
@@ -594,8 +596,8 @@ body.divination-open .daily-camp-card {
   border-radius: 7px;
   background: rgba(55, 38, 34, 0.62);
   color: #f4d99d;
-  font-size: 3.2rem;
-  font-weight: 400;
+  font-size: 4rem;
+  font-weight: 500;
   line-height: 1;
   text-align: center;
   font-family: "ZCOOL XiaoWei";
@@ -659,7 +661,7 @@ body.divination-open .daily-camp-card {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
-  gap: 0.5rem;
+  gap: 0.65rem;
 }
 
 .iching-oracle-copy {

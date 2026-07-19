@@ -33,6 +33,19 @@ function assertCompactSummary(result, label) {
   assert.ok(!/本卦|变卦|主辞|辅辞|\d+\s*个动爻|动爻使用|辞文/.test(summary), label + " summary has no technical wording");
 }
 
+const forbiddenActionCopy = /处理辞文指出|忽略辞文已经指出|结合现实情况|根据辞义|保持警惕并控制行动|结合爻位|脱离辞文|具体所指|具体矛盾/;
+function assertShortActionPhrases(result, label) {
+  [result.goodFor || [], result.avoid || []].forEach(function(items, sideIndex) {
+    const side = sideIndex === 0 ? "good" : "avoid";
+    assert.ok(items.length >= 2, label + " " + side + " has at least two phrases");
+    assert.ok(items.length <= 3, label + " " + side + " has at most three phrases");
+    items.forEach(function(item) {
+      assert.ok(/^[\u3400-\u9fff]{2,8}$/.test(item), label + " " + side + " uses a 2-8 character phrase: " + item);
+      assert.ok(!forbiddenActionCopy.test(item), label + " " + side + " has no placeholder copy: " + item);
+    });
+  });
+}
+
 const expectedRules = [
   "primaryJudgment", "oneMovingLine", "twoMovingLines", "bothJudgments",
   "twoChangedStaticLines", "oneChangedStaticLine", "changedJudgment"
@@ -52,6 +65,7 @@ for (let movingCount = 0; movingCount <= 6; movingCount += 1) {
   assert.ok(result.selectedTextSummary.indexOf("主辞") === 0, "primary text displays first " + movingCount);
   assert.strictEqual(result.selectedTextSummary.includes("辅辞"), expectedSelectedCounts[movingCount] > 1, "secondary role " + movingCount);
   assertCompactSummary(result, "moving count " + movingCount);
+  assertShortActionPhrases(result, "moving count " + movingCount);
   assert.ok(result.notices.length <= 2, "notice count " + movingCount);
 }
 
@@ -65,6 +79,7 @@ for (let castCode = 0; castCode < 4096; castCode += 1) {
   }
   const result = resultForTotals(totals);
   assertCompactSummary(result, "cast " + totals.join(""));
+  assertShortActionPhrases(result, "cast " + totals.join(""));
   assert.ok(result.notices.length <= 2, "cast notice count " + totals.join(""));
   assert.strictEqual(result.judgmentAnalysis.overallGrade, result.fortune, "public grade matches overallGrade " + totals.join(""));
   if (["大吉", "吉"].includes(result.fortune)) {
@@ -166,8 +181,8 @@ assert.ok(travelNineFour.interpretation.includes("尚非归宿"));
 assert.notStrictEqual(travelNineFour.summary, travelNineFour.interpretation, "summary and detailed explanation have distinct jobs");
 assert.ok(!travelNineFour.interpretation.includes(travelNineFour.summary), "detail must not repeat the complete summary");
 assert.ok(!/判断词|没有明确|为什么判|评分|ruleType/.test(travelNineFour.interpretation));
-assert.ok(travelNineFour.goodFor.some(function(text) { return /暂时立足|真正安定/.test(text); }));
-assert.ok(travelNineFour.avoid.some(function(text) { return /暂时落脚|不安/.test(text); }));
+assert.ok(travelNineFour.goodFor.includes("稳住暂时落脚"));
+assert.ok(travelNineFour.avoid.includes("误把落脚当归宿"));
 assert.deepStrictEqual(travelNineFour.notices, [], "no material condition keeps notice section empty");
 assert.ok(dangerNoBlame.notices.length > 0, "material warnings remain available");
 const relationshipTravelNineFour = resultForTotals([8, 8, 7, 9, 8, 7], "relationship");
@@ -309,7 +324,7 @@ assert.ok(legacy.records.turtle.overall.result.judgmentAnalysis, "legacy turtle 
 
 const stalePresentation = resultForTotals([8, 8, 7, 9, 8, 7], "relationship");
 const staleTotals = stalePresentation.lines.map(function(line) { return line.total; });
-stalePresentation.presentationVersion = 2;
+stalePresentation.presentationVersion = 9;
 stalePresentation.interpretation = "旧模板：不必急着给结果定性。";
 const upgradedPresentationSave = manager.sanitizeSavedDivinations({
   date: "2026-01-01",
@@ -320,9 +335,10 @@ const upgradedPresentationSave = manager.sanitizeSavedDivinations({
   }
 }, "2026-01-01");
 const upgradedPresentation = upgradedPresentationSave.records.turtle.relationship.result;
-assert.strictEqual(upgradedPresentation.presentationVersion, 8);
+assert.strictEqual(upgradedPresentation.presentationVersion, 10);
 assert.deepStrictEqual(upgradedPresentation.lines.map(function(line) { return line.total; }), staleTotals, "presentation upgrade preserves coin lines");
 assert.ok(!upgradedPresentation.interpretation.includes("不必急着给结果定性"));
+assertShortActionPhrases(upgradedPresentation, "upgraded version 9 presentation");
 assert.strictEqual(getSummaryIdentity(upgradedPresentation), "眼下已有暂时立足条件，但尚未真正安定。就当前关系与沟通而言，关键是分清短暂落脚与长期归宿。");
 
 const semanticReviewKeys = new Set([
@@ -365,7 +381,12 @@ catalog.hexagrams.forEach(function(hexagram) {
       if (position === index) return bit === "1" ? 9 : 6;
       return bit === "1" ? 7 : 8;
     });
-    const relationshipResult = resultForTotals(oneMovingTotals, "relationship");
+    const topicResults = ["overall", "relationship", "money", "bodyMind"].map(function(topicId) {
+      const result = resultForTotals(oneMovingTotals, topicId);
+      assertShortActionPhrases(result, hexagram.name + line.lineName + " " + topicId);
+      return result;
+    });
+    const relationshipResult = topicResults[1];
     const coreConflict = getSummaryIdentity(relationshipResult);
     assert.ok(coreConflict && !relationshipCoreConflicts.has(coreConflict), hexagram.name + line.lineName + " unique relationship conflict");
     assertCompactSummary(relationshipResult, hexagram.name + line.lineName);
@@ -376,6 +397,14 @@ catalog.hexagrams.forEach(function(hexagram) {
     relationshipCoreConflicts.add(coreConflict);
   });
 });
+
+const kuiSixThreeTotals = catalog.hexagramsById[38].lineKey.split("").map(function(bit, index) {
+  if (index === 2) return bit === "1" ? 9 : 6;
+  return bit === "1" ? 7 : 8;
+});
+const kuiSixThreeOverall = resultForTotals(kuiSixThreeTotals, "overall");
+assert.deepStrictEqual(kuiSixThreeOverall.goodFor, ["化解眼前牵制", "稳住当前节奏", "坚持完成收尾"]);
+assert.deepStrictEqual(kuiSixThreeOverall.avoid, ["受阻仍强推进", "急于扭转局面", "因狼狈而放弃"]);
 
 assert.strictEqual(catalog.hexagrams.length, 64);
 assert.strictEqual(catalog.hexagrams.reduce(function(total, hexagram) { return total + hexagram.lines.length; }, 0), 384);

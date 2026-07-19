@@ -1,5 +1,5 @@
 (function () {
-  const TURTLE_PRESENTATION_VERSION = 8;
+  const TURTLE_PRESENTATION_VERSION = 10;
 
   function getCatalog() {
     if (typeof window !== "undefined" && window.CAMP_DIVINATION_CATALOG) {
@@ -820,30 +820,40 @@
 
   const topicActionLanguage = {
     overall: {
-      prepare: "完善准备并排好先后", observe: "观察局势再决定", protect: "保留退路和关键资源",
-      correct: "守住原则并复核方向", advance: "按条件稳步推进", cooperate: "明确分工并寻求可靠协助",
-      pause: "暂缓启动新的事项", review: "复盘风险与边界",
-      avoidAdvance: "多线强推或仓促定局", avoidRisk: "忽视警告继续加码", avoidControl: "越位争先或强行主导"
+      prepare: "完善前期准备", observe: "核实当前征兆", protect: "保留必要退路",
+      correct: "守住正当边界", advance: "分步稳健推进", cooperate: "寻求可靠协助",
+      pause: "及时暂停收束", review: "复核具体风险",
+      avoidAdvance: "勿逆势强行推进", avoidRisk: "勿忽视风险信号", avoidControl: "勿被冲突带偏"
     },
     relationship: {
-      prepare: "整理辞文所指的关系位置与现实边界", observe: "核对互动事实是否符合辞文所示条件", protect: "按辞文警示收紧关系中的风险边界",
-      correct: "按辞文要求守住承诺与分寸", advance: "仅在辞文所示条件成立时推进关系", cooperate: "围绕辞文指出的问题明确双方责任",
-      pause: "暂停辞文明示不利的关系动作", review: "复核关系中的具体事实与风险信号",
-      avoidAdvance: "突然表白、逼迫承诺", avoidRisk: "无视冷淡或冲突信号", avoidControl: "操控回应或投入全部情绪"
+      prepare: "厘清关系边界", observe: "核实真实回应", protect: "保留关系余地",
+      correct: "守住承诺分寸", advance: "分步推进关系", cooperate: "坦诚协商责任",
+      pause: "暂停关系推进", review: "复核冲突信号",
+      avoidAdvance: "勿逼迫关系定性", avoidRisk: "勿无视冷淡冲突", avoidControl: "勿操控对方回应"
     },
     money: {
-      prepare: "完善预算与交易准备", observe: "保留现金并继续观察", protect: "设置止损并保留流动性",
-      correct: "核对用途、条款与承受能力", advance: "条件明确后分步投入", cooperate: "向可靠专业人士求证",
-      pause: "暂停新增投入或高风险计划", review: "复核账目与潜在损失",
-      avoidAdvance: "追加投入、仓促交易", avoidRisk: "忽略风险追涨加码", avoidControl: "以借贷或重仓强求结果"
+      prepare: "完善预算准备", observe: "核实资金动向", protect: "保留资金退路",
+      correct: "核对用途条款", advance: "分步投入资金", cooperate: "寻求可靠求证",
+      pause: "暂停新增投入", review: "复核账目风险",
+      avoidAdvance: "勿仓促追加投入", avoidRisk: "勿忽视亏损风险", avoidControl: "勿借贷重仓强求"
     },
     bodyMind: {
-      prepare: "安排恢复时间和基础照护", observe: "记录身心信号并观察变化", protect: "减少消耗并保留体力",
-      correct: "恢复规律作息与适度活动", advance: "状态允许时循序增加负荷", cooperate: "需要时向可信赖的人求助",
-      pause: "暂停额外负荷并优先休息", review: "检查压力来源和身体警讯",
-      avoidAdvance: "勉强加量或连续透支", avoidRisk: "忽视疼痛、疲惫或情绪警讯", avoidControl: "用意志强压真实感受"
+      prepare: "安排基础照护", observe: "记录身心信号", protect: "减少额外消耗",
+      correct: "恢复规律作息", advance: "循序增加负荷", cooperate: "寻求可信帮助",
+      pause: "暂停额外负荷", review: "复核身心警讯",
+      avoidAdvance: "勿勉强增加负荷", avoidRisk: "勿忽视身心警讯", avoidControl: "勿强压真实感受"
     }
   };
+
+  const actionPlaceholderPattern = /辞文|爻位|具体所指|具体矛盾|结合现实|现实条件|根据辞义|谨慎行动|武断行动|保持警惕并控制行动/;
+
+  function cleanActionPhrase(value) {
+    const source = String(value || "").trim();
+    if (/[，。；：、！？,.!?:;“”‘’（）()《》]/.test(source)) return "";
+    const phrase = source.replace(/\s/g, "");
+    if (!phrase || actionPlaceholderPattern.test(phrase)) return "";
+    return /^[\u3400-\u9fff]{2,8}$/.test(phrase) ? phrase : "";
+  }
 
   function actionIntents(analysis) {
     const good = [];
@@ -867,6 +877,120 @@
     addWhen(unfavorableMeaning, /冒险|忽视|松懈|风险|danger|warning/, bad, "avoidRisk");
     addWhen(unfavorableMeaning, /专断|争功|争夺|越位|操控|control|conflict/, bad, "avoidControl");
     return { good: uniqueValues(good), bad: uniqueValues(bad) };
+  }
+
+  const semanticActionPairs = {
+    start: {
+      overall: ["核实起步条件", "勿在起步冒进"], relationship: ["确认关系起点", "勿仓促推进关系"],
+      money: ["核对投入条件", "勿仓促投入资金"], bodyMind: ["确认身心承受", "勿仓促进加强度"]
+    },
+    stable: {
+      overall: ["巩固当前基础", "勿在未稳时扩张"], relationship: ["稳住关系基础", "勿在未稳时承诺"],
+      money: ["稳住资金基础", "勿在未稳时加码"], bodyMind: ["稳住恢复基础", "勿在未稳时加量"]
+    },
+    turn: {
+      overall: ["调整当前方向", "勿固守原有做法"], relationship: ["调整沟通方式", "勿固守原有关系"],
+      money: ["调整资金安排", "勿固守亏损方案"], bodyMind: ["调整恢复安排", "勿硬撑原有节奏"]
+    },
+    trial: {
+      overall: ["保留进退余地", "勿作孤注一掷"], relationship: ["保留关系余地", "勿逼迫关系定性"],
+      money: ["采用小额试行", "勿作孤注投入"], bodyMind: ["采用小量试行", "勿勉强增加负荷"]
+    },
+    lead: {
+      overall: ["承担核心责任", "勿独断包办事务"], relationship: ["承担关系责任", "勿替对方做决定"],
+      money: ["管好核心资源", "勿独断资金决策"], bodyMind: ["主动照护身心", "勿独自承担压力"]
+    },
+    close: {
+      overall: ["完成必要收尾", "勿在极处加码"], relationship: ["收束关系冲突", "勿让冲突再升级"],
+      money: ["及时收束风险", "勿在高位再加码"], bodyMind: ["及时休整回调", "勿在极限再透支"]
+    },
+    relation: {
+      overall: ["厘清双方位置", "勿贸然绑定关系"], relationship: ["厘清关系责任", "勿逼迫关系定性"],
+      money: ["厘清合作责任", "勿草率绑定合作"], bodyMind: ["厘清支持边界", "勿过度依赖他人"]
+    },
+    action: {
+      overall: ["核实行动条件", "勿在条件未明行动"], relationship: ["核实推进条件", "勿在回应未明推进"],
+      money: ["核实投入条件", "勿在风险未明投入"], bodyMind: ["核实承受能力", "勿在状态未明加量"]
+    },
+    responsibility: {
+      overall: ["承担应尽责任", "勿推卸当前责任"], relationship: ["承担关系责任", "勿推卸沟通责任"],
+      money: ["管好应负账责", "勿推卸资金责任"], bodyMind: ["承担照护责任", "勿忽视照护责任"]
+    },
+    support: {
+      overall: ["寻求可靠协助", "勿拒绝可靠协助"], relationship: ["确认可靠支持", "勿拒绝坦诚协商"],
+      money: ["寻求可靠求证", "勿独自承担风险"], bodyMind: ["寻求可信帮助", "勿独自承受压力"]
+    }
+  };
+
+  const sharedSemanticActionPairs = {
+    obstruction: ["化解当前阻力", "勿在受阻时强推"], learning: ["明确教养规则", "勿以严苛相逼"],
+    waiting: ["静待时机成熟", "勿在未熟时抢先"], accumulate: ["积累必要条件", "勿跳过积累阶段"],
+    conflict: ["化解当前冲突", "勿让冲突再升级"], order: ["明确规则边界", "勿破坏既定边界"],
+    alliance: ["确认可靠同伴", "勿勉强求同结盟"], restraint: ["主动收敛锋芒", "勿逞强争先"],
+    momentum: ["善用当前优势", "勿因顺势过度扩张"], change: ["顺势调整方向", "勿固守旧有做法"],
+    displaced: ["稳住当前位置", "勿把暂时当长久"], form: ["保持形式合宜", "勿让形式遮实情"],
+    resources: ["维护关键资源", "勿过度消耗资源"], overload: ["及时降低负荷", "勿让负荷继续累积"],
+    durable: ["保持长期节奏", "勿因短期波动改向"], decision: ["明确取舍边界", "勿在犹疑中拖延"],
+    small: ["先从小事推进", "勿贸然承接大事"], completed: ["做好完成后维护", "勿因完成而松懈"],
+    incomplete: ["补齐未完环节", "勿在未成时松懈"], risk: ["先排除具体风险", "勿忽视风险信号"],
+    adjust: ["及时修正偏差", "勿延续错误做法"], trust: ["以行动建立信任", "勿空口催促结果"],
+    clarity: ["核实真实情况", "勿被表象误导"], care: ["做好持续养护", "勿透支长期基础"],
+    openness: ["接纳不同意见", "勿拒绝必要沟通"], temporaryGain: ["看清暂得性质", "勿把胜诉当长久"],
+    creator: ["主动创造条件", "勿逞强过度推进"], guard: ["守护既有成果", "勿因有成松懈"],
+    conceal: ["保持内明外柔", "勿过早显露锋芒"], visible: ["善用公开机会", "勿为显露而冒进"],
+    repair: ["修复既有弊端", "勿让旧弊延续"], discern: ["清除关键障碍", "勿在不明时决断"],
+    transform: ["建立新的承载", "勿用旧器承新局"], reconnect: ["疏通阻塞联结", "勿任由关系涣散"],
+    moderate: ["等待积累成形", "勿在未成时冒进"], communicate: ["保持反复沟通", "勿用强势求进入"],
+    enter: ["顺势逐步深入", "勿以强硬求进入"], light: ["依附清晰原则", "勿被外在光明迷惑"],
+    difference: ["聚焦可同之处", "勿强求全面一致"], teach: ["主动求教辨惑", "勿以无知自断"],
+    speech: ["审慎言语取用", "勿只顾口腹之欲"], recovery: ["先稳住受惊状态", "勿在震动中失措"],
+    balance: ["保持谦逊平衡", "勿因有终而自满"], earth: ["顺势承载事务", "勿争先强行主导"],
+    temporaryStay: ["稳住暂居条件", "勿把暂居当归宿"], prosper: ["把握当前盛势", "勿让盛大转过度"]
+  };
+
+  const semanticActionPatterns = [
+    ["start", /起步|preparation|emergence/], ["stable", /立稳|steadiness|balance/],
+    ["turn", /转折|turningPoint/], ["trial", /试行|trial|flexibility/],
+    ["lead", /主事|leadership|service/], ["close", /收束|excess/],
+    ["obstruction", /初难|艰阻|困顿|重险|闭塞/], ["learning", /启蒙/],
+    ["waiting", /等待|预备/], ["accumulate", /小积累|大积蓄|渐进/],
+    ["conflict", /争议|咬合|分歧|震动/], ["order", /纪律|节制|家内秩序|整顿|止(?:\||$)/],
+    ["alliance", /亲近|同道|靠近|聚集|相遇|感应|喜悦/], ["restraint", /谨慎践行|谦逊|退避|减损/],
+    ["momentum", /通达|上升|前进|强盛|丰盛|增益/], ["change", /随时|返回|解除|变革|转化|涣散/],
+    ["displaced", /剥落|光受伤|位置不当|旅行/], ["form", /修饰|礼仪/],
+    ["resources", /共同资源/], ["overload", /过载/], ["durable", /恒久/], ["decision", /决断/],
+    ["small", /小事可行/], ["completed", /已完成/], ["incomplete", /未完成/], ["care", /养护/],
+    ["temporaryGain", /暂获|很快.*剥夺|不可把.*长久/],
+    ["creator", /创造|自强/], ["guard", /防乱|守成/], ["conceal", /韬晦|内明外柔/],
+    ["visible", /被看见|明出地上/], ["repair", /修复旧弊|前后复盘/], ["discern", /清障|明断|明辨/],
+    ["transform", /养贤|建立新器/], ["reconnect", /疏通|重新凝聚/], ["moderate", /克制|将雨未雨/],
+    ["communicate", /反复沟通|柔而有定/], ["enter", /顺入/], ["light", /依附|明辨/],
+    ["difference", /求小同|异中见同/], ["teach", /求教|辨惑/], ["speech", /言语|自求口实/],
+    ["recovery", /警醒|恢复镇定/], ["balance", /平衡|有终/], ["earth", /承载|厚德/],
+    ["temporaryStay", /暂居|谨慎小成/], ["prosper", /盛大|把握当下/],
+    ["clarity", /观察|真实|光明|warning|trend/], ["relation", /关系|婚|女|妇|夫|妹/],
+    ["responsibility", /责任|担当|王事/], ["support", /support|相助|伙伴|合作|协助|同道/],
+    ["trust", /诚信|有孚|取信|信任|真诚/], ["risk", /风险|危险|danger/],
+    ["adjust", /调整|悔|纠正|改正/], ["action", /行动|推进|进取|往|征/], ["openness", /openness|包容|接纳|顺势/]
+  ];
+
+  function deriveSemanticActionPhrases(analysis, questionId) {
+    const good = [];
+    const avoid = [];
+    const context = (analysis.selectedTexts || []).map(function(item) {
+      return [item.text, item.interpretation]
+        .concat(item.verdicts || [], item.situationTags || [], item.conditions || [], item.warnings || [], item.favorableActions || [], item.unfavorableActions || [])
+        .filter(Boolean).join("|");
+    }).join("|");
+    semanticActionPatterns.forEach(function(rule) {
+      if (!rule[1].test(context)) return;
+      const topicPairs = semanticActionPairs[rule[0]];
+      const pair = topicPairs ? (topicPairs[questionId] || topicPairs.overall) : sharedSemanticActionPairs[rule[0]];
+      if (!pair) return;
+      if (good.indexOf(pair[0]) === -1) good.push(pair[0]);
+      if (avoid.indexOf(pair[1]) === -1) avoid.push(pair[1]);
+    });
+    return { good: good, avoid: avoid };
   }
 
   function buildCoreConflict(selectedInterpretations, fallbackMeaning) {
@@ -1073,9 +1197,10 @@
     if ((firstSentence + "。" + secondSentence + "。").length < 40) {
       const avoidText = usableAvoid;
       const goodText = usableGood;
-      if (avoidText && secondSentence.indexOf(cleanDisplaySentence(avoidText)) === -1) {
+      const hasSemanticReminder = /^关键是|^还要留意/.test(reminder);
+      if (!hasSemanticReminder && avoidText && secondSentence.indexOf(cleanDisplaySentence(avoidText)) === -1) {
         secondSentence = compactDisplayFragment(reminder + "，避免" + cleanDisplaySentence(avoidText), 28);
-      } else if (goodText && secondSentence.indexOf(cleanDisplaySentence(goodText)) === -1) {
+      } else if (!hasSemanticReminder && goodText && secondSentence.indexOf(cleanDisplaySentence(goodText)) === -1) {
         secondSentence = compactDisplayFragment(reminder + "，宜" + cleanDisplaySentence(goodText), 28);
       }
     }
@@ -1115,33 +1240,69 @@
     const specificAvoid = [];
     function add(list, value) { if (value && list.indexOf(value) === -1) list.push(value); }
 
-    if (/暂得安处|得到住处|暂得安|已有.*立足|暂时.*立足/.test(selectedMeaning)) {
-      add(specificGood, "先稳住已有的暂时立足条件，再确认能否真正安定");
-      add(specificAvoid, "把暂时落脚误当成已经找到归宿，或压下仍然不安的感受");
+    const selectedSemantic = (analysis.selectedTexts || []).map(function(item) {
+      return [item.text, item.interpretation]
+        .concat(item.verdicts || [], item.situationTags || [], item.conditions || [], item.warnings || [], item.favorableActions || [], item.unfavorableActions || [])
+        .filter(Boolean).join("|");
+    }).join("|");
+    const isKuiSixThree = /车被拖.*牛被牵.*起初.*不顺.*最终/.test(selectedSemantic) || /見輿曳.*其牛掣.*无初有終/.test(selectedSemantic);
+    const kuiSixThreeActions = {
+      overall: {
+        good: ["化解眼前牵制", "稳住当前节奏", "坚持完成收尾"],
+        avoid: ["受阻仍强推进", "急于扭转局面", "因狼狈而放弃"]
+      },
+      relationship: {
+        good: ["化解关系牵制", "稳住沟通节奏", "守住关系目标"],
+        avoid: ["受阻仍逼承诺", "急于扭转关系", "因难堪而放弃"]
+      },
+      money: {
+        good: ["化解资金牵制", "稳住交易节奏", "完成必要收尾"],
+        avoid: ["受阻仍追加投入", "急于扭转亏损", "因浮亏而放弃"]
+      },
+      bodyMind: {
+        good: ["缓解身心牵制", "稳住恢复节奏", "完成基础照护"],
+        avoid: ["受阻仍强加量", "急于恢复状态", "因挫败而放弃"]
+      }
+    };
+
+    if (isKuiSixThree) {
+      (kuiSixThreeActions[questionId] || kuiSixThreeActions.overall).good.forEach(function(item) { add(specificGood, item); });
+      (kuiSixThreeActions[questionId] || kuiSixThreeActions.overall).avoid.forEach(function(item) { add(specificAvoid, item); });
     }
-    if (/等待|时机未|条件未|尚未|未熟|迟归有时/.test(selectedMeaning)) {
-      add(specificGood, "给条件继续成熟的时间，并保留调整空间");
-      add(specificAvoid, "在时机未明时抢先定局");
+
+    if (!isKuiSixThree && /暂得安处|得到住处|暂得安|已有.*立足|暂时.*立足/.test(selectedMeaning)) {
+      add(specificGood, "稳住暂时落脚");
+      add(specificAvoid, "误把落脚当归宿");
     }
-    if (/守正|中道|中正|正道|本分/.test(selectedMeaning)) {
-      add(specificGood, "把行动限制在正当边界内，并持续核对方向");
-      add(specificAvoid, "为求结果而越过原本应守的边界");
+    if (!isKuiSixThree && /等待|时机未|条件未|尚未|未熟|迟归有时/.test(selectedMeaning)) {
+      add(specificGood, "静待条件成熟");
+      add(specificAvoid, "勿抢先定局");
     }
-    if (/诚信|真诚|取信|信任|有孚/.test(selectedMeaning)) {
-      add(specificGood, "先用真实、可兑现的行动建立信任");
-      add(specificAvoid, "只靠承诺或表态催促结果");
+    if (!isKuiSixThree && /守正|中道|中正|正道|本分/.test(selectedMeaning)) {
+      add(specificGood, "守住正当边界");
+      add(specificAvoid, "勿越界求结果");
     }
-    if (/停止|止损|退回|返回|退避|收束|不可.*进|不宜.*进|冒进/.test(selectedMeaning)) {
-      add(specificGood, "及时停下、收束风险，并保留退路");
-      add(specificAvoid, "明知条件不足仍继续加码推进");
+    if (!isKuiSixThree && /诚信|真诚|取信|信任|有孚/.test(selectedMeaning)) {
+      add(specificGood, "以行动建立信任");
+      add(specificAvoid, "勿空口催促结果");
     }
-    if (/相助|伙伴|合作|求见|协助|支持|同道|联结/.test(selectedMeaning)) {
-      add(specificGood, "确认可靠的协助关系后再共同推进");
-      add(specificAvoid, "在支持关系未稳时独自硬撑");
+    if (!isKuiSixThree && /停止|止损|退回|返回|退避|收束|不可.*进|不宜.*进|冒进/.test(selectedMeaning)) {
+      add(specificGood, "及时止损收束");
+      add(specificAvoid, "勿逆势继续加码");
     }
-    if (/危险|风险|受困|凶|灾|伤|不安/.test(selectedMeaning)) {
-      add(specificGood, "正视已经出现的不安或风险信号");
-      add(specificAvoid, "用表面的进展掩盖尚未解除的风险");
+    if (!isKuiSixThree && /相助|伙伴|合作|求见|协助|支持|同道|联结/.test(selectedMeaning)) {
+      add(specificGood, "确认可靠协助");
+      add(specificAvoid, "勿在无援时硬撑");
+    }
+    if (!isKuiSixThree && /危险|风险|受困|凶|灾|伤|不安/.test(selectedMeaning)) {
+      add(specificGood, "先化解具体风险");
+      add(specificAvoid, "勿掩盖未解风险");
+    }
+    if (!isKuiSixThree && /起初|开局|无初/.test(selectedMeaning) && /有终|最终|完成|归宿/.test(selectedMeaning)) {
+      add(specificGood, "稳住开局节奏");
+      add(specificGood, "坚持完成收尾");
+      add(specificAvoid, "勿因受挫放弃");
+      add(specificAvoid, "勿急于扭转局面");
     }
 
     const semanticGood = (analysis.favorableActions || []).filter(function(item) {
@@ -1150,16 +1311,15 @@
     const semanticAvoid = (analysis.unfavorableActions || []).filter(function(item) {
       return item && !/脱离辞文条件|忽视危险、困难|强行推进辞文/.test(item);
     });
-    semanticGood.slice(0, 1).forEach(function(item) { add(specificGood, item.replace(/[。；]$/, "")); });
-    semanticAvoid.slice(0, 1).forEach(function(item) { add(specificAvoid, item.replace(/[。；]$/, "")); });
+    const existingGood = isKuiSixThree ? [] : semanticGood.map(cleanActionPhrase).filter(Boolean);
+    const existingAvoid = isKuiSixThree ? [] : semanticAvoid.map(cleanActionPhrase).filter(Boolean);
+    const derivedActions = isKuiSixThree ? { good: [], avoid: [] } : deriveSemanticActionPhrases(analysis, questionId);
 
-    const topicGood = intents.good.map(function(intent) { return language[intent]; }).filter(Boolean);
-    const topicAvoid = intents.bad.map(function(intent) { return language[intent]; }).filter(Boolean);
+    const topicGood = isKuiSixThree ? [] : intents.good.map(function(intent) { return cleanActionPhrase(language[intent]); }).filter(Boolean);
+    const topicAvoid = isKuiSixThree ? [] : intents.bad.map(function(intent) { return cleanActionPhrase(language[intent]); }).filter(Boolean);
     const coreConflict = buildCoreConflict(selectedInterpretations, primary.imageMeaning);
-    if (!specificGood.length && !topicGood.length) add(specificGood, "处理辞文指出的具体矛盾：" + coreConflict);
-    if (!specificAvoid.length && !topicAvoid.length) add(specificAvoid, "忽略辞文已经指出的限制：" + coreConflict);
-    const goodFor = uniqueValues(specificGood.concat(topicGood)).slice(0, 3);
-    const avoid = uniqueValues(specificAvoid.concat(topicAvoid)).slice(0, 3);
+    const goodFor = uniqueValues(existingGood.concat(specificGood, derivedActions.good, topicGood).map(cleanActionPhrase).filter(Boolean)).slice(0, 3);
+    const avoid = uniqueValues(existingAvoid.concat(specificAvoid, derivedActions.avoid, topicAvoid).map(cleanActionPhrase).filter(Boolean)).slice(0, 3);
     const primaryMeaning = String(primary.imageMeaning || "").replace(/[。；]+$/, "");
     const trend = primary.id === changed.id
       ? "卦势没有转成另一卦，重点仍在「" + primary.keywords[0] + "」这一层逐步落实。"
